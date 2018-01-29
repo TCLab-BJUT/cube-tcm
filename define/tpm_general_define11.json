@@ -1,0 +1,147 @@
+{
+        "head":
+        {
+                "name":"dtype_vtpm_general",
+                "type":"TYPELIST"
+        },
+        "record":
+        {
+                "elem_no":3,
+                "elemlist":
+                [
+                        "VTPM_INTERNAL=0x2001",
+                        "VTPM_EXTERNAL=0x2002",
+                        "VTPM_IN_CAP=0x2011"
+                ]
+        }
+}
+{
+        "head":
+        {
+                "name":"subtype_vtpm_internal",
+                "type":"SUBTYPELIST"
+        },
+        "record":
+        {
+                "type":"VTPM_INTERNAL",
+                "elem_no":1,
+                "elemlist":
+                [
+                        "TPM_CURRENT_TICKS=0x01",
+                ]
+        }
+}
+{
+        "head": 
+        {
+                "name":"subtype_vtpm_external",
+                "type":"SUBTYPELIST"
+        },
+        "record":
+        {    
+                "type":"VTPM_EXTERNAL",
+                "elem_no":1,
+                "elemlist":
+                [
+                        "INPUT_COMMAND=0x01"
+                ]
+        }
+}   
+{
+        "head": 
+        {
+                "name":"subtype_vtpm_capability_struct",
+                "type":"SUBTYPELIST"
+        },
+        "record":
+        {    
+                "type":"VTPM_IN_CAP",
+                "elem_no":1,
+                "elemlist":
+                [
+
+                        "TPM_CAP_VERSION_INFO=0x01"
+                ]
+        }
+}   
+{   
+        "head":
+        { 
+                "name":"vtpm_internal_CURRENTTICKS",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"VTPM_INTERNAL",
+                "subtype":"CURRENT_TICKS",
+                "struct_desc":
+                {
+                        "elem_desc":
+                        [
+                                {"name":"pcrIndex","type":"TPM32"}
+                        ]
+                }
+        }
+}
+{
+        "head": 
+        {
+                "name":"subtype_vtpm_external",
+                "type":"SUBTYPELIST"
+        },
+        "record":
+        {    
+                "type":"VTPM_EXTERNAL",
+                "elem_no":1,
+                "elemlist":
+                [
+                        "INPUT_COMMAND=0x01"
+                ]
+        }
+}   
+{
+        "head":
+        {
+                "name":"subtype_vtpm_capability_struct",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"VTPM_EXTERNAL",
+                "subtype":"INPUT_COMMAND",
+                "struct_desc":
+                {
+                        "elem_desc":
+                        [
+                                {"name":"tag","type":"SENUM","ref_name":"tpm_tag_value"},
+                                {"name":"paramSize","type":"TPM32"},
+                                {"name":"ordinal","type":"ENUM","ref_name":"tpm_ordinal_value"}
+                        ]
+                }
+        }
+}
+{   
+        "head":
+        { 
+                "name":"vtpm_cap_version_info",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"VTPM_IN_CAP",
+                "subtype":"TPM_CAP_VERSION_INFO",
+                "struct_desc":
+                {
+                        "elem_desc":
+                        [
+                                {"name":"tag","type":"SENUM","ref_name":"tpm_struct_value"},
+                                {"name":"version","type":"SENUM"},
+                                {"name":"specLevel","type":"SENUM"},
+                                {"name":"errataRev","type":"SENUM"},
+                                {"name":"tpmVendorID","type":"BINDATA","size":"4"},
+                                {"name":"vendorSpecificSize","type":"SENUM"},
+                                {"name":"vendorSpecific","type":"DEFINE","def":"vendorSpecificSize"}
+                        ]
+                }
+        }
+}
