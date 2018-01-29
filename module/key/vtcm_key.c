@@ -969,7 +969,7 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
             if (ret == TCM_SUCCESS) 
             {
                 /* get the entityDigest for the NV data */
-                entityDigest = &(tcm_nv_data_sensitive->digest);
+                //entityDigest = &(tcm_nv_data_sensitive->digest);
                 /* get the authData for the NV data */
                 authData = &(tcm_nv_data_sensitive->authValue);                                            
             }    

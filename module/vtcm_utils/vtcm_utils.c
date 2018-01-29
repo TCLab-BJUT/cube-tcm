@@ -899,6 +899,7 @@ int proc_vtcmutils_NV_WriteValue(void * sub_proc, void * para){
 	}	
 
     vtcm_input->ordinal=SUBTYPE_NV_WRITEVALUE_IN;
+    vtcm_input->nvIndex=index;
     if(nvHandle==0)
    {
     	vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);

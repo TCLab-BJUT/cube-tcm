@@ -2408,8 +2408,6 @@ typedef struct tdTCM_NV_DATA_SENSITIVE {
     TCM_AUTHDATA authValue;     /* The authorization value to manipulate the value */
     BYTE *data;                 /* The data area. This MUST not contain any sensitive information as
                                    the TCM does not provide any confidentiality on the data. */
-    /* NOTE Added kg */
-    TCM_DIGEST digest;          /* for OSAP comparison */
 }__attribute__((packed)) TCM_NV_DATA_SENSITIVE;
 
 typedef struct tdTCM_NV_INDEX_ENTRIES {
