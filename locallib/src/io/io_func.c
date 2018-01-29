@@ -718,11 +718,6 @@ int vtcm_export_nv_data(void * instance, BYTE * buf)
         Memcpy(buf+offset,nv_sensitive->data,ret);
         offset+=ret;     	  
 
-        //export digest
-        ret=sizeof(TCM_DIGEST);
-        Memcpy(buf+offset,&nv_sensitive->digest,ret);
-        offset+=ret;     	  
-
     }    
 
      return offset;	
@@ -778,11 +773,6 @@ int vtcm_import_nv_data(void * instance, BYTE * buf)
         if(nv_sensitive->data==NULL)
                 return -ENOMEM;
         Memcpy(nv_sensitive->data,buf+offset,ret);
-        offset+=ret;     	  
-
-        //export digest
-        ret=sizeof(TCM_DIGEST);
-        Memcpy(&nv_sensitive->digest,buf+offset,ret);
         offset+=ret;     	  
     }    
      return offset;	
