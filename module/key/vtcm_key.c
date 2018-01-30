@@ -274,7 +274,8 @@ int process_Vtcm_CreateEndorsementKeyPair(void* sub_proc, void* recv_msg)
     int ret = 0;
 
     /* input process */
-    BYTE* antiReplay;
+   
+    BYTE *antiReplay;         //new define
     TCM_KEY_PARMS* keyInfo = NULL;
 
     /* process parameters */
@@ -2769,9 +2770,6 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
                                            FALSE);
 
     }
-    if(key->keyUsage != TCM_KEY_SIGNING) {
-        ret = TCM_INVALID_KEYUSAGE;
-    }
     if(ret == TCM_SUCCESS) {
         ret = vtcm_Key_GetUsageAuth(&keyUsageAuth, key);
     }
@@ -2779,11 +2777,16 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
         ret = vtcm_Key_GetStoreAsymkey(&tcm_store_asymkey, 
                                        key);
     }
+    tcm_store_asymkey->privKey.key = (BYTE *)malloc(sizeof(BYTE)*tcm_store_asymkey->privKey.keyLength);
+    BYTE *buffer = (BYTE *)malloc(sizeof(BYTE) * 128);
+
     //Response 
-    GM_SM2Sign(tcm_output->sig, tcm_output->sigSize, 
+    GM_SM2Sign(buffer, &tcm_output->sigSize, 
                tcm_input->areaToSign, tcm_input->areaToSignSize,
                UserID, lenUID, 
                tcm_store_asymkey->privKey.key, tcm_store_asymkey->privKey.keyLength);
+    tcm_output->sig = (BYTE *)malloc(sizeof(BYTE) * tcm_output->sigSize);
+    memcpy(tcm_output->sig, buffer, tcm_output->sigSize);
     tcm_output->tag = 0xC500;
     tcm_output->paramSize = 46 + tcm_output->sigSize;
     tcm_output->returnCode = 0;

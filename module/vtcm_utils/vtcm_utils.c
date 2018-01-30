@@ -1251,8 +1251,14 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
     vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
     Memcpy(vtcm_input->authCode,hmacout,TCM_HASH_SIZE); 
 
-    printf("Begin input for Seal\n");
     vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SEAL_IN);
+    int offset = 0;
+    offset =  struct_2_blob(vtcm_input,Buf,vtcm_template);
+    if(offset<0){
+        return offset;
+    }
+    vtcm_input->paramSize = offset;
+    printf("Begin input for Seal\n");
     ret =  struct_2_blob(vtcm_input,Buf,vtcm_template);
     if(ret<0)
         return ret;
