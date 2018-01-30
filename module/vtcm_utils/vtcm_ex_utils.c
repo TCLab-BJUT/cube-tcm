@@ -49,6 +49,7 @@ int proc_vtcmutils_ExCreateSm2Key(void * sub_proc,void * para);
 int proc_vtcmutils_ExLoadCAKey(void * sub_proc,void * para);
 int proc_vtcmutils_ExCaSign(void * sub_proc,void * para);
 int proc_vtcmutils_ExVerify(void * sub_proc,void * para);
+void * vtcm_auto_build_outputmsg(char * out_line, void * active_msg);
 
 
 int proc_vtcmutils_ExCreateSm2Key(void * sub_proc,void * para)
@@ -125,7 +126,13 @@ int proc_vtcmutils_ExCreateSm2Key(void * sub_proc,void * para)
 	}
 
 	close(fd);
+	ret=0;
 	printf("proceed  create Sm2 key succeed!\n");
+    	sprintf(Buf,"%d \n",ret);
+   	void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+   	if(send_msg==NULL)
+		return -EINVAL;
+   	ex_module_sendmsg(sub_proc,send_msg);		
 
 	return ret;
 }
@@ -223,6 +230,13 @@ int proc_vtcmutils_ExLoadCAKey(void * sub_proc,void * para)
 	}
 
 	printf("proceed  load ca key succeed!\n");
+
+	ret=0;
+    	sprintf(Buf,"%d \n",ret);
+   	void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+   	if(send_msg==NULL)
+		return -EINVAL;
+   	ex_module_sendmsg(sub_proc,send_msg);		
 
 	return ret;
 }
