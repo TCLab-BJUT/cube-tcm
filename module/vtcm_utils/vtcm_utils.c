@@ -64,7 +64,7 @@ void * vtcm_auto_build_outputmsg(char * out_line, void * active_msg)
 
    do{
 	out_param=&Output[DIGEST_SIZE*2*i];
-   	Memset(out_param,0,DIGEST_SIZE*32);
+   	Memset(out_param,0,DIGEST_SIZE*2);
 	ret=Getfiledfromstr(out_param,out_line+offset,' ',DIGEST_SIZE*2);
 	if(ret>0)
 	{
@@ -3283,12 +3283,9 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
     close(fd);
 
     sprintf(Buf,"%d \n",vtcm_output->returnCode);
-
    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
-
    if(send_msg==NULL)
 	return -EINVAL;
-
    ex_module_sendmsg(sub_proc,send_msg);		
 
     return ret;
@@ -4217,6 +4214,13 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
 	return -EIO;
     write(fd,vtcm_output->CertData,vtcm_output->CertSize);
     close(fd);
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
 			
     return ret;
 }
