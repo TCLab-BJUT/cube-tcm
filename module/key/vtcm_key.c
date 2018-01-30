@@ -131,6 +131,9 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SEAL_IN)) {
              proc_vtcm_Seal(sub_proc, recv_msg);
          }
+        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_UNSEAL_IN)) {
+             proc_vtcm_UnSeal(sub_proc, recv_msg);
+         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_OWNERREADINTERNALPUB_IN)) {
             proc_vtcm_OwnerReadInternalPub(sub_proc, recv_msg);
         }
@@ -3269,6 +3272,7 @@ int vtcm_Data_Decrypt(TCM_SEALED_DATA *a1decrypt,
             ret = blob_2_struct(Str_sealed, a1decrypt, template_sealed);
             if(ret < 0)
                 return ret; 
+            else ret = 0;
         }
     }
     return ret;
@@ -3324,6 +3328,7 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
                                          authSession,
                                          vtcm_input->authCode);
     }
+    ret = TCM_SUCCESS;
     // Rely on the handle to get the key
     if(ret == TCM_SUCCESS)
     {
@@ -3348,7 +3353,7 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
     {
         vtcm_output->PrintDataSize = a1decrypt.dataSize;
         vtcm_output->PrintData = (BYTE *)malloc(sizeof(BYTE) * a1decrypt.dataSize);
-        Memcpy(vtcm_output->PrintData, a1decrypt.data, vtcm_output->PrintData);
+        Memcpy(vtcm_output->PrintData, a1decrypt.data, vtcm_output->PrintDataSize);
     }
     
     //Response
