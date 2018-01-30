@@ -1277,6 +1277,13 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
     write(fd,sealData,length);
     close(fd);
 
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	      return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+    return ret;
+
 }
 int proc_vtcmutils_Sign(void * sub_proc, void * para){
     int i=1;
