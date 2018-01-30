@@ -835,13 +835,11 @@ int proc_vtcmutils_NV_DefineSpace(void * sub_proc, void * para){
     print_bin_data(Buf,outlen,8);
 
     sprintf(Buf,"%d \n",vtcm_output->returnCode);
-
     void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
-
     if(send_msg==NULL)
 	return -EINVAL;
-
     ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 
@@ -1865,6 +1863,13 @@ int proc_vtcmutils_SM3CompleteExtend(void * sub_proc, void * para){
         return ret; 
     printf("Receive  output is:\n");
     print_bin_data(Buf,outlen,8);
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 
@@ -3254,9 +3259,9 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
     printf("%d\n",offset);
   //  memset(APKey,0,TCM_HASH_SIZE);
     authdata=Find_AuthSession(0x04,vtcm_input->authHandle);
-    vtcm_AuthSessionData_Encrypt(&ownerauth,authdata,authdata1);
+    vtcm_AuthSessionData_Encrypt(ownerauth,authdata,authdata1);
     Memcpy(vtcm_input->dataUsageAuth,ownerauth,TCM_HASH_SIZE);	
-    vtcm_AuthSessionData_Encrypt(&migrationauth,authdata,migrationdata);
+    vtcm_AuthSessionData_Encrypt(migrationauth,authdata,migrationdata);
     Memcpy(vtcm_input->dataMigrationAuth,migrationauth,TCM_HASH_SIZE);
     int ordinal=htonl(vtcm_input->ordinal);
     vtcm_SM3_2(hashout,&(ordinal),4,vtcm_input->dataUsageAuth,TCM_HASH_SIZE,vtcm_input->dataMigrationAuth,TCM_HASH_SIZE,
@@ -3798,6 +3803,13 @@ int proc_vtcmutils_Extend(void * sub_proc, void * para){
         i++;
     }
     printf("\n");
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 int proc_vtcmutils_PcrReset(void * sub_proc, void * para)
@@ -3930,6 +3942,13 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
         return ret;
     printf("Pcr %d value:\n",vtcm_input->pcrIndex);
     print_bin_data(vtcm_output->outDigest,32,8);
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
    /* i=0;
     while(i<TCM_HASH_SIZE){
         printf("%.2x ",vtcm_output->outDigest[i]);
