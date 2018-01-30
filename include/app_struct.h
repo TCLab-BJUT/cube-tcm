@@ -584,6 +584,7 @@ struct tcm_out_NV_WriteValue
     UINT16 tag;
     int paramSize;
     int returnCode;
+    BYTE ownerAuth[32];
 }__attribute__((packed));
 
 struct tcm_in_NV_ReadValue
@@ -604,6 +605,7 @@ struct tcm_out_NV_ReadValue
     int returnCode;
     int dataSize;
     BYTE * data;
+    BYTE ownerAuth[32];
 }__attribute__((packed));
 struct tcm_in_Sm3Start
 {

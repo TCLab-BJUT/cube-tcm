@@ -36,6 +36,7 @@
 #define TCM_NV_INDEX_COUNT 20
 #define TCM_NV_INDEX_LOCK 0xFFFFFFFF
 
+static BYTE Buf[DIGEST_SIZE*32];
 //int TCM_NVIndexEntries_GetEntry(TCM_NV_DATA_SENSITIVE **tcm_nv_data_sensitive, struct vtcm_nv_scene *nv_scene, int index);
 //void TCM_NVDataSensitive_Delete(TCM_NV_DATA_SENSITIVE *tcm_nv_data_sensitive);
 
@@ -631,38 +632,109 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
               printf("nvLocked is FLASE, only check the Max NV writes");
               ignore_auth = TRUE;
         }
-/*
-	ret = TCM_NV_ReadValue(index, offset, size, buffer, nv_scene);
-	if(ret != 0)
-		return ret;
-        printf("nvIndex: %d\n", nv_scene[0].nv[index].pubInfo.nvIndex);
-        printf("dataSize: %d\n",size);
-	printf("offset: %d\n",offset);
-        printf("data: %s\n",buffer);
-	printf("======ReadValue Done=========\n");
+        returnCode = vtcm_NVIndexEntries_GetEntry(&nv_sens, &curr_tcm->tcm_nv_index_entries, vtcm_in->nvIndex);
+         if (returnCode != TCM_SUCCESS) {
+                printf("NV index %08x do not exists\n", index);
+		goto nv_readvalue_out;
+        }
+       
+        
+       if(vtcm_in->tag==htons(TCM_TAG_RQU_AUTH1_COMMAND))
+	{
+		// 5-i-a
+	      if(!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_OWNERREAD))
+	      {
+		    returnCode=TCM_AUTH_CONFLICT;
+		    goto nv_readvalue_out;
+              }			
+              nv1 = curr_tcm->tcm_permanent_data.noOwnerNVWrite;
+                // ii. Increment NV1 by 1 
+              nv1++;
+                    // iii. If NV1 > TCM_MAX_NV_WRITE_NOOWNER return TCM_MAXNVWRITES 
+              if (nv1 > TCM_MAX_NV_WRITE_NOOWNER) {
+                    printf("Error, max NV writes %d w/o owner reached\n",
+                    	  curr_tcm->tcm_permanent_data.noOwnerNVWrite);
+                    returnCode = TCM_MAXNVWRITES;
+		    goto nv_readvalue_out;
+              }
+	    //5-i-b: check owner auth
+		
 
+	}
+       else if(vtcm_in->tag==htons(TCM_TAG_RQU_COMMAND))
+       {
+	//  5-ii-a
+	      if(!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_AUTHREAD))
+	      {
+		    returnCode=TCM_AUTH_CONFLICT;
+		    goto nv_readvalue_out;
+              }	
+	//5-ii-b		
+	      if(!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_OWNERREAD))
+	      {
+		    returnCode=TCM_AUTH_CONFLICT;
+		    goto nv_readvalue_out;
+              }	
+         }	
+	
+       else
+       {
+		    returnCode=TCM_BAD_PARAMETER;
+		    goto nv_readvalue_out;
+
+       }	
+       // 6: check NV attributes
+        if (!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_PPREAD) &&
+          	!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_READ_STCLEAR))
+	  {
+                        // i. Return TCM_PER_NOWRITE 
+                        printf("Error, no read\n");
+                        returnCode = TCM_DISABLED_CMD;
+			goto nv_readvalue_out;
+          }
+        //7 check pcr value
+
+
+	ret = TCM_NV_ReadValue(vtcm_in->offset, Buf,vtcm_in->dataSize, nv_sens);
+	if(ret != 0)
+	{
+		returnCode=ret;
+		goto nv_readvalue_out;
+	}
+nv_readvalue_out:
 	// Output
-	vtcm_out = Talloc(sizeof(*readvalue_out));
+	vtcm_out = Talloc(sizeof(*vtcm_out));
 	if(vtcm_out == NULL)
 		return -ENOMEM;
-	vtcm_out->tag = 0xC400;
-	vtcm_out->returnCode = 0;
-	vtcm_out->dataSize = size;
-//	vtcm_out->data = buffer;
-	vtcm_out->data = Talloc(sizeof(BYTE)*size);
-	vtcm_out->paramSize = sizeof(*readvalue_out) - 8 + size ;
-	memcpy(vtcm_out->data,buffer,size);
-//	printf("vtcm_out->data is: %s\n",readvalue_out->data);
+	vtcm_out->dataSize = vtcm_in->dataSize;
+	if(vtcm_out->dataSize>0)
+	{
+		vtcm_out->data = Talloc(sizeof(BYTE)*vtcm_out->dataSize);
+		Memcpy(vtcm_out->data,Buf,vtcm_out->dataSize);
+	}
+
+	if(vtcm_in->tag==htons(TCM_TAG_RQU_COMMAND))
+	{
+		vtcm_out->tag = htons(TCM_TAG_RSP_COMMAND);
+		vtcm_out->paramSize = sizeof(*vtcm_out)-sizeof(BYTE *)+vtcm_out->dataSize-DIGEST_SIZE;
+		vtcm_out->returnCode = returnCode;
+	}
+	else if(vtcm_in->tag==htons(TCM_TAG_RQU_AUTH1_COMMAND))
+	{
+		vtcm_out->tag = htons(TCM_TAG_RSP_AUTH1_COMMAND);
+		vtcm_out->paramSize = sizeof(*vtcm_out)-sizeof(BYTE *)+vtcm_out->dataSize;
+		vtcm_out->returnCode = returnCode;
+	}
 	
 	send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_NV_READVALUE_OUT,recv_msg);
 	if(send_msg == NULL)
-{
+	{
 		printf("sdfsdfsdfsdfsdf");
 		return -EINVAL;
-}
+	}
 	message_add_record(send_msg,vtcm_out);
 	ret = ex_module_sendmsg(sub_proc,send_msg);
-*/
+
 	return ret;
 }
 
@@ -680,12 +752,13 @@ int TCM_NV_WriteValue(uint32_t offset,unsigned char *data, uint32_t datalen,
 }
 
 
-int TCM_NV_ReadValue(uint32_t nvIndex,uint32_t offset,uint32_t datasize,unsigned char * buffer, struct vtcm_nv_scene *nv_scene)
+int TCM_NV_ReadValue(uint32_t offset,unsigned char * data, uint32_t datalen,
+	TCM_NV_DATA_SENSITIVE *nv_sens)
 {
-	memcpy(buffer, nv_scene[0].nv[nvIndex].data+offset, datasize);
-	//printf("Read value from index %d: ",nvIndex);
-        //printf("%s\n",buffer);
-//	printf("============ReadValue done=============\n");
+        if(offset+datalen>nv_sens->pubInfo.dataSize)
+		return TCM_NOSPACE;        	 
+        
+	Memcpy(data,nv_sens->data+offset,datalen);
 	return 0;
 }
 

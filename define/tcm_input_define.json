@@ -866,7 +866,8 @@
                         [
                                 {"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
                                 {"name":"paramSize","type":"TPM32"},
-								{"name":"returnCode","type":"TPM32"}
+				{"name":"returnCode","type":"TPM32"},
+				{"name":"ownerAuth","type":"BINDATA","size":"32"}
                         ]
                 }
         }
@@ -889,8 +890,10 @@
                                 {"name":"paramSize","type":"TPM32"},
                                 {"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
                                 {"name":"nvIndex","type":"TPM32"},
-				                {"name":"offset","type":"TPM32"},
-				                {"name":"dataSize","type":"TPM32"}
+				{"name":"offset","type":"TPM32"},
+				{"name":"dataSize","type":"TPM32"},
+				{"name":"authHandle","type":"TPM32"},
+				{"name":"ownerAuth","type":"BINDATA","size":"32"}
                         ]
                 }
         }
@@ -911,9 +914,10 @@
                         [
                                 {"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
                                 {"name":"paramSize","type":"TPM32"},
-				                {"name":"returnCode","type":"TPM32"},
-				                {"name":"dataSize","type":"TPM32"},
-				                {"name":"data","type":"BINDATA"}
+				{"name":"returnCode","type":"TPM32"},
+				{"name":"dataSize","type":"TPM32"},
+				{"name":"data","type":"DEFINE","def":"dataSize"},
+				{"name":"ownerAuth","type":"BINDATA","size":32}
                         ]
                 }
         }
