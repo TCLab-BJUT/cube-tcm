@@ -604,25 +604,34 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
 	printf("proc_vtcm_readvalue: Start\n");
 	int ret = 0;
  	int i = 0;
-	struct vtcm_nv_scene *nv_scene = ex_module_getpointer(sub_proc);
-	struct tcm_in_NV_ReadValue *readvalue_in;
-	struct tcm_out_NV_ReadValue *readvalue_out;
+        TCM_SESSION_DATA *authSession;
+	tcm_state_t *curr_tcm = ex_module_getpointer(sub_proc);
+	struct tcm_in_NV_ReadValue *vtcm_in;
+	struct tcm_out_NV_ReadValue *vtcm_out;
 	void *send_msg;
-	BYTE *buffer;
 	
-	/*Get input params*/
+        int nv1 = curr_tcm->tcm_permanent_data.noOwnerNVWrite;
+        TCM_BOOL ignore_auth = FALSE;
+        TCM_RESULT returnCode = TCM_SUCCESS;
+        TCM_NV_DATA_SENSITIVE *nv_sens;
+        TCM_DIGEST nvAuth;
+	void * vtcm_template;
+
+	// Get input params 
 	ret = message_get_record(recv_msg,&readvalue_in,0);
 	if(ret < 0)
 		return ret;
 	if(readvalue_in == NULL)
 		return -EINVAL;	
-	int index = readvalue_in->nvIndex;
-	int size = readvalue_in->dataSize;
-	int offset = readvalue_in->offset;
-	buffer = Talloc(sizeof(BYTE)*size);	
-	
-	/*processing*/
-	printf("======Processing ReadValue=========\n");
+
+	// processing
+
+	//1 
+        if((curr_tcm->tcm_permanent_flags.nvLocked == FALSE)){
+              printf("nvLocked is FLASE, only check the Max NV writes");
+              ignore_auth = TRUE;
+        }
+
 	ret = TCM_NV_ReadValue(index, offset, size, buffer, nv_scene);
 	if(ret != 0)
 		return ret;
