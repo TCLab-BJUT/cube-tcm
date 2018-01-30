@@ -462,7 +462,7 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
     }
     else if(strcmp(input_para->params,"sign")==0)
     {
-       // ret=proc_vtcmutils_Sign(sub_proc,input_para);
+        ret=proc_vtcmutils_Sign(sub_proc,input_para);
     }
     else if(strcmp(input_para->params,"wrapkey")==0)
     {
@@ -1347,7 +1347,11 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
     ret =  struct_2_blob(vtcm_input,Buf,vtcm_template);
     if(ret<0)
         return ret;
+    vtcm_input->paramSize=ret;
+
+    *(int *)(Buf+2)=htonl(vtcm_input->paramSize); 
     print_bin_data(Buf,ret,8);                                                                            
+
     ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
     if(ret<0)
         return ret;
@@ -1599,8 +1603,13 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
     TCM_SESSION_DATA * authdata;
     authdata=Find_AuthSession(0x01,vtcm_input->EncryptAuthHandle);
     vtcm_input->EncryptDataSize =0x10 ; 
-    memcpy(vtcm_input->EncryptData,en4data,0x10);
     vtcm_input->EncryptData = Talloc0(vtcm_input->EncryptDataSize);
+    if(vtcm_input->EncryptData==NULL)
+    {
+        return -ENOMEM;
+    }
+
+    memcpy(vtcm_input->EncryptData,en4data,0x10);
     if(vtcm_input->EncryptData==NULL)
      	return -EINVAL;
 
@@ -1646,6 +1655,13 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
     close(fd);
     printf("Receive  output is:\n");
     print_bin_data(Buf,outlen,8);
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	      return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
@@ -1760,6 +1776,13 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
         // printf("%c",(char)dedata[i]);
     }
     printf("\n");
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	      return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 

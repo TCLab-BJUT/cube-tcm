@@ -2746,7 +2746,7 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
     if(ret == TCM_SUCCESS) {
         vtcm_AuthSessions_GetEntry(&auth_session_data,
                                    tcm_state->tcm_stany_data.sessions,
-                                   tcm_input->keyHandle);
+                                   tcm_input->authHandle);
         printf("Serial is %08x\n", auth_session_data->SERIAL);
     }
     if(ret == TCM_SUCCESS) {
