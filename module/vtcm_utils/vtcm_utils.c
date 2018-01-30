@@ -1125,7 +1125,7 @@ int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
     int offset;
     char *sealfile=NULL;
     void * vtcm_template;
-    char *seal="sealauth";
+//    char *seal="sealauth";
     unsigned char sealdata[TCM_HASH_SIZE];
     unsigned char hashout1[TCM_HASH_SIZE];
     unsigned char hmacout1[TCM_HASH_SIZE];
@@ -1166,17 +1166,19 @@ int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
                 printf("Missing parameter for -idh.\n");
                 return -1;
             } 
-        }else if (!strcmp("-iah",curr_para)) { 
-            i++;
-            curr_para=input_para->params+i*DIGEST_SIZE;
-            if (i < input_para->param_num)
-            {
-                 sscanf(curr_para,"%x",&vtcm_input->authHandle);
-            }else{
-                 printf("Missing parameter for -iah.\n");
-                 return -1;
-            }
-        }else if(!strcmp(curr_para,"-rf")){
+        }
+     //   else if (!strcmp("-iah",curr_para)) { 
+     //       i++;
+     //       curr_para=input_para->params+i*DIGEST_SIZE;
+     //       if (i < input_para->param_num)
+     //       {
+     //            sscanf(curr_para,"%x",&vtcm_input->authHandle);
+     //       }else{
+      //           printf("Missing parameter for -iah.\n");
+      //           return -1;
+       //     }
+      //  }
+        else if(!strcmp(curr_para,"-rf")){
             i++;
             curr_para=input_para->params+i*DIGEST_SIZE;
             if(i<input_para->param_num){
@@ -1218,11 +1220,12 @@ int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
     vtcm_SM3_hmac(hmacout1,authdata->sharedSecret,32,hashout1,32,&serial,4);
     Memcpy(vtcm_input->UnAuthCode,hmacout1,TCM_HASH_SIZE);
     // compute authcode
+    vtcm_input->authHandle = 0x00000033;
     ordinal = htonl(vtcm_input->ordinal);
     vtcm_SM3_1(hashout2,&ordinal,4,Buffer,datasize);
-    authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
-    int serial1 = htonl(authdata->SERIAL);
-    vtcm_SM3_hmac(hmacout2,authdata->sharedSecret,32,hashout2,32,&serial1,4);
+   // authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
+   // int serial1 = htonl(authdata->SERIAL);
+    vtcm_SM3_hmac(hmacout2,authdata->sharedSecret,32,hashout2,32,&serial,4);
     Memcpy(vtcm_input->authCode,hmacout1,TCM_HASH_SIZE);
 
     vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_UNSEAL_IN);
@@ -1248,7 +1251,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
     int ret=0;
     char *writefile=NULL;
     void * vtcm_template;
-    char *seal="sealauth";
+    char *seal="sealauthdatasize";
     unsigned char sealdata[TCM_HASH_SIZE];
     unsigned char hashout[TCM_HASH_SIZE];
     unsigned char hmacout[TCM_HASH_SIZE];
@@ -1301,11 +1304,11 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
 
     vtcm_input->pcrInfo=NULL;
     vtcm_input->pcrInfoSize=0;
-    vtcm_input->InDataSize = 8;
+    vtcm_input->InDataSize = 0x10;
     vtcm_input->InData = Talloc0(vtcm_input->InDataSize);
     if(vtcm_input->InData==NULL)
      	return -EINVAL;
-    Memcpy(vtcm_input->InData,seal,8);
+    Memcpy(vtcm_input->InData,seal,16);
     // compute authcode
     int ordinal = htonl(vtcm_input->ordinal);
     int pcrsize = htonl(vtcm_input->pcrInfoSize);
