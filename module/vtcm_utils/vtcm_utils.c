@@ -520,7 +520,7 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
     {
         ret=proc_vtcmutils_NV_WriteValue(sub_proc,input_para);
     }
-    else if(strcmp(input_para->params,"readvalue")==0)
+    else if(strcmp(input_para->params,"nvreadvalue")==0)
     {
         ret=proc_vtcmutils_NV_ReadValue(sub_proc,input_para);
     }
@@ -996,12 +996,21 @@ int proc_vtcmutils_NV_ReadValue(void * sub_proc, void * para){
     int i=1;
     int outlen;
     int ret = 0;
-    char * message = NULL;
-    struct tcm_in_NV_WriteValue * vtcm_input;
-    struct tcm_out_NV_WriteValue * vtcm_output;
+    struct tcm_in_NV_ReadValue * vtcm_input;
+    struct tcm_out_NV_ReadValue * vtcm_output;
     void * vtcm_template;
     unsigned char msghash[32];
-    printf("Begin send message for NVWriteValue:\n");
+    TCM_SESSION_DATA * authdata;
+    BYTE nvauth[TCM_HASH_SIZE];
+
+    // nv input parameter
+    int index = -1;
+    int size=0;
+    char * passwd=NULL;
+    int offset=0;
+    TCM_AUTHHANDLE nvHandle=0;
+
+    printf("Begin send message for NVReadValue:\n");
     vtcm_input = Talloc0(sizeof(*vtcm_input));
     if(vtcm_input==NULL)
         return -ENOMEM;
@@ -1009,44 +1018,104 @@ int proc_vtcmutils_NV_ReadValue(void * sub_proc, void * para){
     if(vtcm_output==NULL)
         return -ENOMEM;
     struct tcm_utils_input * input_para=para;
-    char * curr_para;
-    while(i<input_para->param_num){
-        curr_para=input_para->params+i*DIGEST_SIZE;
-        if(!strcmp("-in",curr_para)){
-            i++;
-            curr_para=input_para->params+i*DIGEST_SIZE;
-            if(i<input_para->param_num){
-                sscanf(curr_para,"%d",&vtcm_input->nvIndex);
-            }
-            else{
-                printf("Missing parameter for -in.\n");
-                return -1;
-            }	
-        }
- 
-        i++;
-    }
+
+    char * index_para;
+    char * value_para;
+
+	if((input_para->param_num>0)&&
+		(input_para->param_num%2==1))
+	{
+		for(i=1;i<input_para->param_num;i+=2)
+		{
+        		index_para=input_para->params+i*DIGEST_SIZE;
+        		value_para=index_para+DIGEST_SIZE;
+			if(!Strcmp("-in",index_para))
+			{
+        			index=Atoi(value_para,DIGEST_SIZE);
+			}	
+			else if(!Strcmp("-sz",index_para))
+			{
+				size=Atoi(value_para,DIGEST_SIZE);
+			}
+			else if(!Strcmp("-pwd",index_para))
+			{
+				passwd=value_para;
+			}
+			else if(!Strcmp("-off",index_para))
+			{
+				offset=Atoi(value_para,DIGEST_SIZE);
+			}
+			else if(!Strcmp("-ih",index_para))
+			{
+				sscanf(value_para,"%x",&nvHandle);
+			}
+			else
+			{
+				printf("Error cmd format! should be %s -in index -sz size -pwd passwd -off offset"
+					"-ic write_message [-ih nvHandle]",input_para->params);
+				return -EINVAL;
+			}
+		}
+	}	
+
     vtcm_input->tag=htons(TCM_TAG_RQU_COMMAND);
-    vtcm_input->ordinal=SUBTYPE_NV_WRITEVALUE_IN;
-    vtcm_input->offset=0;
-    memset(vtcm_input->data,0,TCM_HASH_SIZE);
-    vtcm_input->dataSize=0x20;
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_NV_WRITEVALUE_IN);
+    vtcm_input->ordinal=SUBTYPE_NV_READVALUE_IN;
+    vtcm_input->nvIndex=index;
+    vtcm_input->offset=offset;
+    vtcm_input->dataSize=size;
+    vtcm_input->authHandle=nvHandle;
+
+    if(nvHandle==0)
+   {
+    	vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+   }
+   else
+   {
+	vtcm_input->tag=htons(TCM_TAG_RQU_AUTH1_COMMAND);	
+    	authdata = Find_AuthSession(TCM_ET_OWNER,nvHandle);
+   	 if(authdata==NULL)
+    	{
+       		 printf("can't find session for nv_writevalue!\n");
+        	return -EINVAL;
+    	}	
+   } 	
+    	
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_NV_READVALUE_IN);
     if(vtcm_template==NULL)
         return -EINVAL;
-    int offset=0;
-    offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
-    if(offset<0)
-        return offset;
-    vtcm_input->paramSize=offset;
-    ret =  struct_2_blob(vtcm_input,Buf,vtcm_template);
-    if(ret<0)
-        return ret;
+    if(nvHandle==0)
+    {
+   	 offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+    	 if(offset<0)
+        	return offset;
+         vtcm_input->paramSize=offset-36;
+   	 ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
+    	 if(ret<0)
+        	return ret;
+    }
+    else
+    {	
+   	 offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+    	 if(offset<0)
+        	return offset;
+         vtcm_input->paramSize=offset;
+         ret =  struct_2_blob(vtcm_input,Buf,vtcm_template);
+         if(ret<0)
+               return ret;
+    }
     print_bin_data(Buf,ret,8);
     ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
     if(ret<0)
         return ret;
     print_bin_data(Buf,outlen,8);
+
+    sprintf(Buf,"%d %d %s\n ",vtcm_output->returnCode,vtcm_output->dataSize,vtcm_output->data);
+
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+  	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
