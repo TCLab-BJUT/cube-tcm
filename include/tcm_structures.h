@@ -525,7 +525,7 @@ typedef struct tdTCM_SEALED_DATA {
                                    TCM_STORED_DATA -> encData.  */
     uint32_t dataSize;		    /* This SHALL be the size of the data parameter */
     BYTE* data;                 /* This SHALL be the data to be sealed */
-} TCM_SEALED_DATA; 
+}__attribute__((packed))TCM_SEALED_DATA; 
 
 
 /* 9.4 TCM_SYMMETRIC_KEY rev 87 

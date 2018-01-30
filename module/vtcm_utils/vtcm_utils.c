@@ -1187,6 +1187,8 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
     unsigned char hmacout[TCM_HASH_SIZE];
     struct tcm_in_Seal *vtcm_input;
     struct tcm_out_Seal *vtcm_output;
+    char *dataauth="aaa";
+    unsigned char auData[TCM_HASH_SIZE];
     TCM_SESSION_DATA * authdata;
     vtcm_input = Talloc0(sizeof(*vtcm_input));
     if(vtcm_input==NULL)
@@ -1229,10 +1231,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
         }
         i++;
     }
-  //  sm3(seal,strlen(seal),sealdata);
-  //  Memcpy(vtcm_input->InData,sealdata,TCM_HASH_SIZE) ; 
 
-    memset(vtcm_input->encAuth,0,TCM_HASH_SIZE);
     vtcm_input->pcrInfo=NULL;
     vtcm_input->pcrInfoSize=0;
     vtcm_input->InDataSize = 8;
@@ -1247,6 +1246,10 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
     vtcm_SM3_4(hashout,&ordinal,4,vtcm_input->encAuth,TCM_HASH_SIZE,&pcrsize,4,vtcm_input->pcrInfo,pcrsize,&signdatalength,4,
                vtcm_input->InData,vtcm_input->InDataSize );
     authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
+
+    sm3(dataauth,strlen(dataauth),auData);
+    vtcm_AuthSessionData_Encrypt(vtcm_input->encAuth,authdata,auData);
+
     int serial = htonl(authdata->SERIAL);
     vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
     Memcpy(vtcm_input->authCode,hmacout,TCM_HASH_SIZE); 

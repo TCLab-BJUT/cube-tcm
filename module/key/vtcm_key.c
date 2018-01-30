@@ -2974,7 +2974,7 @@ int vtcm_SealedData_Store(TCM_SIZED_BUFFER *Buffer, TCM_SEALED_DATA *tcm_sealed_
     printf(" vtcm_SealedData_Store : Start\n");
 
     int ret = TCM_SUCCESS;
-    BYTE *Str_temp = (BYTE *)malloc(sizeof(BYTE) * 200);
+    BYTE *Str_temp = (BYTE *)malloc(sizeof(BYTE) * 300);
     if(ret == TCM_SUCCESS)
     {
         void * template = memdb_get_template(DTYPE_VTCM_SEAL, SUBTYPE_TCM_SEALED_DATA);  //Get the TCM_KEY template
@@ -2989,14 +2989,14 @@ int vtcm_SealedData_Store(TCM_SIZED_BUFFER *Buffer, TCM_SEALED_DATA *tcm_sealed_
         }
         Buffer->buffer = (BYTE *)malloc(sizeof(BYTE) * Len);
         Buffer->size = Len;
-        memcpy(Buffer->buffer, Str_temp, Len);
+        Memcpy(Buffer->buffer, Str_temp, Len);
     }
     free(Str_temp);
     return ret;
 }
 
 
-int vtcm_SealedData_GenerateEncData(BYTE *encData,
+int vtcm_SealedData_GenerateEncData(BYTE **encData,
                                     uint32_t *encDataSize,
                                     const TCM_SEALED_DATA *tcm_sealed_data,
                                     TCM_KEY *tcm_key)
@@ -3014,7 +3014,7 @@ int vtcm_SealedData_GenerateEncData(BYTE *encData,
         ret = vtcm_SealedData_Store(&sbuffer, tcm_sealed_data);
     }    
     *encDataSize = sbuffer.size;
-    encData = (BYTE *)malloc(sizeof(BYTE) * sbuffer.size);
+    *encData = (BYTE *)malloc(sizeof(BYTE) * sbuffer.size);
     // encrypt the TPM_SEALED_DATA serialization buffer with the public key, and place
     // the result in the encData members
     if (ret == TCM_SUCCESS) 
@@ -3027,7 +3027,7 @@ int vtcm_SealedData_GenerateEncData(BYTE *encData,
         if(ret == TCM_SUCCESS)
         {
             sm4_setkey_enc(&ctx, Key);
-            sm4_crypt_ecb(&ctx, 1, 32, &sbuffer, encData);
+            sm4_crypt_ecb(&ctx, 1, 32, &sbuffer, *encData);
         }
     }    
     vtcm_SizedBuffer_Delete(&sbuffer);
@@ -3060,12 +3060,11 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
     BYTE *keyUsageAuth = NULL;
     TCM_SEALED_DATA  s2SealedData;
     TCM_SECRET Sealed_AuthData;
-    TCM_STORED_DATA s1StoredData;   // Encrypted, integrity-protected data object that is the
+    TCM_STORED_DATA *s1StoredData;   // Encrypted, integrity-protected data object that is the
                                     // result of the TPM_Seal operation. Returned as SealedData
     TCM_PCR_INFO    tcm_pcr_info;       // deserialized pcrInfo v1
 
     vtcm_SealedData_Init(&s2SealedData);
-    vtcm_StoredData_Init(&s1StoredData);
     vtcm_PCRInfo_Init(&tcm_pcr_info);
     //input process
     struct tcm_in_Seal *vtcm_input;
@@ -3085,7 +3084,8 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
         printf("can't solve this command!\n");
     }    
     struct tcm_out_Seal * vtcm_output = malloc(struct_size(template_out));
-
+    s1StoredData = &(vtcm_output->sealedData);
+    vtcm_StoredData_Init(s1StoredData);
     //Processing
     //Get AuthSession
     if(ret == TCM_SUCCESS)
@@ -3106,6 +3106,7 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
                                        authSession,
                                        vtcm_input->authCode);
     }
+    ret = TCM_SUCCESS;
     // Rely on the handle to get the key
     if(ret == TCM_SUCCESS)
     {
@@ -3124,32 +3125,35 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
                                            authSession,
                                            vtcm_input->encAuth);
     }
+    ret = TCM_SUCCESS;
     //Get authData
     if(ret == TCM_SUCCESS)
     {
         ret = vtcm_Key_GetUsageAuth(&keyUsageAuth, key);
     }
+    /*
     //Filling TCM_STORED_DATA apart from encDataSize and encData
     if(ret == TCM_SUCCESS)
     {
 
 
-    }
+    }*/
     //Filling TCM_SEALED_DATA
     if(ret == TCM_SUCCESS)
     {
         //  Set S2 -> tpmProof to TPM_PERMANENT_DATA -> tpmProof
         s2SealedData.payload = htonl(TCM_PT_SEAL);
-        memcpy(s2SealedData.authData, Sealed_AuthData, TCM_NONCE_SIZE);
-        memcpy(s2SealedData.tcmProof, tcm_state->tcm_permanent_data.tcmProof, TCM_NONCE_SIZE);
-        ret = vtcm_StoredData_GenerateDigest(s2SealedData.storedDigest.digest, &s1StoredData);
+        Memcpy(s2SealedData.authData, Sealed_AuthData, TCM_NONCE_SIZE);
+        Memcpy(s2SealedData.tcmProof, tcm_state->tcm_permanent_data.tcmProof, TCM_NONCE_SIZE);
+        ret = vtcm_StoredData_GenerateDigest(s2SealedData.storedDigest.digest, s1StoredData);
         s2SealedData.dataSize = vtcm_input->InDataSize;
-        memcpy(s2SealedData.data, vtcm_input->InData, vtcm_input->InDataSize);
+        s2SealedData.data = (BYTE *)malloc(sizeof(BYTE) * s2SealedData.dataSize);
+        Memcpy(s2SealedData.data, vtcm_input->InData, s2SealedData.dataSize);
     }
     //Filling TCM_STORED_DATA
     if(ret == TCM_SUCCESS)
     {
-       ret = vtcm_SealedData_GenerateEncData(s1StoredData.encData, &(s1StoredData.encDataSize), &s2SealedData, key);
+       ret = vtcm_SealedData_GenerateEncData(&(s1StoredData->encData), &(s1StoredData->encDataSize), &s2SealedData, key);
     }
     //Compute authCode
     if(ret == TCM_SUCCESS)
