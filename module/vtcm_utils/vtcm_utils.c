@@ -236,7 +236,7 @@ int proc_vtcmutils_LoadKey(void *sub_proc,void *para);
 int proc_vtcmutils_MakeIdentity(void *sub_proc,void *para);
 int proc_vtcmutils_Quote(void *sub_proc,void *para);
 int proc_vtcmutils_Seal(void *sub_proc,void *para);
-int proc_vtcmutils_Unseal(void *sub_proc,void *para);
+int proc_vtcmutils_UnSeal(void *sub_proc,void *para);
 int proc_vtcmutils_Sign(void *sub_proc,void *para);
 
 //int proc_vtcmutils_ExCreateSm2Key(void * sub_proc,void * para);
@@ -291,6 +291,24 @@ int vtcm_SM3_3(BYTE* checksum, unsigned char* buffer1,int size1, unsigned char* 
     sm3_finish(&ctx, checksum);
     return ret;
 }
+
+int vtcm_SM3_4(BYTE* checksum, unsigned char* buffer1,int size1, unsigned char* buffer2,int size2,unsigned char *buffer3,int size3,unsigned char *buffer4,int size4,unsigned char *buffer5,
+               int size5,unsigned char *buffer6,int size6)
+ {
+     printf("vtcm_SM3: Start\n");
+     int ret = 0;
+     sm3_context ctx; 
+     sm3_starts(&ctx);
+     sm3_update(&ctx, buffer1, size1);
+     sm3_update(&ctx,buffer2,size2);
+     sm3_update(&ctx,buffer3,size3);
+     sm3_update(&ctx,buffer4,size4);
+     sm3_update(&ctx,buffer5,size5);
+     sm3_update(&ctx,buffer6,size6);
+     sm3_finish(&ctx, checksum);
+     return ret;
+}
+
 int vtcm_SM3_hmac(BYTE* checksum , unsigned char* key,int klen,unsigned char* hmac1,int size1, unsigned char* hmac2,int size2)                                                       
 {
     printf("vtcm_SM3_HMAC: Start\n");
@@ -522,10 +540,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
     {
         ret=proc_vtcmutils_SM2Decrypt(sub_proc,input_para);
     }
-    ///    if(strcmp(input_para->params,"ownerreadinternalpub")==0)
-    //      {
-    //        ret=proc_vtcmutils_OwnerReadInternalPub(sub_proc,input_para);
-    //      }
+    else if(strcmp(input_para->params,"ownerreadinternalpub")==0)
+    {
+            ret=proc_vtcmutils_OwnerReadInternalPub(sub_proc,input_para);
+    }
     //     if(strcmp(input->params,"certifykey")==0)
     //      {
     //        ret=proc_vtcmutils_CertifyKey(sub_proc,input_para);   
@@ -550,13 +568,13 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
     {
         ret=proc_vtcmutils_Seal(sub_proc,input_para);
     }
-    else if(strcmp(input_para->params,"Unseal")==0)
+    else if(strcmp(input_para->params,"unseal")==0)
     {
-       // ret=proc_vtcmutils_Unseal(sub_proc,input_para);
+        ret=proc_vtcmutils_UnSeal(sub_proc,input_para);
     }
     else if(strcmp(input_para->params,"Sign")==0)
     {
-      //  ret=proc_vtcmutils_Sign(sub_proc,input_para);
+        ret=proc_vtcmutils_Sign(sub_proc,input_para);
     }
     else if(strcmp(input_para->params,"changeauth")==0)
     {
@@ -1033,15 +1051,19 @@ int proc_vtcmutils_NV_ReadValue(void * sub_proc, void * para){
     print_bin_data(Buf,outlen,8);
     return ret;
 }
-/*int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
+int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
     int i=1;
     int outlen;
     int ret=0;
+    int offset;
+    char *sealfile=NULL;
     void * vtcm_template;
     char *seal="sealauth";
     unsigned char sealdata[TCM_HASH_SIZE];
-    unsigned char hashout[TCM_HASH_SIZE];
-    unsigned char hmacout[TCM_HASH_SIZE];
+    unsigned char hashout1[TCM_HASH_SIZE];
+    unsigned char hmacout1[TCM_HASH_SIZE];
+    unsigned char hashout2[TCM_HASH_SIZE];
+    unsigned char hmacout2[TCM_HASH_SIZE];
     struct tcm_in_UnSeal *vtcm_input;
     struct tcm_out_UnSeal *vtcm_output;
     TCM_SESSION_DATA * authdata;
@@ -1072,45 +1094,92 @@ int proc_vtcmutils_NV_ReadValue(void * sub_proc, void * para){
             curr_para=input_para->params+i*DIGEST_SIZE;
             if (i < input_para->param_num)
             {
-                sscanf(curr_para,"%x",&vtcm_input->authHandle); 
+                sscanf(curr_para,"%x",&vtcm_input->UnAuthHandle); 
             }else{
                 printf("Missing parameter for -idh.\n");
                 return -1;
             } 
+        }else if (!strcmp("-iah",curr_para)) { 
+            i++;
+            curr_para=input_para->params+i*DIGEST_SIZE;
+            if (i < input_para->param_num)
+            {
+                 sscanf(curr_para,"%x",&vtcm_input->authHandle);
+            }else{
+                 printf("Missing parameter for -iah.\n");
+                 return -1;
+            }
+        }else if(!strcmp(curr_para,"-rf")){
+            i++;
+            curr_para=input_para->params+i*DIGEST_SIZE;
+            if(i<input_para->param_num){
+               sealfile=curr_para;
+            }
         }
         i++;
     }
-    sm3(seal,strlen(seal),sealdata);
-    Memcpy(vtcm_input->InData,sealdata,TCM_HASH_SIZE) ; 
-    memset(vtcm_input->encAuth,0,TCM_HASH_SIZE);
-    vtcm_input->InDataSize=32;
-    vtcm_input->pcrInfo=NULL;
-    vtcm_input->pcrInfoSize=0;
-    // compute authcode
-    int ordinal = htonl(vtcm_input->ordinal);
-   // int signdatalength=htonl(vtcm_input->areaToSignSize);
-   // vtcm_SM3_3(hashout,&ordinal,4,&signdatalength,4,signeddata,32);
-  //  authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
- //   int serial = htonl(authdata->SERIAL);
- //   vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
-  //  Memcpy(vtcm_input->authCode,hmacout,TCM_HASH_SIZE); 
 
-    printf("Begin input for Seal\n");
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SEAL_IN);
-    ret =  struct_2_blob(vtcm_input,Buf,vtcm_template);
+    int fd;
+    int datasize;
+    fd=open(sealfile,O_RDONLY);
+    if(fd<0)
+         return -EIO;
+    ret=read(fd,Buf,DIGEST_SIZE*32+1);
+    if(ret<0)
+        return -EIO;
+    if(ret>DIGEST_SIZE*32)
+        {
+            printf("key file too large!\n");
+            return -EINVAL;     
+        }
+    datasize = ret;
+    BYTE *Buffer = (BYTE*)malloc(sizeof(BYTE)*256);
+    print_bin_data(Buf,ret,8);
+    vtcm_template=memdb_get_template(DTYPE_VTCM_SEAL,SUBTYPE_TCM_STORED_DATA);
+    if(vtcm_template==NULL)
+        return -EINVAL;
+    ret=blob_2_struct(Buf,&vtcm_input->encAuth,vtcm_template);
+    if(ret<0||ret>datasize){
+        printf("read key file error!\n");
+    }
+    ret=struct_2_blob(&vtcm_input->encAuth,Buffer,vtcm_template);
+    // compute UnAuthcode
+    int ordinal = htonl(vtcm_input->ordinal);
+    vtcm_SM3_1(hashout1,&ordinal,4,Buffer,datasize);
+    authdata=Find_AuthSession(0x01,vtcm_input->UnAuthHandle);
+    int serial = htonl(authdata->SERIAL);
+    vtcm_SM3_hmac(hmacout1,authdata->sharedSecret,32,hashout1,32,&serial,4);
+    Memcpy(vtcm_input->UnAuthCode,hmacout1,TCM_HASH_SIZE);
+    // compute authcode
+    ordinal = htonl(vtcm_input->ordinal);
+    vtcm_SM3_1(hashout2,&ordinal,4,Buffer,datasize);
+    authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
+    int serial1 = htonl(authdata->SERIAL);
+    vtcm_SM3_hmac(hmacout2,authdata->sharedSecret,32,hashout2,32,&serial1,4);
+    Memcpy(vtcm_input->authCode,hmacout1,TCM_HASH_SIZE);
+
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_UNSEAL_IN);
+    offset =  struct_2_blob(vtcm_input,Buf,vtcm_template);
+    if(offset<0)
+        return offset;
+    vtcm_input->paramSize = offset;
+
+    printf("Begin input for UnSeal\n");
+    ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
     if(ret<0)
         return ret;
     print_bin_data(Buf,ret,8);                                                                            
     ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
     if(ret<0)
         return ret;
+    printf("Output from  UnSeal\n");
     print_bin_data(Buf,outlen,8);
-
-}*/
+}
 int proc_vtcmutils_Seal(void * sub_proc, void * para){
     int i=1;
     int outlen;
     int ret=0;
+    char *writefile=NULL;
     void * vtcm_template;
     char *seal="sealauth";
     unsigned char sealdata[TCM_HASH_SIZE];
@@ -1150,24 +1219,37 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
             }else{
                 printf("Missing parameter for -idh.\n");
                 return -1;
-            } 
+            }
+        }else if(!strcmp(curr_para,"-wf")){
+            i++;
+            curr_para=input_para->params+i*DIGEST_SIZE;
+            if(i<input_para->param_num){
+               writefile=curr_para;
+            }
         }
         i++;
     }
-    sm3(seal,strlen(seal),sealdata);
-    Memcpy(vtcm_input->InData,sealdata,TCM_HASH_SIZE) ; 
+  //  sm3(seal,strlen(seal),sealdata);
+  //  Memcpy(vtcm_input->InData,sealdata,TCM_HASH_SIZE) ; 
+
     memset(vtcm_input->encAuth,0,TCM_HASH_SIZE);
-    vtcm_input->InDataSize=32;
     vtcm_input->pcrInfo=NULL;
     vtcm_input->pcrInfoSize=0;
+    vtcm_input->InDataSize = 8;
+    vtcm_input->InData = Talloc0(vtcm_input->InDataSize);
+    if(vtcm_input->InData==NULL)
+     	return -EINVAL;
+    Memcpy(vtcm_input->InData,seal,8);
     // compute authcode
     int ordinal = htonl(vtcm_input->ordinal);
-   // int signdatalength=htonl(vtcm_input->areaToSignSize);
-   // vtcm_SM3_3(hashout,&ordinal,4,&signdatalength,4,signeddata,32);
-  //  authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
- //   int serial = htonl(authdata->SERIAL);
- //   vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
-  //  Memcpy(vtcm_input->authCode,hmacout,TCM_HASH_SIZE); 
+    int pcrsize = htonl(vtcm_input->pcrInfoSize);
+    int signdatalength=htonl(vtcm_input->InDataSize);
+    vtcm_SM3_4(hashout,&ordinal,4,vtcm_input->encAuth,TCM_HASH_SIZE,&pcrsize,4,vtcm_input->pcrInfo,pcrsize,&signdatalength,4,
+               vtcm_input->InData,vtcm_input->InDataSize );
+    authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
+    int serial = htonl(authdata->SERIAL);
+    vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
+    Memcpy(vtcm_input->authCode,hmacout,TCM_HASH_SIZE); 
 
     printf("Begin input for Seal\n");
     vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SEAL_IN);
@@ -1179,6 +1261,21 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
     if(ret<0)
         return ret;
     print_bin_data(Buf,outlen,8);
+    // write seal data to the file
+    int length = outlen-42;
+    int fd;
+    unsigned char sealData[length];
+    for(i=0;i<length;i++){
+        sealData[i]=Buf[10+i];
+    }
+    fd=open(writefile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+    if(fd<0){
+        printf("file open error!\n");
+        return -EIO;     
+    }
+    print_bin_data(sealData,length,8);
+    write(fd,sealData,length);
+    close(fd);
 
 }
 int proc_vtcmutils_Sign(void * sub_proc, void * para){
@@ -1228,13 +1325,18 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
         }
         i++;
     }
-    sm3(sign,strlen(sign),signeddata);
-    Memcpy(vtcm_input->areaToSign,signeddata,TCM_HASH_SIZE) ; 
-    vtcm_input->areaToSignSize=0x20;
+//    sm3(sign,strlen(sign),signeddata);
+    
+    vtcm_input->areaToSignSize=8;
+    vtcm_input->areaToSign=Talloc0(vtcm_input->areaToSignSize);
+    if(vtcm_input->areaToSign==NULL)
+     	return -EINVAL;
+    Memcpy(vtcm_input->areaToSign,sign,8);
+//    Memcpy(vtcm_input->areaToSign,signeddata,TCM_HASH_SIZE) ; 
     // compute authcode
     int ordinal = htonl(vtcm_input->ordinal);
     int signdatalength=htonl(vtcm_input->areaToSignSize);
-    vtcm_SM3_3(hashout,&ordinal,4,&signdatalength,4,signeddata,32);
+    vtcm_SM3_3(hashout,&ordinal,4,&signdatalength,4,vtcm_input->areaToSign,vtcm_input->areaToSignSize);
     authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
     int serial = htonl(authdata->SERIAL);
     vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
@@ -1447,7 +1549,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
     unsigned char cbcModle[16];
     unsigned char hashout[TCM_HASH_SIZE];
     unsigned char hmacout[TCM_HASH_SIZE];
-    char *en4data = "helloworldsm4";
+    char *en4data = "helloworldsm4enc";
     char *keyfile = NULL;
     vtcm_input = Talloc0(sizeof(*vtcm_input));
     if(vtcm_input==NULL)
@@ -1496,8 +1598,8 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
     memcpy(vtcm_input->CBCusedIV,cbcModle,16);
     TCM_SESSION_DATA * authdata;
     authdata=Find_AuthSession(0x01,vtcm_input->EncryptAuthHandle);
-    vtcm_input->EncryptDataSize =13 ; 
-//   memcpy(vtcm_input->EncryptData,en4data,10);
+    vtcm_input->EncryptDataSize =0x10 ; 
+    memcpy(vtcm_input->EncryptData,en4data,0x10);
     vtcm_input->EncryptData = Talloc0(vtcm_input->EncryptDataSize);
     if(vtcm_input->EncryptData==NULL)
      	return -EINVAL;
@@ -1514,7 +1616,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
     vtcm_input->paramSize=offset;
     int ordinal=htonl(vtcm_input->ordinal);
     int encryptdatasize=htonl(vtcm_input->EncryptDataSize);
-    vtcm_SM3_2(hashout,&ordinal,4,vtcm_input->CBCusedIV,16,&encryptdatasize,4,vtcm_input->EncryptData,13);
+    vtcm_SM3_2(hashout,&ordinal,4,vtcm_input->CBCusedIV,16,&encryptdatasize,4,vtcm_input->EncryptData,vtcm_input->EncryptDataSize);
     printf("%x\n",authdata->sharedSecret[0]);
     int serial = htonl(authdata->SERIAL);
     printf("%x\n",serial);
@@ -1600,28 +1702,12 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
         }
         i++;
     }
-  /*  while (i<input_para->param_num) {
-        curr_para=input_para->params+i*DIGEST_SIZE;
-        if (!strcmp("-ih",curr_para)) {
-            i++;
-            curr_para=input_para->params+i*DIGEST_SIZE;
-            if (i < input_para->param_num)
-            {
-                sscanf(curr_para,"%x",&vtcm_input->DecryptAuthHandle);
-            }else{
-                printf("Missing parameter for -ih.\n");
-                return -1;
-            } 
-        }
-        i++;
-    }*/
     vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
     vtcm_input->ordinal = SUBTYPE_SM4DECRYPT_IN;
-    vtcm_input->keyHandle=0x05000001;
     memset(cbcModle,0,16);
     memcpy(vtcm_input->CBCusedIV,cbcModle,16);
    // memcpy(vtcm_input->EncryptData,data,strlen(data));
-    vtcm_input->DecryptData=global_DecryptData;
+   // vtcm_input->DecryptData=global_DecryptData;
     int fd;
     int datasize;
     TCM_SESSION_DATA * authdata;
@@ -1647,19 +1733,12 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
     print_bin_data(Buf,datasize,8);
     Memcpy(vtcm_input->DecryptData,Buf,vtcm_input->DecryptDataSize);
 
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM4ENCRYPT_IN);
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM4DECRYPT_IN);
     if(vtcm_template==NULL)
         return -EINVAL;
-    int offset=0;
-    offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
-    if(offset<0)
-        return offset;
-    vtcm_input->DecryptDataSize=offset-70;
-    vtcm_input->paramSize=offset;
     int ordinal=htonl(vtcm_input->ordinal);
     int decryptdatasize=htonl(vtcm_input->DecryptDataSize);
-    vtcm_SM3_2(hashout,&ordinal,4,vtcm_input->CBCusedIV,16,vtcm_input->DecryptData,offset-70,&decryptdatasize,4);
-    authdata=Find_AuthSession(0x04,vtcm_input->DecryptAuthHandle);
+    vtcm_SM3_2(hashout,&ordinal,4,vtcm_input->CBCusedIV,16,vtcm_input->DecryptData,datasize,&decryptdatasize,4);
     int serial = htonl(authdata->SERIAL);
     vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);    
     memcpy(vtcm_input->DecryptAuthVerfication,hmacout,32);
@@ -1673,8 +1752,17 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
         return ret; 
     printf("Receive  output is:\n");
     print_bin_data(Buf,outlen,8);
+    printf("Decrypted Data is :");
+    BYTE dedata[16];
+    for(i=0;i<16;i++){
+        dedata[i]=Buf[14+i];
+        printf("%c",dedata[i]);
+        // printf("%c",(char)dedata[i]);
+    }
+    printf("\n");
     return ret;
 }
+
 int proc_vtcmutils_SM3CompleteExtend(void * sub_proc, void * para){
     int outlen;
     int i=1;
@@ -1947,58 +2035,85 @@ printf("\n");
 }
 return ret;
 }
+*/
 int proc_vtcmutils_OwnerReadInternalPub(void * sub_proc, void * para){
-int outlen;
-int i=0;
-int ret=0;
-unsigned char nonce1[TCM_HASH_SIZE];
-//Holds the shared secret data of the AP session created by owner
-unsigned char nonce2[TCM_HASH_SIZE];
-//AP session serial number
-unsigned char nonce3[4]={0xf3,0x99,0x99,0xd4};
-//Store EK keyhandle
-unsigned char keyhandle[4]={0x40,0x00,0x00,0x06};
-unsigned char hmac_out[TCM_HASH_SIZE];
-void *vtcm_template;
-struct tcm_in_OwnerReadInternalPub *vtcm_input;
-struct tcm_out_OwnerReadInternalPub *vtcm_output;
-vtcm_input = Talloc0(sizeof(*vtcm_input));
-if(vtcm_input==NULL)
-return -ENOMEM;
-vtcm_output = Talloc0(sizeof(*vtcm_output));
-if(vtcm_output==NULL)
-return -ENOMEM;
-vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
-vtcm_input->ordinal = SUBTYPE_OWNERREADINTERNALPUB_IN;
-memcpy(vtcm_input->ekkeyhandle,keyhandle,4);
-vtcm_input->authhandle=0x28;
-vtcm_SM3_1(nonce1,(BYTE*)(vtcm_input->ordinal),sizeof(vtcm_input->oridnal),keyhandle,4);
-memset(nonce2,0,TCM_HASH_SIZE);
-vtcm_SM3_hmac(hmac_out,nonce2,TCM_HASH_SIZE,nonce1,TCM_HASH_SIZE,nonce3,4);
-memcpy(vtcm_input->authcode,hamc_out,TCM_HASH_SIZE);
-vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_OWNERREADINTERNALPUB_IN);
-if(vtcm_template==NULL)
-    return -EINVAL;
-    vtcm_input->paramSize=0x32;
-    ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
-if(ret<0)
-    return ret;
-    printf("Send command for ownerreadinternalpub:\n");
-    for(i=0;i<ret;i++){
-        printf("%.2x ",Buf[i]);
-    }	
-printf("\n");
-ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
-if(ret<0)
-    return ret; 
-    printf("Receive  output is:\n");
-    for(i=0;i<outlen;i++){
-        printf("%.2x ",Buf[i]);
-        if((i+1)%5==0)
-            printf("\n");
+    int outlen;
+    int i=1;
+    int ret=0;
+    unsigned char hashout[TCM_HASH_SIZE];
+    unsigned char hmacout[TCM_HASH_SIZE];
+    void *vtcm_template;
+    struct tcm_in_OwnerReadInternalPub *vtcm_input;
+    struct tcm_out_OwnerReadInternalPub *vtcm_output;
+    vtcm_input = Talloc0(sizeof(*vtcm_input));
+    if(vtcm_input==NULL)
+        return -ENOMEM;
+    vtcm_output = Talloc0(sizeof(*vtcm_output));
+    if(vtcm_output==NULL)
+        return -ENOMEM;
+    struct tcm_utils_input * input_para=para;
+    char *curr_para;
+    while (i<input_para->param_num) {
+        curr_para=input_para->params+i*DIGEST_SIZE;
+        if (!strcmp("-ikh",curr_para)) {
+            i++;
+            curr_para=input_para->params+i*DIGEST_SIZE;
+            if (i < input_para->param_num)
+            {
+                sscanf(curr_para,"%x",&vtcm_input->keyHandle); 
+            }else{
+                printf("Missing parameter for -ikh.\n");
+                return -1;
+            } 
+        }else if (!strcmp("-idh",curr_para)) {
+            i++;
+            curr_para=input_para->params+i*DIGEST_SIZE;
+            if (i < input_para->param_num)
+            {
+                sscanf(curr_para,"%x",&vtcm_input->authHandle); 
+            }else{
+                printf("Missing parameter for -idh.\n");
+                return -1;
+            } 
+        } 
+        i++;
     }
-return ret;
-}*/
+    vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+    vtcm_input->ordinal = SUBTYPE_OWNERREADINTERNALPUB_IN;
+    
+    
+    
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_OWNERREADINTERNALPUB_IN);
+    int offset=0;
+    offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+    if(offset<0){
+        return offset; 
+    }
+    vtcm_input->paramSize = offset;
+    // compute authcode
+    int ordinal = htonl(vtcm_input->ordinal);
+    int keyhandle = htonl(vtcm_input->keyHandle);
+    vtcm_SM3_1(hashout,&ordinal,sizeof(int),&keyhandle,sizeof(int));
+    TCM_SESSION_DATA * authdata;
+    authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
+    int serial = htonl(authdata->SERIAL);
+    vtcm_SM3_hmac(hmacout,authdata->sharedSecret,TCM_HASH_SIZE,hashout,TCM_HASH_SIZE,&serial,sizeof(int));
+    memcpy(vtcm_input->ownerAuth,hmacout,TCM_HASH_SIZE);
+    if(vtcm_template==NULL)
+        return -EINVAL;
+    ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
+    if(ret<0)
+        return ret;
+    printf("Send command for ownerreadinternalpub:\n");
+    print_bin_data(Buf,ret,8);
+    ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
+    if(ret<0)
+        return ret; 
+    printf("Receive  output is:\n");
+    print_bin_data(Buf,outlen,8);
+    return ret;
+}
+
 int proc_vtcmutils_FlushSpecific(void * sub_proc, void * para){
     int outlen;
     int i=1;
@@ -3224,20 +3339,6 @@ int proc_vtcmutils_LoadKey(void * sub_proc, void * para){
 
     //Fill keyinfo information
 /*
-    vtcm_input->inKey.tag=global_tcm_key->tag;
-    vtcm_input->inKey.keyUsage=global_tcm_key->keyUsage;
-    vtcm_input->inKey.keyFlags=global_tcm_key->keyFlags;
-    vtcm_input->inKey.authDataUsage=global_tcm_key->authDataUsage;
-    vtcm_input->inKey.algorithmParms.algorithmID=global_tcm_key->algorithmParms.algorithmID;
-    vtcm_input->inKey.algorithmParms.encScheme=global_tcm_key->algorithmParms.encScheme;
-    vtcm_input->inKey.algorithmParms.sigScheme=global_tcm_key->algorithmParms.sigScheme;
-    vtcm_input->inKey.PCRInfoSize=global_tcm_key->PCRInfoSize;
-    vtcm_input->inKey.PCRInfo=global_tcm_key->PCRInfo;
-    vtcm_input->inKey.pubKey.keyLength=global_tcm_key->pubKey.keyLength;
-    vtcm_input->inKey.pubKey.key=global_tcm_key->pubKey.key;
-    vtcm_input->inKey.encDataSize=global_tcm_key->encDataSize;
-    vtcm_input->inKey.encData=global_tcm_key->encData;
-    vtcm_input->inKey.algorithmParms.parmSize=global_tcm_key->algorithmParms.parmSize;
     vtcm_input->inKey.algorithmParms.parms=global_tcm_key->algorithmParms.parms;
 */
    // int inkey1= htonl(vtcm_input->inKey);
@@ -3544,7 +3645,7 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
     vtcm_template1=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_CREATEEKPAIR_OUT);
     if(vtcm_template1==NULL)
         return -EINVAL;
-    ret = blob_2_struct(BBuffer,vtcm_output,vtcm_template);
+    ret = blob_2_struct(BBuffer_1,vtcm_output,vtcm_template);
     int fd;
     fd = open(ekfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
     if(fd<0)

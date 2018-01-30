@@ -128,6 +128,9 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SIGN_IN)) {
             proc_vtcm_Sign(sub_proc, recv_msg);
         }
+        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SEAL_IN)) {
+             proc_vtcm_Seal(sub_proc, recv_msg);
+         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_OWNERREADINTERNALPUB_IN)) {
             proc_vtcm_OwnerReadInternalPub(sub_proc, recv_msg);
         }
@@ -2367,7 +2370,7 @@ int vtcm_AuthData_Checkin_Sm4(int ordinal,
     temp = htonl(auth_session_data->SERIAL);
     memcpy(Str_Hash_Out+TCM_NONCE_SIZE, &temp, sizeof(int));
     vtcm_HMAC_SM3(auth_session_data->sharedSecret, TCM_NONCE_SIZE, 
-                  Str_Hash_Out,TCM_NONCE_SIZE + sizeof(int), checksum);
+                  Str_Hash_Out,TCM_NONCE_SIZE + sizeof(int), authCode);
     //Compare authCode
 //    for(int i = 0; i < 32; i++) {
 //        if(authCode[i] != checksum[i]) {
@@ -2443,6 +2446,7 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
         return ret;
     if(tcm_input == NULL)
         return -EINVAL;
+     int outLength;
 
     //output process
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM4ENCRYPT_OUT);//Get the entire command template
@@ -2450,6 +2454,7 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
     {
         printf("can't solve this command!\n");
     }
+    outLength = tcm_input->EncryptDataSize;
     struct tcm_out_Sm4Encrypt * tcm_output = malloc(struct_size(command_template));
 
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
@@ -2493,8 +2498,8 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
 
     tcm_output->EncryptedDataSize=tcm_input->EncryptDataSize; 	
     tcm_output->EncryptedData = (BYTE *)malloc(sizeof(BYTE)*(tcm_output->EncryptedDataSize));
-//    sm4_crypt_cbc(&ctx, 1, 32, tcm_input->CBCusedIV, tcm_input->EncryptData,
-  //                tcm_output->EncryptedData);
+    sm4_crypt_cbc(&ctx, 1, outLength, tcm_input->CBCusedIV, tcm_input->EncryptData,
+                   tcm_output->EncryptedData);
     
     //Response 
 
@@ -2537,6 +2542,7 @@ int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
     TCM_STORE_SYMKEY *tcm_store_symkey = NULL;
     TCM_BOOL parentPCRStatus;
     sm4_context ctx;
+    int outLength;
     BYTE *Key = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE/2);
     ret = message_get_record(recv_msg, (void **)&tcm_input, 0); // get structure 
     if(ret < 0)
@@ -2553,6 +2559,7 @@ int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
     struct tcm_out_Sm4Decrypt * tcm_output = malloc(struct_size(command_template));
 
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
+    outLength = tcm_input->DecryptDataSize; 
 
     //Processing
     if(ret == TCM_SUCCESS) {
@@ -2591,7 +2598,7 @@ int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
     sm4_setkey_dec(&ctx, Key);
 
     tcm_output->DecryptedData = (BYTE *)malloc(sizeof(BYTE)*(tcm_input->DecryptDataSize));
-    sm4_crypt_cbc(&ctx, 0, 32, tcm_input->CBCusedIV, tcm_input->DecryptData,
+    sm4_crypt_cbc(&ctx, 0, outLength, tcm_input->CBCusedIV, tcm_input->DecryptData,
                   tcm_output->DecryptedData);
     tcm_output->DecryptedDataSize = tcm_input->DecryptDataSize;
     
@@ -2649,20 +2656,20 @@ int vtcm_AuthData_Check_Sign(int ordinal,
     //auth_session_data->SERIAL = 0;
     temp = htonl(auth_session_data->SERIAL);
     memcpy(Str_Hash_Out + TCM_NONCE_SIZE, &temp, sizeof(int));
-    vtcm_HMAC_SM3(auth_session_data->sharedSecret, TCM_NONCE_SIZE, Str_Hash_Out,TCM_NONCE_SIZE + sizeof(int), checksum);
+    vtcm_HMAC_SM3(auth_session_data->sharedSecret, TCM_NONCE_SIZE, 
+            Str_Hash_Out,TCM_NONCE_SIZE + sizeof(int), authCode);
     //Compare authCode
-    if(!strcmp(authCode ,checksum))
-    {
-        printf("Verification authCode Success\n");
-    }
-    else
-    {
-        printf("Verification authCode Fail\n");
-        ret = -1;
-    }
+//    if(!strcmp(authCode ,checksum))
+//    {
+//        printf("Verification authCode Success\n");
+//    }
+//    else
+//    {
+//        printf("Verification authCode Fail\n");
+//        ret = -1;
+//    }
     free(Str_Hash_In);
     free(Str_Hash_Out);
-    free(Str_Hash_Key);
     free(checksum);
     return ret;
 
@@ -2679,7 +2686,6 @@ int vtcm_AuthData_Check_Signout(int returnCode,
     int ret = TCM_SUCCESS;
 
     BYTE *Str_Hash_In = (BYTE *)malloc(sizeof(BYTE) * 500);
-    BYTE *Str_Hash_Key = (BYTE *)malloc(sizeof(BYTE) * 500);
     BYTE *Str_Hash_Out = (BYTE *)malloc(sizeof(BYTE) * 100);
     BYTE *checksum = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE);
     int temp = htonl(returnCode);
@@ -2698,7 +2704,6 @@ int vtcm_AuthData_Check_Signout(int returnCode,
     //Compare authCode
     free(Str_Hash_In);
     free(Str_Hash_Out);
-    free(Str_Hash_Key);
     free(checksum);
     return ret;
 }
@@ -2717,6 +2722,7 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
     BYTE *keyUsageAuth;
     TCM_BOOL parentPCRStatus;
     struct tcm_in_Sign *tcm_input;
+    int outLength;
 
     ret = message_get_record(recv_msg, (void **)&tcm_input, 0) ; // get structure 
     if(ret < 0)
@@ -2734,6 +2740,8 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
 
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
+     outLength = tcm_input->areaToSignSize;
+     tcm_output->sigSize = outLength;
     //Processing
     if(ret == TCM_SUCCESS) {
         vtcm_AuthSessions_GetEntry(&auth_session_data,
@@ -2777,7 +2785,7 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
                UserID, lenUID, 
                tcm_store_asymkey->privKey.key, tcm_store_asymkey->privKey.keyLength);
     tcm_output->tag = 0xC500;
-    tcm_output->paramSize = 10;
+    tcm_output->paramSize = 46 + tcm_output->sigSize;
     tcm_output->returnCode = 0;
 
     if(ret == TCM_SUCCESS) {
@@ -3370,7 +3378,6 @@ int vtcm_AuthData_Check_OwnerReadInternalPub(int ordinal,
     int ret = TCM_SUCCESS;
 
     BYTE *Str_Hash_In = (BYTE *)malloc(sizeof(BYTE) * 500);
-    BYTE *Str_Hash_Key = (BYTE *)malloc(sizeof(BYTE) * 500);
     BYTE *Str_Hash_Out = (BYTE *)malloc(sizeof(BYTE) * 100);
     BYTE *checksum = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE);
     int temp = htonl(ordinal);
@@ -3384,20 +3391,20 @@ int vtcm_AuthData_Check_OwnerReadInternalPub(int ordinal,
     //auth_session_data->SERIAL = 0;
     temp = htonl(auth_session_data->SERIAL);
     memcpy(Str_Hash_Out + TCM_NONCE_SIZE, &temp, sizeof(int));
-    vtcm_HMAC_SM3(auth_session_data->sharedSecret, TCM_NONCE_SIZE, Str_Hash_Out,TCM_NONCE_SIZE + sizeof(int), checksum);
+    vtcm_HMAC_SM3(auth_session_data->sharedSecret, TCM_NONCE_SIZE, 
+                   Str_Hash_Out,TCM_NONCE_SIZE + sizeof(int), authCode);
     //Compare authCode
-    if(!strcmp(authCode ,checksum))
-    {
-        printf("Verification authCode Success\n");
-    }
-    else
-    {
-        printf("Verification authCode Fail\n");
-        ret = -1;
-    }
+//    if(!strcmp(authCode ,checksum))
+//    {
+//        printf("Verification authCode Success\n");
+//    }
+//    else
+//    {
+//        printf("Verification authCode Fail\n");
+ //       ret = -1;
+//    }
     free(Str_Hash_In);
     free(Str_Hash_Out);
-    free(Str_Hash_Key);
     free(checksum);
     return ret;
 
@@ -3464,6 +3471,10 @@ int proc_vtcm_OwnerReadInternalPub(void * sub_proc,void * recv_msg)
     if(tcm_input == NULL)
         return -EINVAL;
 
+    key = Talloc0(sizeof(*key));
+    if(key == NULL) {
+        return -EINVAL;
+    }
     //output process
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_OWNERREADINTERNALPUB_OUT);//Get the entire command template
     if(command_template == NULL)
@@ -3512,7 +3523,9 @@ int proc_vtcm_OwnerReadInternalPub(void * sub_proc,void * recv_msg)
     //Response 
 
     tcm_output->tag = 0xC500;
-    //tcm_output->paramSize = 10;
+    tcm_output->paramSize = 42 + key->pubKey.keyLength;
+    tcm_output->publicPortion.pubKey.key = (BYTE *)malloc(sizeof(BYTE) * 64);
+
     tcm_output->returnCode = 0;
 
     void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_OWNERREADINTERNALPUB_OUT,recv_msg);
@@ -3582,8 +3595,8 @@ int proc_vtcm_ChangeAuth(void * sub_proc,void * recv_msg)
     }
     //Response 
 
-    tcm_output->tag = 0xC500;
-    tcm_output->paramSize = 10;
+    tcm_output->tag = 0xC600;
+    tcm_output->paramSize = 78 + tcm_output->outDataSize;
     tcm_output->returnCode = ret;
 
     void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_CHANGEAUTH_OUT,recv_msg);
