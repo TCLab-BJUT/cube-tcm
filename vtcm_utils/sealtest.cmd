@@ -10,3 +10,5 @@ in: apcreate -it 01 -iv $keyHandle
 out: 1:$keyAuthHandle
 
 in: seal -ikh $keyHandle -idh $keyAuthHandle -wf seal.dat  
+
+in: unseal -ikh $keyHandle -idh $keyAuthHandle -rf seal.dat
