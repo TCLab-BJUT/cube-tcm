@@ -618,10 +618,10 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
 	void * vtcm_template;
 
 	// Get input params 
-	ret = message_get_record(recv_msg,&readvalue_in,0);
+	ret = message_get_record(recv_msg,&vtcm_in,0);
 	if(ret < 0)
 		return ret;
-	if(readvalue_in == NULL)
+	if(vtcm_in == NULL)
 		return -EINVAL;	
 
 	// processing
@@ -631,7 +631,7 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
               printf("nvLocked is FLASE, only check the Max NV writes");
               ignore_auth = TRUE;
         }
-
+/*
 	ret = TCM_NV_ReadValue(index, offset, size, buffer, nv_scene);
 	if(ret != 0)
 		return ret;
@@ -641,18 +641,18 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
         printf("data: %s\n",buffer);
 	printf("======ReadValue Done=========\n");
 
-	/*Output*/
-	readvalue_out = Talloc(sizeof(*readvalue_out));
-	if(readvalue_out == NULL)
+	// Output
+	vtcm_out = Talloc(sizeof(*readvalue_out));
+	if(vtcm_out == NULL)
 		return -ENOMEM;
-	readvalue_out->tag = 0xC400;
-	readvalue_out->returnCode = 0;
-	readvalue_out->dataSize = size;
-//	readvalue_out->data = buffer;
-	readvalue_out->data = Talloc(sizeof(BYTE)*size);
-	readvalue_out->paramSize = sizeof(*readvalue_out) - 8 + size ;
-	memcpy(readvalue_out->data,buffer,size);
-//	printf("readvalue_out->data is: %s\n",readvalue_out->data);
+	vtcm_out->tag = 0xC400;
+	vtcm_out->returnCode = 0;
+	vtcm_out->dataSize = size;
+//	vtcm_out->data = buffer;
+	vtcm_out->data = Talloc(sizeof(BYTE)*size);
+	vtcm_out->paramSize = sizeof(*readvalue_out) - 8 + size ;
+	memcpy(vtcm_out->data,buffer,size);
+//	printf("vtcm_out->data is: %s\n",readvalue_out->data);
 	
 	send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_NV_READVALUE_OUT,recv_msg);
 	if(send_msg == NULL)
@@ -660,9 +660,9 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
 		printf("sdfsdfsdfsdfsdf");
 		return -EINVAL;
 }
-	message_add_record(send_msg,readvalue_out);
+	message_add_record(send_msg,vtcm_out);
 	ret = ex_module_sendmsg(sub_proc,send_msg);
-
+*/
 	return ret;
 }
 
