@@ -42,7 +42,7 @@
 	"record":
 	{
 		"type":"VTCM_IN",
-		"elem_no":46,
+		"elem_no":47,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -53,6 +53,7 @@
 			"PCRREAD=0x15800000",
             "QUOTE=0x16800000",
             "SEAL=0x17800000",
+            "UNSEAL=0x18800000",
             "CREATEWRAPKEY=0x1F800000",
             "CERTIFYKEY=0x32800000",
             "SIGN=0x3C800000",
@@ -103,7 +104,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT",
-		"elem_no":46,
+		"elem_no":47,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -114,6 +115,7 @@
 			"PCRREAD=0x15800000",
             "QUOTE=0x16800000",
             "SEAL=0x17800000",
+            "UNSEAL=0x18800000",
             "CREATEWRAPKEY=0x1F800000",
             "CERTIFYKEY=0x32800000",
             "SIGN=0x3C800000",
@@ -2163,6 +2165,58 @@
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"returnCode","type":"TPM32"},
                 {"name":"sealedData","type":"SUBSTRUCT","ref_name":"tcm_stored_data"},
+                {"name":"authCode","type":"BINDATA","size":"32"}
+			]
+		}
+	}	
+}
+{
+	"head":
+	{
+		"name":"tcm_in_UnSeal",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_IN",
+		"subtype":"UNSEAL",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
+				{"name":"paramSize","type":"TPM32"},
+				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
+				{"name":"keyHandle","type":"TPM32"},
+                {"name":"encAuth","type":"SUBSTRUCT","ref_name":"tcm_stored_data"},
+                {"name":"UnAuthHandle","type":"TPM32"},
+                {"name":"UnAuthCode","type":"BINDATA","size":"32"},
+                {"name":"authHandle","type":"TPM32"},
+                {"name":"authCode","type":"BINDATA","size":"32"}
+			]
+		}
+	}	
+}
+{
+	"head":
+	{
+		"name":"tcm_out_UnSeal",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_OUT",
+		"subtype":"UNSEAL",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
+				{"name":"paramSize","type":"TPM32"},
+				{"name":"returnCode","type":"TPM32"},
+                {"name":"PrintDataSize","type":"TPM32"},
+                {"name":"PrintData","type":"DEFINE","def":"PrintDataSize"},
+                {"name":"UnauthCode","type":"BINDATA","size":"32"},
                 {"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}

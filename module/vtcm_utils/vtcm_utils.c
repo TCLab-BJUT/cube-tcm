@@ -2704,6 +2704,13 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
         return ret;
     printf("takeownership:\n");
     print_bin_data(Buf,outlen,8);
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	      return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 
@@ -2869,6 +2876,13 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
         return ret; 
     printf("Receive  output is:\n");
     print_bin_data(Buf,outlen,8);
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	      return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 /*
@@ -3572,6 +3586,12 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
 
     ret=struct_clone(&vtcm_output->pubEndorsementKey,pubEK,vtcm_template);
 
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	      return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
     return ret;
 }
 int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
@@ -3657,6 +3677,12 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
     write(fd,Buf,ret);
     printf("CreateEKPair is:\n");
     print_bin_data(BBuffer_1,outlen,8);
+
+    sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+	      return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
     return ret;
 }
 int proc_vtcmutils_Extend(void * sub_proc, void * para){

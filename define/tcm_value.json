@@ -31,7 +31,7 @@
 	},
 	"record":
 	{
-		"elem_no":46,
+		"elem_no":47,
 		"elemlist":
 		[
 		
@@ -43,6 +43,7 @@
 			    "PCRREAD=0x15800000",
                 "QUOTE=0x16800000",
                 "SEAL=0x17800000",
+                "UNSEAL=0x18800000",
                 "CREATEWRAPKEY=0x1F800000",
                 "CERTIFYKEY=0x32800000",
                 "SIGN=0x3C800000",
