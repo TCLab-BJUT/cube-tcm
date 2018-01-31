@@ -2440,6 +2440,7 @@
         {
             "elem_desc":
             [
+                {"name":"payload","type":"UCHAR"},
                 {"name":"userDigest","type":"BINDATA","size":"32"},
                 {"name":"pubDigest","type":"BINDATA","size":"32"},
                 {"name":"signLen","type":"INT"},

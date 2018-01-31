@@ -328,6 +328,7 @@ int proc_vtcm_NvDefinespace(void *sub_proc, void *recv_msg)
         }
         // If TCM_NV_PER_OWNERWRITE and TCM_NV_PER_AUTHWRITE and TCM_NV_PER_WRITEDEFINE and
         //  TCM_NV_PER_PPWRITE and writeLocalities are all FALSE 
+	/*
         if (!(vtcm_in->pubInfo.permission.attributes & TCM_NV_PER_OWNERWRITE) &&
          	!(vtcm_in->pubInfo.permission.attributes & TCM_NV_PER_AUTHWRITE) &&
            	!(vtcm_in->pubInfo.permission.attributes & TCM_NV_PER_WRITEDEFINE) &&
@@ -338,6 +339,7 @@ int proc_vtcm_NvDefinespace(void *sub_proc, void *recv_msg)
                         returnCode = TCM_PER_NOWRITE;
 			goto nv_definespace_out;
             }
+	*/
         // Validate pubInfo -> nvIndex 
         // Make sure that the index is applicable for this TCM return TCM_BADINDEX on error 
            returnCode = TCM_NVDataSensitive_IsValidIndex(index);
@@ -524,11 +526,13 @@ int proc_vtcm_writevalue(void *sub_proc, void *recv_msg)
        }
        if(vtcm_in->tag==htons(TCM_TAG_RQU_COMMAND))
        {
+	/*
 	      if(!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_OWNERWRITE))
 	      {
 		    returnCode=TCM_AUTH_CONFLICT;
 		    goto nv_writevalue_out;
-              }			
+              }
+	*/				
               nv1 = curr_tcm->tcm_permanent_data.noOwnerNVWrite;
                 // ii. Increment NV1 by 1 
               nv1++;
@@ -552,6 +556,7 @@ int proc_vtcm_writevalue(void *sub_proc, void *recv_msg)
        }	
 	
        // 4: check NV attributes
+	/*
         if (!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_OWNERWRITE) &&
           	!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_PPWRITE))
 	  {
@@ -560,7 +565,7 @@ int proc_vtcm_writevalue(void *sub_proc, void *recv_msg)
                         returnCode = TCM_PER_NOWRITE;
 			goto nv_writevalue_out;
           }
-  
+  	*/
         //5 check pcr value
   
         //6  Write Data to NV space
@@ -664,17 +669,21 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
        else if(vtcm_in->tag==htons(TCM_TAG_RQU_COMMAND))
        {
 	//  5-ii-a
+	/*
 	      if(!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_AUTHREAD))
 	      {
 		    returnCode=TCM_AUTH_CONFLICT;
 		    goto nv_readvalue_out;
-              }	
+              }
+	*/	
 	//5-ii-b		
+	/*
 	      if(!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_OWNERREAD))
 	      {
 		    returnCode=TCM_AUTH_CONFLICT;
 		    goto nv_readvalue_out;
               }	
+	*/
          }	
 	
        else
@@ -684,6 +693,7 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
 
        }	
        // 6: check NV attributes
+	/*
         if (!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_PPREAD) &&
           	!(nv_sens->pubInfo.permission.attributes & TCM_NV_PER_READ_STCLEAR))
 	  {
@@ -692,6 +702,7 @@ int proc_vtcm_readvalue(void *sub_proc, void *recv_msg)
                         returnCode = TCM_DISABLED_CMD;
 			goto nv_readvalue_out;
           }
+	*/
         //7 check pcr value
 
 

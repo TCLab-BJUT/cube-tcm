@@ -23,7 +23,7 @@ in: makeidentity -ioh $ownerHandle -ish $smkHandle -if user_info.list -of reques
 in: apterminate -ih $ownerHandle
 out: 
 
-in: casign -user user_info.list -pik pik.key -ek ekpub.key -cert pik.cert
+in: casign -user user_info.list -pik pik.key -ek ekpub.key -cert pik.cert -symm symm.key
 out:
 
 in: loadkey -ih $smkHandle -kf pik.key  

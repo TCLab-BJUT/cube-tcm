@@ -253,6 +253,8 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	int i;
 	TCM_KEY pik;
 	TCM_KEY ek;
+	TCM_KEY symm_key;
+    	TCM_SYMMETRIC_KEY_PARMS *sm4_parms;
 	TCM_PIK_CERT * pik_cert;
 	void * vtcm_template;
 	
@@ -262,6 +264,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	char * pik_file=NULL;
 	char * ek_file=NULL;
 	char * cert_file=NULL;
+	char * symmkey_file=NULL;
     	printf("Begin ex CA Sign:\n");
 	
 	if((input_para->param_num>0)&&
@@ -287,6 +290,10 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 			{
 				cert_file=value_para;
 			}
+			else if(!Strcmp("-symm",index_para))
+			{
+				symmkey_file=value_para;
+			}
 			else
 			{
 				printf("Error cmd format! should be %s -user user_info_file -pik pik_file -ek ek.file"
@@ -306,6 +313,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	if(pik_cert==NULL)
 		return -ENOMEM;
 
+	pik_cert->payLoad=0x19;   // add pik_cert's payload
 	//  compute  userinfo's digest
     	fd=open(user_file,O_RDONLY);
     	if(fd<0)
@@ -414,27 +422,86 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	pik_cert->signData=Talloc0(pik_cert->signLen);
 	Memcpy(pik_cert->signData,SignBuf,pik_cert->signLen);
    	
-		// Convert cert to blob 
+	// Create symmetric key
+	Memset(&symm_key,0,sizeof(symm_key));
+        symm_key.keyUsage=TCM_SM4KEY_STORAGE;
+        symm_key.algorithmParms.algorithmID=TCM_ALG_SM4;
+        symm_key.algorithmParms.encScheme=TCM_ES_SM4_CBC;
+        symm_key.algorithmParms.sigScheme=TCM_SS_NONE;
+        sm4_parms=Talloc0(sizeof(*sm4_parms));
+        if(sm4_parms==NULL)
+            return -ENOMEM;
+        sm4_parms->keyLength=0x80;
+        sm4_parms->blockSize=0x80;
+        sm4_parms->ivSize=0x10;
+        sm4_parms->IV=Talloc0(sm4_parms->ivSize);
+	RAND_bytes(sm4_parms->IV,sm4_parms->ivSize);
+	
+        vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
+        if(vtcm_template==NULL)
+            return -EINVAL;
+        ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
+        if(ret<0)
+            return ret; 
+        symm_key.algorithmParms.parmSize=ret;
+        symm_key.algorithmParms.parms=Talloc0(ret);
+
+        if(symm_key.algorithmParms.parms==NULL)
+            return -ENOMEM;
+        Memcpy(symm_key.algorithmParms.parms,Buf,ret);
+	symm_key.encDataSize=sm4_parms->keyLength/8;
+	symm_key.encData=Talloc0(symm_key.encDataSize);
+	RAND_bytes(symm_key.encData,symm_key.encDataSize);
+	
+	// Convert cert to blob 
 	vtcm_template=memdb_get_template(DTYPE_VTCM_UTILS,SUBTYPE_TCM_PIK_CERT);
 	if(vtcm_template==NULL)
 		return -EINVAL;
-	ret=struct_2_blob(pik_cert,Buf,vtcm_template);
+	Memset(Buf,0,DIGEST_SIZE/2);
+	ret=struct_2_blob(pik_cert,Buf+DIGEST_SIZE/2,vtcm_template);
 	if(ret<0)
 		return ret;
-	//Crypt the cert blob with pubek
-
-	int Enclen=512;
+	//Crypt the cert blob with symm_key and write it 
+	int offset=DIGEST_SIZE/2;
+	int blobsize=ret;
+    	sm4_context ctx;
 	BYTE EncBuf[512];
+	int Enclen=512;
+
+	ret=blobsize%(DIGEST_SIZE/2);
+	offset-=ret;
+	blobsize+=ret;	
+    	sm4_setkey_enc(&ctx, symm_key.encData);
+    	sm4_crypt_cbc(&ctx, 1, blobsize, sm4_parms->IV, Buf,EncBuf);
+
+    	fd=open(cert_file,O_CREAT|O_TRUNC|O_WRONLY,0666);
+    	if(fd<0){
+        	printf("cert file open error!\n");
+        	return -EIO;     
+    	}
+    	print_bin_data(EncBuf,blobsize,8);
+    	write(fd,EncBuf,blobsize);
+    	close(fd);
+		
+	// Convert symm_key to blob 
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+	ret=struct_2_blob(&symm_key,Buf,vtcm_template);
+	if(ret<0)
+		return ret;
+	// Crypt the symm_key blob with pubek and write it
+
 	ret=GM_SM2Encrypt(EncBuf,&Enclen,Buf,ret,ek.pubKey.key,ek.pubKey.keyLength);
 	if(ret!=0)	
 	{
         	printf("SM2Encrypt is fail\n");
 		return -EINVAL;	
 	}
-		 
-    	fd=open(cert_file,O_CREAT|O_TRUNC|O_WRONLY,0666);
+
+    	fd=open(symmkey_file,O_CREAT|O_TRUNC|O_WRONLY,0666);
     	if(fd<0){
-        	printf("cert file open error!\n");
+        	printf("symmkey file open error!\n");
         	return -EIO;     
     	}
     	print_bin_data(EncBuf,Enclen,8);

@@ -55,6 +55,7 @@ struct tcm_out_ActivateIdentity
 
 typedef struct tcm_pik_cert
 {
+	TCM_PAYLOAD_TYPE payLoad;   // should be 0x19
 	BYTE userDigest[DIGEST_SIZE];
 	BYTE pubDigest[DIGEST_SIZE];
 	int signLen;
