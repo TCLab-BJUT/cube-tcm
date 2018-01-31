@@ -18,7 +18,8 @@ enum  vtcm_record_type
 enum tcm_utils_subtype
 {
 	SUBTYPE_TCM_UTILS_INPUT=0x01,
-	SUBTYPE_TCM_UTILS_OUTPUT
+	SUBTYPE_TCM_UTILS_OUTPUT,
+	SUBTYPE_TCM_PIK_CERT
 };
 
 enum tcm_in_subtype

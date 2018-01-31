@@ -25,11 +25,12 @@
 	"record":
 	{
 		"type":"VTCM_UTILS",
-		"elem_no":2,
+		"elem_no":3,
 		"elemlist":
 		[
             		"TCM_UTILS_INPUT=0x01",
-            		"TCM_UTILS_OUTPUT"
+            		"TCM_UTILS_OUTPUT",
+            		"TCM_PIK_CERT"
 		]
 	}
 }
@@ -2424,4 +2425,26 @@
 			]
 		}
 	}	
+}
+{
+    "head":
+    {
+        "name":"tcm_pik_cert",
+        "type":"RECORDTYPE"
+    },
+    "record":
+    {
+        "type":"VTCM_UTILS",
+        "subtype":"TCM_PIK_CERT",
+        "struct_desc":
+        {
+            "elem_desc":
+            [
+                {"name":"userDigest","type":"BINDATA","size":"32"},
+                {"name":"pubDigest","type":"BINDATA","size":"32"},
+                {"name":"signLen","type":"INT"},
+                {"name":"signData","type":"DEFINE","def":"signLen"}
+            ]
+        }
+    }
 }

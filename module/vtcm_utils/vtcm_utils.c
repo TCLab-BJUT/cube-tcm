@@ -560,6 +560,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
     {
         ret=proc_vtcmutils_MakeIdentity(sub_proc,input_para);
     }
+    else if(strcmp(input_para->params,"casign")==0)
+    {
+        ret=proc_vtcmutils_ExCaSign(sub_proc,input_para);
+    }
     else if(strcmp(input_para->params,"quote")==0)
     {
         ret=proc_vtcmutils_Quote(sub_proc,input_para);
@@ -1512,6 +1516,7 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
     int returnlen= GM_SM2Encrypt(encData, &length,encryptFile ,strlen(encryptFile),keyOut->pubKey.key, keyOut->pubKey.keyLength);
     if(returnlen!=0){
         printf("SM2Encrypt is fail\n");
+	return -EINVAL;
     }
     printf("%d\n",strlen(encryptFile));
     printf("%d\n",returnlen);

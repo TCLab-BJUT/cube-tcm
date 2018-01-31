@@ -2720,7 +2720,7 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
 
     BYTE UserID[DIGEST_SIZE];
     unsigned long lenUID = DIGEST_SIZE;
-    memset(UserID, "A", 32);
+    memset(UserID, 'A', 32);
     TCM_STORE_ASYMKEY *tcm_store_asymkey = NULL;
     TCM_KEY *key = NULL;
     BYTE *keyUsageAuth;

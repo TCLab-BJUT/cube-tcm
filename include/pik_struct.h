@@ -53,4 +53,12 @@ struct tcm_out_ActivateIdentity
     BYTE ownerAuth[DIGEST_SIZE]; 
 }__attribute__((packed)) ;
 
+typedef struct tcm_pik_cert
+{
+	BYTE userDigest[DIGEST_SIZE];
+	BYTE pubDigest[DIGEST_SIZE];
+	int signLen;
+	BYTE * signData;
+}__attribute__((packed)) TCM_PIK_CERT;
+
 #endif
