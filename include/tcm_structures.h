@@ -2040,7 +2040,7 @@ typedef struct tdTCM_STANY_DATA {
                                                 //  each TCM_Startup (ST_Clear).  The values MAY be
                                                 //  set to 0 on TCM_Startup (any). */
     TCM_SESSION_DATA sessions[TCM_MIN_AUTH_SESSIONS];  // List of current sessions.
-} TCM_STANY_DATA;
+} __attribute__((packed)) TCM_STANY_DATA;
 
 /* 11. Signed Structures  */
 
@@ -2080,7 +2080,7 @@ typedef struct tdTCM_CERTIFY_INFO {
 #endif
     /* NOTE: kgold - Added this structure, a cache of PCRInfo when not NULL */
     //TCM_PCR_INFO *tcm_pcr_info;
-} TCM_CERTIFY_INFO;
+}__attribute__((packed)) TCM_CERTIFY_INFO;
 
 /* 11.2 TCM_CERTIFY_INFO2 rev 101
 
@@ -2132,7 +2132,7 @@ typedef struct tdTCM_CERTIFY_INFO2 {
     TCM_SIZED_BUFFER migrationAuthority;
     /* NOTE: kgold - Added this structure, a cache of PCRInfo when not NULL */
     TCM_PCR_INFO_SHORT *tcm_pcr_info_short;
-} TCM_CERTIFY_INFO2;
+}__attribute__((packed)) TCM_CERTIFY_INFO2;
 
 /* 11.3 TCM_QUOTE_INFO rev 87
 
@@ -2157,7 +2157,7 @@ typedef struct tdTCM_QUOTE_INFO {
     BYTE fixed[4];                      /* This SHALL always be the string 'QUT2' */
     TCM_NONCE externalData;             /* 160 bits of externally supplied data  */
     TCM_PCR_INFO_LONG info;       /*  */
-} TCM_QUOTE_INFO;
+}__attribute__((packed)) TCM_QUOTE_INFO;
 
 /* 12.1 TCM_EK_BLOB rev 87
   
@@ -2175,7 +2175,7 @@ typedef struct tdTCM_EK_BLOB {
     uint32_t blobSize;    /* */
     [size_is(blobSize)] byte* blob;     /* */
 #endif
-} TCM_EK_BLOB;
+}__attribute__((packed)) TCM_EK_BLOB;
 
 /* 12.2 TCM_EK_BLOB_ACTIVATE rev 87
 
@@ -2192,7 +2192,7 @@ typedef struct tdTCM_EK_BLOB_ACTIVATE {
     TCM_DIGEST idDigest;                /* This SHALL be the digest of the TCM identity public key
                                            that is being certified by the CA */
     TCM_PCR_INFO_SHORT pcrInfo;         /* This SHALL indicate the PCR's and localities */
-} TCM_EK_BLOB_ACTIVATE;
+}__attribute__((packed)) TCM_EK_BLOB_ACTIVATE;
 
 /* 12.3 TCM_EK_BLOB_AUTH rev 87
 
@@ -2205,7 +2205,7 @@ typedef struct tdTCM_EK_BLOB_AUTH {
     TCM_STRUCTURE_TAG tag;      /* TCM_TAG_EK_BLOB_AUTH */
 #endif
     TCM_SECRET authValue;       /* This SHALL be the authorization value */
-} TCM_EK_BLOB_AUTH;
+}__attribute__((packed)) TCM_EK_BLOB_AUTH;
 
 /* 12.5 TCM_IDENTITY_CONTENTS rev 87
 
@@ -2222,7 +2222,7 @@ typedef struct tdTCM_IDENTITY_CONTENTS {
                                                    identity */
     TCM_PUBKEY identityPubKey;          /* This SHALL be the public key structure of the identity
                                            key */
-} TCM_IDENTITY_CONTENTS; 
+}__attribute__((packed)) TCM_IDENTITY_CONTENTS; 
 
 /* 12.8 TCM_ASYM_CA_CONTENTS rev 87
 
@@ -2234,7 +2234,7 @@ typedef struct tdTCM_ASYM_CA_CONTENTS {
                                            the TCM_IDENTITY_CREDENTIAL */
     TCM_DIGEST idDigest;                /* This SHALL be the digest of the TCM_PUBKEY of the key
                                            that is being certified by the CA */
-} TCM_ASYM_CA_CONTENTS;
+}__attribute__((packed))  TCM_ASYM_CA_CONTENTS;
 
 /*
   14. Audit Structures

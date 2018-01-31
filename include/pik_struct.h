@@ -48,7 +48,7 @@ struct tcm_out_ActivateIdentity
     UINT16 tag ;
     int paramSize ;
     int returnCode ;
-    TCM_KEY pikPub ;
+    TCM_SYMMETRIC_KEY symmkey ;
     BYTE pikAuth[DIGEST_SIZE] ; 
     BYTE ownerAuth[DIGEST_SIZE]; 
 }__attribute__((packed)) ;

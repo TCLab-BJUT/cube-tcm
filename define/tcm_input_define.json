@@ -2116,9 +2116,9 @@
 				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"returnCode","type":"TPM32"},
-                {"name":"pikPub","type":"SUBSTRUCT","ref_name":"tcm_key"},
-                {"name":"pikAuth","type":"BINDATA","size":"32"},
-                {"name":"ownerAuth","type":"BINDATA","size":"32"}
+                		{"name":"pikPub","type":"SUBSTRUCT","ref_name":"tcm_key_symmetric_key"},
+                		{"name":"pikAuth","type":"BINDATA","size":"32"},
+                		{"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
 	}	

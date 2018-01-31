@@ -253,8 +253,8 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	int i;
 	TCM_KEY pik;
 	TCM_KEY ek;
-	TCM_KEY symm_key;
-    	TCM_SYMMETRIC_KEY_PARMS *sm4_parms;
+	TCM_ASYM_CA_CONTENTS ca_conts;
+	TCM_SYMMETRIC_KEY * symm_key=&ca_conts.sessionKey;
 	TCM_PIK_CERT * pik_cert;
 	void * vtcm_template;
 	
@@ -262,7 +262,6 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	//  cmd's params
 	char * user_file=NULL;
 	char * pik_file=NULL;
-	char * ek_file=NULL;
 	char * cert_file=NULL;
 	char * symmkey_file=NULL;
     	printf("Begin ex CA Sign:\n");
@@ -278,10 +277,6 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 			{
         			user_file=value_para;
 			}	
-			else if(!Strcmp("-ek",index_para))
-			{
-				ek_file=value_para;
-			}
 			else if(!Strcmp("-pik",index_para))
 			{
 				pik_file=value_para;
@@ -363,29 +358,6 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	if(ret<0)
 		return ret;
 		
-	// read ek file 
-    	fd=open(ek_file,O_RDONLY);
-    	if(fd<0)
-    	{
-  		printf("No ek file %s!\n",ek_file);
-		return -EINVAL;
-    	}
-    
-    	ret=read(fd,Buf,DIGEST_SIZE*31+1);
-    	if(ret<0)
-    	{
-		printf("can't read ek data!\n");
-		return -EINVAL;
-    	}
-    	if(ret>DIGEST_SIZE*31)
-    	{
-		printf("ek data too long!\n");
-		return -EINVAL;
-	}
-
-	ret=blob_2_struct(Buf, &ek,vtcm_template);
-	if(ret<0)
-		return ret;
         // compute pik's digest
 
        vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
@@ -395,6 +367,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
        if(ret<0)
 		return ret;
 	sm3(Buf,ret,pik_cert->pubDigest);		
+	Memcpy(&ca_conts.idDigest,pik_cert->pubDigest,DIGEST_SIZE);
    
        // sign data with CAprikey
 
@@ -423,36 +396,13 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	Memcpy(pik_cert->signData,SignBuf,pik_cert->signLen);
    	
 	// Create symmetric key
-	Memset(&symm_key,0,sizeof(symm_key));
-        symm_key.keyUsage=TCM_SM4KEY_STORAGE;
-        symm_key.algorithmParms.algorithmID=TCM_ALG_SM4;
-        symm_key.algorithmParms.encScheme=TCM_ES_SM4_CBC;
-        symm_key.algorithmParms.sigScheme=TCM_SS_NONE;
-        sm4_parms=Talloc0(sizeof(*sm4_parms));
-        if(sm4_parms==NULL)
-            return -ENOMEM;
-        sm4_parms->keyLength=0x80;
-        sm4_parms->blockSize=0x80;
-        sm4_parms->ivSize=0x10;
-        sm4_parms->IV=Talloc0(sm4_parms->ivSize);
-	RAND_bytes(sm4_parms->IV,sm4_parms->ivSize);
-	
-        vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
-        if(vtcm_template==NULL)
-            return -EINVAL;
-        ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
-        if(ret<0)
-            return ret; 
-        symm_key.algorithmParms.parmSize=ret;
-        symm_key.algorithmParms.parms=Talloc0(ret);
+	Memset(symm_key,0,sizeof(*symm_key));
+        symm_key->algId=TCM_ALG_SM4;
+        symm_key->encScheme=TCM_ES_SM4_CBC;
+	symm_key->size=0x80/8;
+	symm_key->data=Talloc0(symm_key->size);
+	RAND_bytes(symm_key->data,symm_key->size);
 
-        if(symm_key.algorithmParms.parms==NULL)
-            return -ENOMEM;
-        Memcpy(symm_key.algorithmParms.parms,Buf,ret);
-	symm_key.encDataSize=sm4_parms->keyLength/8;
-	symm_key.encData=Talloc0(symm_key.encDataSize);
-	RAND_bytes(symm_key.encData,symm_key.encDataSize);
-	
 	// Convert cert to blob 
 	vtcm_template=memdb_get_template(DTYPE_VTCM_UTILS,SUBTYPE_TCM_PIK_CERT);
 	if(vtcm_template==NULL)
@@ -471,8 +421,8 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	ret=blobsize%(DIGEST_SIZE/2);
 	offset-=ret;
 	blobsize+=ret;	
-    	sm4_setkey_enc(&ctx, symm_key.encData);
-    	sm4_crypt_cbc(&ctx, 1, blobsize, sm4_parms->IV, Buf,EncBuf);
+    	sm4_setkey_enc(&ctx, symm_key->data);
+    	sm4_crypt_ecb(&ctx, 1, blobsize, Buf,EncBuf);
 
     	fd=open(cert_file,O_CREAT|O_TRUNC|O_WRONLY,0666);
     	if(fd<0){
@@ -483,19 +433,23 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
     	write(fd,EncBuf,blobsize);
     	close(fd);
 		
-	// Convert symm_key to blob 
-	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+	// Convert ca_conts to blob 
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IDENTITY,SUBTYPE_TCM_ASYM_CA_CONTENTS);
 	if(vtcm_template==NULL)
 		return -EINVAL;
-	ret=struct_2_blob(&symm_key,Buf,vtcm_template);
+	ret=struct_2_blob(&ca_conts,Buf,vtcm_template);
 	if(ret<0)
 		return ret;
 	// Crypt the symm_key blob with pubek and write it
+        if(pubEK==NULL)
+	{
+		printf("can't find pubEK, perhaps you should run readpubek first!\n");
+	}
 
-	ret=GM_SM2Encrypt(EncBuf,&Enclen,Buf,ret,ek.pubKey.key,ek.pubKey.keyLength);
+	ret=GM_SM2Encrypt(EncBuf,&Enclen,Buf,ret,pubEK->pubKey.key,pubEK->pubKey.keyLength);
 	if(ret!=0)	
 	{
-        	printf("SM2Encrypt is fail\n");
+        	printf("pubek's SM2Encrypt is fail\n");
 		return -EINVAL;	
 	}
 

@@ -103,19 +103,20 @@
         "record":
         {
                 "type":"VTCM_IN_KEY",
-                "elem_no":10,
+                "elem_no":11,
                 "elemlist":
                 [   
                         "TCM_BIN_KEY_PARMS=0x01",
-                        "TCM_BIN_PUBKEY=0x02",
-                        "TCM_BIN_STORE_PUBKEY=0x03",
-                        "TCM_BIN_RSA_KEY_PARMS=0x04",
-                        "TCM_BIN_SM2_ASYMKEY_PARMS=0x05",
-                        "TCM_BIN_SYMMETRIC_KEY_PARMS=0x06",
-                        "TCM_BIN_KEY=0x07",
-                        "TCM_BIN_STORE_ASYMKEY=0x08",
-                        "TCM_BIN_STORE_SYMKEY=0x09",
-                        "TCM_BIN_STORE_PRIVKEY=0x0A"
+                        "TCM_BIN_PUBKEY",
+                        "TCM_BIN_STORE_PUBKEY",
+                        "TCM_BIN_RSA_KEY_PARMS",
+                        "TCM_BIN_SM2_ASYMKEY_PARMS",
+                        "TCM_BIN_SYMMETRIC_KEY_PARMS",
+                        "TCM_BIN_KEY",
+                        "TCM_BIN_STORE_ASYMKEY",
+                        "TCM_BIN_STORE_SYMKEY",
+                        "TCM_BIN_STORE_PRIVKEY",
+                        "TCM_BIN_SYMMETRIC_KEY"
                 ]   
         }   
 }
@@ -148,13 +149,13 @@
         "elemlist":
             [
                 "TCM_IDENTITY_CONTENTS=0x01",
-                "TCM_IDENTITY_REQ=0x02",
-                "TCM_PEK_REQ=0x03",
-                "TCM_IDENTITY_PROOF=0x04",
-                "TCM_PEK_PROOF=0x05",
-                "TCM_STRUCT_VER=0x06",
-                "TCM_SYMMETRIC_KEY=0x07",
-                "TCM_ASYM_CA_CONTENTS=0x08"
+                "TCM_IDENTITY_REQ",
+                "TCM_PEK_REQ",
+                "TCM_IDENTITY_PROOF",
+                "TCM_PEK_PROOF",
+                "TCM_ASYM_CA_CONTENTS",
+                "TCM_STRUCT_VER",
+                "TCM_SYMMETRIC_KEY"
             ]
     }
 }
@@ -322,6 +323,28 @@
                         [
                                 {"name":"keyLength","type":"TPM32"},
                                 {"name":"key","type":"DEFINE","def":"keyLength"}
+                        ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tcm_key_symmetric_key",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"VTCM_IN_KEY",
+                "subtype":"TCM_BIN_SYMMETRIC_KEY",
+                "struct_desc":
+                {
+                        "elem_desc":
+                        [
+                                {"name":"algId","type":"TPM32"},
+                                {"name":"encScheme","type":"TPM16"},
+				{"name":"size","type":"TPM16"},
+				{"name":"data","type":"DEFINE","def":"size"}
                         ]
                 }
         }
@@ -996,28 +1019,6 @@
 {
     "head":
     {
-        "name":"tcm_symmetric_key",
-        "type":"RECORDTYPE"
-    },
-    "record":
-    {
-        "type":"VTCM_IDENTITY",
-        "subtype":"TCM_SYMMETRIC_KEY",
-        "struct_desc":
-        {
-            "elem_desc":
-            [
-                {"name":"algId","type":"TPM32"},
-                {"name":"encScheme","type":"TPM16"},
-                {"name":"size","type":"TPM16"},
-                {"name":"data","type":"DEFINE","def":"size"}
-            ]
-        }
-    }
-}
-{
-    "head":
-    {
         "name":"tcm_asym_ca_contents",
         "type":"RECORDTYPE"
     },
@@ -1029,7 +1030,7 @@
         {
             "elem_desc":
             [
-                {"name":"sessionKey","type":"SUBSTRUCT","ref_name":"tcm_symmetric_key"},
+                {"name":"sessionKey","type":"SUBSTRUCT","ref_name":"tcm_key_symmetric_key"},
                 {"name":"idDigest","type":"BINDATA","size":"32"}
             ]
         }

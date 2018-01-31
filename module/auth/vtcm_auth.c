@@ -40,6 +40,7 @@ static BYTE Buf[DIGEST_SIZE*64];
 
 static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg);
 static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg);
+static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg);
 static int proc_vtcm_Quote(void* sub_proc, void* recv_msg);
 
 int vtcm_auth_init(void* sub_proc, void* para)
@@ -81,6 +82,9 @@ int vtcm_auth_start(void* sub_proc, void* para)
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_MAKEIDENTITY_IN)) {
             proc_vtcm_MakeIdentity(sub_proc,recv_msg);
+        }
+        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_ACTIVATEIDENTITY_IN)) {
+            proc_vtcm_ActivateIdentity(sub_proc,recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_QUOTE_IN)) {
             proc_vtcm_Quote(sub_proc,recv_msg);
@@ -553,7 +557,203 @@ makeidentity_out:
      }	
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
+}
+
+static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
+{
+
+    int ret = 0;
+    int i = 0;
+    int offset=0;
+    int keylen;
+    int datalen;
+    int got_handle;
+
+    uint32_t authHandle = 0;
+    TCM_SESSION_DATA *ownerauthSession;
+    TCM_SESSION_DATA *pikauthSession;
+
+    TCM_SECRET          *authData;              /* usageAuth for the entity */
+    TCM_COUNTER_VALUE   *counterValue;          /* associated with entityValue */
+
+    TCM_KEY * eKey;
+    TCM_KEY * pik;
+    TCM_ASYM_CA_CONTENTS ca_conts;	
+
+    TCM_BOOL parentPCRStatus;
+
+    //input process
+    struct tcm_in_ActivateIdentity *vtcm_in;
+    struct tcm_out_ActivateIdentity *vtcm_out;
+    void *vtcm_template;
+    uint32_t returnCode=0;
+    BYTE ownerauth[TCM_HASH_SIZE];
+    BYTE pikauth[TCM_HASH_SIZE];
+    BYTE cmdHash[TCM_HASH_SIZE];
+    BYTE pubDigest[TCM_HASH_SIZE];
+    
+    printf("proc_vtcm_MakeIdentity : Start\n");
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0); // get structure 
+    if(ret < 0) 
+        return ret;
+    if(vtcm_in == NULL)
+        return -EINVAL;
+    vtcm_out=Talloc0(sizeof(*vtcm_out));
+    if(vtcm_out==NULL)
+	return -ENOMEM;
+    
+    // get tcm structure
+    tcm_state_t* curr_tcm = ex_module_getpointer(sub_proc);
+
+    eKey=&curr_tcm->tcm_permanent_data.endorsementKey;
+   
+    // get ownerauthsession and pikauthsession
+    ret=vtcm_AuthSessions_GetEntry(&pikauthSession,curr_tcm->tcm_stany_data.sessions,vtcm_in->pikAuthHandle);
+    if(ret<0)
+    {
+	returnCode=-TCM_INVALID_AUTHHANDLE;
+	goto activateidentity_out;	
+    }
+    ret=vtcm_AuthSessions_GetEntry(&ownerauthSession,curr_tcm->tcm_stany_data.sessions,vtcm_in->ownerAuthHandle);
+    if(ret<0)
+    {
+	returnCode=-TCM_INVALID_AUTHHANDLE;
+	goto activateidentity_out;	
+    }
+
+   // get pik
+    ret = vtcm_KeyHandleEntries_GetKey(&pik,&parentPCRStatus, 
+                                       curr_tcm,vtcm_in->pikHandle,
+                                       FALSE,     // not r/o, using to encrypt
+                                       FALSE,     // do not ignore PCRs
+                                       FALSE);    // cannot use EK
+  
+        // 2 check the PIK params
+	if((pik->algorithmParms.algorithmID!=TCM_ALG_SM2)
+		||(pik->keyUsage!=TCM_SM2KEY_IDENTITY))
+	{
+		returnCode = TCM_BAD_KEY_PROPERTY;
+		goto activateidentity_out;
+	}
+   
+        // check authcode
+      
+   	vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_ACTIVATEIDENTITY_IN);
+    	if(vtcm_template==NULL)
+    		return -EINVAL;
+    	offset = struct_2_blob(vtcm_in,Buf,vtcm_template);
+    	if(offset<0)
+    		return offset;
+
+    // check pikkAuth
+    uint32_t temp_int;
+    // compute smkauthCode
+    sm3(Buf+6,offset-6-36*2,cmdHash);
+
+    Memcpy(Buf,cmdHash,DIGEST_SIZE);
+    temp_int=htonl(vtcm_in->pikAuthHandle);
+    Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
+    
+    sm3_hmac(pikauthSession->sharedSecret,TCM_HASH_SIZE,
+	Buf,DIGEST_SIZE+sizeof(uint32_t),
+	pikauth);
+
+    if(Memcmp(pikauth,vtcm_in->pikAuth,TCM_HASH_SIZE)!=0)
+    {
+	returnCode=TCM_AUTHFAIL;
+	goto activateidentity_out;
+    }	
+
+    // compute ownerauthCode
+
+    Memcpy(Buf,cmdHash,DIGEST_SIZE);
+    temp_int=htonl(vtcm_in->ownerAuthHandle);
+    Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
+    
+    sm3_hmac(ownerauthSession->sharedSecret,TCM_HASH_SIZE,
+	Buf,DIGEST_SIZE+sizeof(uint32_t),
+	ownerauth);
+
+    if(Memcmp(ownerauth,vtcm_in->ownerAuth,TCM_HASH_SIZE)!=0)
+    {
+	returnCode=TCM_AUTH2FAIL;
+	goto activateidentity_out;
+    }	
+
+    //  decrypt ca_conts 
+	datalen=DIGEST_SIZE*16;
+	// decrypt the encData 
+	ret=GM_SM2Decrypt(Buf,&datalen, vtcm_in->encData,vtcm_in->encDataSize,
+		eKey->encData,eKey->encDataSize);
+  	if(ret<0)
+	{
+		returnCode=TCM_DECRYPT_ERROR;
+		goto activateidentity_out;
+	}
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY);
+	if(vtcm_template==NULL)
+	{
+		returnCode=TCM_BADINDEX;
+		goto activateidentity_out;
+	}
+        ret=blob_2_struct(Buf,&vtcm_out->symmkey,vtcm_template);
 	
+	if(ret<0)
+	{
+		returnCode=TCM_BAD_PARAMETER;
+		goto activateidentity_out;
+	}	
+	
+	Memcpy(&ca_conts.idDigest,Buf+ret,DIGEST_SIZE);
+
+	// compute pubkey's digest
+
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
+	if(vtcm_template==NULL)
+		return -EINVAL;		
+	ret=struct_2_blob(&pik->pubKey,Buf,vtcm_template);
+	if(ret<0)
+	{
+		returnCode=-TCM_BAD_DATASIZE;
+		goto activateidentity_out;
+	}
+
+	sm3(Buf,ret,pubDigest);
+
+	if(Memcmp(pubDigest,&ca_conts.idDigest,DIGEST_SIZE)!=0)
+	{
+		returnCode=TCM_AUTHFAIL;
+		goto activateidentity_out;
+	}
+
+activateidentity_out:
+
+    vtcm_out->tag=0xC600;
+    vtcm_out->returnCode=returnCode;
+    	
+    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_ACTIVATEIDENTITY_OUT ,recv_msg);
+    if(send_msg == NULL)
+    {
+        printf("send_msg == NULL\n");
+        return -EINVAL;      
+    }
+    int responseSize = 0;
+    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_ACTIVATEIDENTITY_OUT);
+    responseSize = struct_2_blob(vtcm_out, Buf, vtcm_template);
+    if(responseSize<0)
+	return responseSize;
+
+    vtcm_out->paramSize = responseSize;
+    message_add_record(send_msg, vtcm_out);
+ 
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
+    ret = ex_module_sendmsg(sub_proc, send_msg);
+    return ret;
 }
 
 static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
