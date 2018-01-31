@@ -394,6 +394,13 @@ nv_definespace_out:
 	if(send_msg == NULL)
 		return -EINVAL;
 	message_add_record(send_msg,vtcm_out);
+
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
 	ret = ex_module_sendmsg(sub_proc,send_msg);
 
 	return ret;
@@ -600,6 +607,12 @@ nv_writevalue_out:
 	if(send_msg == NULL)
 		return -EINVAL;
 	message_add_record(send_msg,vtcm_out);
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
 	ret = ex_module_sendmsg(sub_proc,send_msg);
 
 	return ret;
@@ -744,6 +757,12 @@ nv_readvalue_out:
 		return -EINVAL;
 	}
 	message_add_record(send_msg,vtcm_out);
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
 	ret = ex_module_sendmsg(sub_proc,send_msg);
 
 	return ret;
