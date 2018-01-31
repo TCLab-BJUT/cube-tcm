@@ -1234,7 +1234,7 @@ int proc_vtcm_APTerminate(void *sub_proc, void* recv_msg)
     if(vtcm_input == NULL)
         return -EINVAL;
     
-    tcm_state_t * tcm_state = proc_share_data_getpointer();
+    tcm_state_t* curr_tcm = ex_module_getpointer(sub_proc);
     
     //output process
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_APTERMINATE_OUT);//Get the entire command template
@@ -1249,7 +1249,7 @@ int proc_vtcm_APTerminate(void *sub_proc, void* recv_msg)
     if(ret == TCM_SUCCESS)
     {
         ret = vtcm_AuthSessions_GetEntry(&authSession,
-                                         tcm_state->tcm_stany_data.sessions,
+                                         curr_tcm->tcm_stany_data.sessions,
                                          vtcm_input->authHandle);
     }
     //Check authCode
@@ -1280,6 +1280,14 @@ int proc_vtcm_APTerminate(void *sub_proc, void* recv_msg)
         return -EINVAL;      
     }
     message_add_record(send_msg, vtcm_output);
+
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
+
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
@@ -1698,16 +1706,16 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     int i;
     
     //input process
-    struct tcm_in_CreateWrapKey *vtcm_input;
+    struct tcm_in_CreateWrapKey *vtcm_in;
     
-    ret = message_get_record(recv_msg, (void **)&vtcm_input, 0); // get structure 
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0); // get structure 
     if(ret < 0) 
         return ret;
     else ret = 0;
-    if(vtcm_input == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
     
-    tcm_state_t * tcm_state = proc_share_data_getpointer();
+    tcm_state_t* curr_tcm = ex_module_getpointer(sub_proc);
 
     //output process
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_CREATEWRAPKEY_OUT);//Get the entire command template
@@ -1715,43 +1723,43 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     {    
         printf("can't solve this command!\n");
     }    
-    struct tcm_out_CreateWrapKey * vtcm_output = malloc(struct_size(template_out));
+    struct tcm_out_CreateWrapKey * vtcm_out = malloc(struct_size(template_out));
 
     //Processing
     //Get AuthSession
     if(ret == TCM_SUCCESS)
     {
         vtcm_AuthSessions_GetEntry(&auth_session_data,
-                                   tcm_state->tcm_stany_data.sessions,
-                                   vtcm_input->authHandle);
+                                   curr_tcm->tcm_stany_data.sessions,
+                                   vtcm_in->authHandle);
     }
     //Check authData
     if(ret == TCM_SUCCESS)
     {
-        ret = vtcm_AuthData_Check_CWrapKey(vtcm_input->ordinal,
-                                           vtcm_input->dataUsageAuth,
-                                           vtcm_input->dataMigrationAuth,
-                                           &(vtcm_input->keyInfo),
+        ret = vtcm_AuthData_Check_CWrapKey(vtcm_in->ordinal,
+                                           vtcm_in->dataUsageAuth,
+                                           vtcm_in->dataMigrationAuth,
+                                           &(vtcm_in->keyInfo),
                                            auth_session_data,
-                                           vtcm_input->pubAuth);
+                                           vtcm_in->pubAuth);
     }
     //Create dataUsageAuth by decrypting dataUsageAuth 
     if(ret == TCM_SUCCESS)
     {
         ret = vtcm_AuthSessionData_Decrypt(dataUsageAuth,
                                            auth_session_data,
-                                           vtcm_input->dataUsageAuth);
+                                           vtcm_in->dataUsageAuth);
     }
     //Create dataMigrationAuth by decrypting dataMigrationAuth
     if(ret == TCM_SUCCESS)
     {
         ret = vtcm_AuthSessionData_Decrypt(dataMigrationAuth,
                                            auth_session_data,
-                                           vtcm_input->dataUsageAuth);
+                                           vtcm_in->dataUsageAuth);
     }
     if(ret == TCM_SUCCESS)
     {
-        if(vtcm_input->keyInfo.algorithmParms.algorithmID == TCM_ALG_SM4)
+        if(vtcm_in->keyInfo.algorithmParms.algorithmID == TCM_ALG_SM4)
         {
             sm4_parms = Talloc0(sizeof(*sm4_parms));
             if(sm4_parms == NULL)
@@ -1759,7 +1767,7 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
             void *vtcm_template = memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
             if(vtcm_template == NULL)
                 return -EINVAL;
-            ret = blob_2_struct(vtcm_input->keyInfo.algorithmParms.parms, sm4_parms, vtcm_template);
+            ret = blob_2_struct(vtcm_in->keyInfo.algorithmParms.parms, sm4_parms, vtcm_template);
             if(ret < 0)
                 return ret; 
             if(sm4_parms->keyLength != 0x80)
@@ -1772,10 +1780,10 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
                 vtcm_template = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_KEY);
                 if(vtcm_template == NULL)
                     return -EINVAL;
-                ret = struct_clone(&vtcm_input->keyInfo, &(vtcm_output->wrappedKey), vtcm_template);
+                ret = struct_clone(&vtcm_in->keyInfo, &(vtcm_out->wrappedKey), vtcm_template);
                 if(ret < 0)
                     return ret;
-                ret = vtcm_Keystruct_GenerateSM4(&(vtcm_output->wrappedKey), dataUsageAuth, NULL);
+                ret = vtcm_Keystruct_GenerateSM4(&(vtcm_out->wrappedKey), dataUsageAuth, NULL);
                 if(ret < 0)
                     return ret;
             }
@@ -1783,24 +1791,24 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
             if(ret == TCM_SUCCESS)
             {
                 printf(" Add dataUsageAuth for WrappedKey!\n");
-                vtcm_Key_GetStoreSymkey(&tcm_store_symkey, &(vtcm_output->wrappedKey));
+                vtcm_Key_GetStoreSymkey(&tcm_store_symkey, &(vtcm_out->wrappedKey));
                 memcpy(tcm_store_symkey->usageAuth, dataUsageAuth, TCM_NONCE_SIZE);
                 memcpy(tcm_store_symkey->migrationAuth, dataMigrationAuth, TCM_NONCE_SIZE);
             }
         }
         else 
         {
-            WrapKey = &(vtcm_output->wrappedKey); 
+            WrapKey = &(vtcm_out->wrappedKey); 
             vtcm_Key_Init(WrapKey);
             //Generate asymmetric key according to algorithm information in keyInfo
             ret = vtcm_Key_GenerateSM2(WrapKey,
-                                       tcm_state,
+                                       curr_tcm,
                                        NULL,
-                                       tcm_state->tcm_stclear_data.PCRS,
+                                       curr_tcm->tcm_stclear_data.PCRS,
                                        TCM_KEY_STORAGE,
                                        0,
                                        TCM_AUTH_ALWAYS,
-                                       &(vtcm_input->keyInfo.algorithmParms),
+                                       &(vtcm_in->keyInfo.algorithmParms),
                                        NULL,
                                        NULL);
              tcm_store_asymkey = Talloc0(sizeof(*tcm_store_asymkey));
@@ -1811,11 +1819,11 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
                      
             for(i = 0; i < TCM_HASH_SIZE; i++)
             {
-                tcm_store_asymkey->usageAuth[i] = vtcm_input->dataUsageAuth[i]^auth_session_data->sharedSecret[i];
+                tcm_store_asymkey->usageAuth[i] = vtcm_in->dataUsageAuth[i]^auth_session_data->sharedSecret[i];
             }   
             for(i = 0; i < TCM_HASH_SIZE; i++)
             {
-                tcm_store_asymkey->migrationAuth[i] = vtcm_input->dataMigrationAuth[i]^auth_session_data->sharedSecret[i];
+                tcm_store_asymkey->migrationAuth[i] = vtcm_in->dataMigrationAuth[i]^auth_session_data->sharedSecret[i];
             }   
             //Memcpy(privpik->migrationAuth, curr_tcm->tcm_permanent_data.tcmProof,TCM_SECRET_SIZE);
             // compute pubkey's digest
@@ -1860,30 +1868,36 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     if(ret == TCM_SUCCESS)
     {    
         ret = vtcm_Compute_AuthCode_CWrapKey(ret,
-                                             vtcm_input->ordinal,
-                                             &(vtcm_output->wrappedKey),
+                                             vtcm_in->ordinal,
+                                             &(vtcm_out->wrappedKey),
                                              auth_session_data,
-                                             vtcm_output->resAuth);   
+                                             vtcm_out->resAuth);   
     }
     //Response
 
     printf("proc_vtcm_CreateWrapKey : Response \n");
 
-    vtcm_output->tag = 0xC500;
-    vtcm_output->returnCode = ret;
+    vtcm_out->tag = 0xC500;
+    vtcm_out->returnCode = ret;
 
     int responseSize = 0;
     BYTE* response = (BYTE*)malloc(sizeof(BYTE) * 700);
-    responseSize = struct_2_blob(vtcm_output, response, template_out);
+    responseSize = struct_2_blob(vtcm_out, response, template_out);
 
-    vtcm_output->paramSize = responseSize;
+    vtcm_out->paramSize = responseSize;
     void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_CREATEWRAPKEY_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");
         return -EINVAL;      
     }
-    message_add_record(send_msg, vtcm_output);
+    message_add_record(send_msg, vtcm_out);
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret; 
 }
@@ -1949,12 +1963,12 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
     TCM_STORE_ASYMKEY tcm_store_asymkey;
 
     
-    struct tcm_in_LoadKey *tcm_LoadKey_in ;
+    struct tcm_in_LoadKey *vtcm_in ;
 
-    ret = message_get_record(recv_msg, (void **)&tcm_LoadKey_in, 0) ; // get structure 
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0) ; // get structure 
     if(ret < 0)
         return ret;
-    if(tcm_LoadKey_in == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
 
     //output process
@@ -1963,70 +1977,77 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
     {
         printf("can't solve this command!\n");
     }
-    struct tcm_out_LoadKey * tcm_LoadKey_out = malloc(struct_size(command_template));
+    struct tcm_out_LoadKey * vtcm_out = malloc(struct_size(command_template));
 
-    tcm_state_t * tcm_state = proc_share_data_getpointer();
+    tcm_state_t * curr_tcm = ex_module_getpointer(sub_proc);
     
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_LOADKEY_OUT);
     //Processing
     if(ret == TCM_SUCCESS) {
         vtcm_AuthSessions_GetEntry(&auth_session_data,
-                                   tcm_state->tcm_stany_data.sessions,
-                                   tcm_LoadKey_in->authHandle);
+                                   curr_tcm->tcm_stany_data.sessions,
+                                   vtcm_in->authHandle);
         printf("%08x\n",auth_session_data->SERIAL);
     }
     if(ret == TCM_SUCCESS) {
-        vtcm_AuthData_Check_LoadKey(tcm_LoadKey_in->ordinal,
-                                    &(tcm_LoadKey_in->inKey),
+        vtcm_AuthData_Check_LoadKey(vtcm_in->ordinal,
+                                    &(vtcm_in->inKey),
                                     auth_session_data,
-                                    tcm_LoadKey_in->parentAuth);
+                                    vtcm_in->parentAuth);
     }
     
-    if(tcm_LoadKey_in->inKey.algorithmParms.algorithmID == TCM_ALG_SM2) {
-        tcm_store_asymkey.privKey.keyLength = tcm_LoadKey_in->inKey.encDataSize;
-        tcm_store_asymkey.privKey.key = (BYTE *)malloc(sizeof(BYTE) * tcm_LoadKey_in->inKey.encDataSize);
-        memcpy(tcm_store_asymkey.privKey.key, tcm_LoadKey_in->inKey.encData, tcm_LoadKey_in->inKey.encDataSize);
+    if(vtcm_in->inKey.algorithmParms.algorithmID == TCM_ALG_SM2) {
+        tcm_store_asymkey.privKey.keyLength = vtcm_in->inKey.encDataSize;
+        tcm_store_asymkey.privKey.key = (BYTE *)malloc(sizeof(BYTE) * vtcm_in->inKey.encDataSize);
+        memcpy(tcm_store_asymkey.privKey.key, vtcm_in->inKey.encData, vtcm_in->inKey.encDataSize);
     }
-    if(tcm_LoadKey_in->inKey.algorithmParms.algorithmID == TCM_ALG_SM4) {
-        tcm_store_symkey.size = tcm_LoadKey_in->inKey.encDataSize;
+    if(vtcm_in->inKey.algorithmParms.algorithmID == TCM_ALG_SM4) {
+        tcm_store_symkey.size = vtcm_in->inKey.encDataSize;
         tcm_store_symkey.data = (BYTE *)malloc(sizeof(BYTE) * tcm_store_symkey.size);
-        memcpy(tcm_store_symkey.data, tcm_LoadKey_in->inKey.encData, tcm_LoadKey_in->inKey.encDataSize);
+        memcpy(tcm_store_symkey.data, vtcm_in->inKey.encData, vtcm_in->inKey.encDataSize);
     }
 
     if(ret == TCM_SUCCESS) {
-        ret = vtcm_KeyHandleEntries_AddKeyEntry(&(tcm_LoadKey_out->inKeyHandle),
-                                                tcm_state->tcm_key_handle_entries,
-                                                &(tcm_LoadKey_in->inKey));
+        ret = vtcm_KeyHandleEntries_AddKeyEntry(&(vtcm_out->inKeyHandle),
+                                                curr_tcm->tcm_key_handle_entries,
+                                                &(vtcm_in->inKey));
     }
     if(ret == TCM_SUCCESS) {
-        printf("proc_vtcm_LoadKey: Loaded key handle %08x\n", tcm_LoadKey_out->inKeyHandle);
+        printf("proc_vtcm_LoadKey: Loaded key handle %08x\n", vtcm_out->inKeyHandle);
     }
     if(ret == TCM_SUCCESS) {
         BYTE *Str_Hash = (BYTE *)malloc(sizeof(BYTE)*700);
         BYTE *Str_Hash_out = (BYTE *)malloc(sizeof(BYTE)*700);
         int temp = htonl(ret);
         Memcpy(Str_Hash, (unsigned char *)(&temp), sizeof(int));
-        temp = htonl(tcm_LoadKey_in->ordinal);
+        temp = htonl(vtcm_in->ordinal);
         Memcpy(Str_Hash + sizeof(int), (unsigned char *)(&temp), sizeof(int));
         vtcm_SM3(Str_Hash_out, Str_Hash, 8);
         temp = htonl(auth_session_data->SERIAL);
         Memcpy(Str_Hash_out, (unsigned char *)(&temp), sizeof(int));
-        vtcm_HMAC_SM3(auth_session_data, TCM_NONCE_SIZE, Str_Hash_out, TCM_NONCE_SIZE + sizeof(int), tcm_LoadKey_out->resAuth);
+        vtcm_HMAC_SM3(auth_session_data, TCM_NONCE_SIZE, Str_Hash_out, TCM_NONCE_SIZE + sizeof(int), vtcm_out->resAuth);
     }
     //Response 
 
-    tcm_LoadKey_out->tag = 0xC500;
-    //tcm_LoadKey_out->paramSize = 46;
-    tcm_LoadKey_out->returnCode = ret;
+    vtcm_out->tag = 0xC500;
+    //vtcm_out->paramSize = 46;
+    vtcm_out->returnCode = ret;
     
     int responseSize = 0;
     BYTE * response = (BYTE*)malloc(sizeof(BYTE)*700);
-    responseSize = struct_2_blob(tcm_LoadKey_out, response, template_out);
-    tcm_LoadKey_out->paramSize = responseSize;
+    responseSize = struct_2_blob(vtcm_out, response, template_out);
+    vtcm_out->paramSize = responseSize;
     void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_LOADKEY_OUT,recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
-    message_add_record(send_msg ,tcm_LoadKey_out);
+    message_add_record(send_msg ,vtcm_out);
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
+
     ret = ex_module_sendmsg(sub_proc ,send_msg);
 
     return ret;
