@@ -20,9 +20,6 @@ out: 1:$smkHandle
 in: makeidentity -ioh $ownerHandle -ish $smkHandle -if user_info.list -of request.req -kf pik.key
 #生成鉴别密钥和密钥认证申请包,密钥文件导出 
 
-in: apterminate -ih $ownerHandle
-out: 
-
 in: casign -user user_info.list -pik pik.key -ek ekpub.key -cert pik.cert -symm symm.key
 out:
 
@@ -32,6 +29,8 @@ out: 1:$keyHandle
 in: apcreate -it 01 -iv $keyHandle 
 #创建pik会话，返回pik会话句柄
 out: 1:$authHandle
+
+in: activateidentity -ish $authHandle -ioh $ownerHandle -ikh $keyHandle -symm symm.key -cert pik.cert
 
 in: apterminate -ih $authHandle
 out: 
