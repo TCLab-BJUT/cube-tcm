@@ -102,19 +102,7 @@ struct tcm_entity_appinfo
     int data_size;
     BYTE * data;
 }__attribute__((packed));
-void print_bin_data(BYTE * data,int len,int width)
-{
-    int i;
-    for(i=0;i<len;i++){
-        printf("%.2x ",data[i]);
-        if (width>0)
-        { 	
-            if((i+1)%width==0)
-                printf("\n");
-        }
-    }
-    printf("\n");
-}
+
 TCM_SESSION_DATA * Create_AuthSession_Data(TCM_ENT_TYPE * type,BYTE * auth,BYTE * nonce)
 {
     TCM_SESSION_DATA * authdata=Dalloc0(sizeof(*authdata),NULL);
@@ -131,12 +119,12 @@ TCM_AUTHHANDLE Build_AuthSession(TCM_SESSION_DATA * authdata,void * tcm_out_data
     BYTE auth[TCM_HASH_SIZE];
     struct tcm_out_APCreate * apcreate_out = tcm_out_data;
     authdata->SERIAL=apcreate_out->sernum;
+
     // Build shareSecret
     Memcpy(Buf,authdata->nonceEven,TCM_HASH_SIZE);
     Memcpy(authdata->nonceEven,apcreate_out->nonceEven,TCM_HASH_SIZE);
     Memcpy(Buf+TCM_HASH_SIZE,apcreate_out->nonceEven,TCM_HASH_SIZE);
     Memcpy(auth,authdata->sharedSecret,TCM_HASH_SIZE);
-    //memset(auth,0,TCM_HASH_SIZE);
     sm3_hmac(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
 
     if(authdata->entityTypeByte!=TCM_ET_NONE)
@@ -1623,7 +1611,7 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
     	return -EINVAL;
     print_bin_data(Buf,datasize,8);
     Memcpy(vtcm_input->DecryptData,Buf,vtcm_input->DecryptDataSize);
-    ret=vtcm_Compute_AuthCode(vtcm_input,authdata,NULL,DTYPE_VTCM_IN,SUBTYPE_SM2DECRYPT_IN,Buf);
+    //ret=vtcm_Compute_AuthCode(vtcm_input,authdata,NULL,DTYPE_VTCM_IN,SUBTYPE_SM2DECRYPT_IN,Buf);
     print_bin_data(Buf,ret,8);                                                                            
     ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
     if(ret<0)
@@ -3560,12 +3548,15 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
     if(!strcmp("-it",curr_para)){
         i++;
         curr_para=input_para->params+i*DIGEST_SIZE;
-        if(!strcmp("12",curr_para)){
+        if(!strcmp("12",curr_para))
+	{
             //nonce
             vtcm_input->entityType=0x12;
             vtcm_input->entityValue=0;
             memset(auth,0,TCM_HASH_SIZE);
-        }else if(!strcmp("01",curr_para)){
+        }
+	else if(!strcmp("01",curr_para))
+	{
             //keyhandle
             vtcm_input->entityType=0x01;
             vtcm_input->entityValue=0;
@@ -3581,70 +3572,101 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
 	     sscanf(curr_para,"%x",&vtcm_input->entityValue);
 	
             sm3(pwdk,strlen(pwdk),auth);
-        }else if(!strcmp("04",curr_para)){
+        }
+	else if(!strcmp("04",curr_para))
+	{
             // smk
             vtcm_input->entityType=0x04;
             vtcm_input->entityValue=0;
             sm3(pwds,Strlen(pwds),auth);
-        }else if(!strcmp("0b",curr_para)){
-            // NV
+        }
+	else if(!strcmp("0b",curr_para))
+	{
+	            // NV
             vtcm_input->entityType=0x0b;
             vtcm_input->entityValue=0;
-        }else if(!strcmp("05",curr_para)){
+        }
+	else if(!strcmp("05",curr_para))
+	{
             // key related
             vtcm_input->entityType=0x05;
             vtcm_input->entityValue=0;
-        }else if(!strcmp("02",curr_para)){
+        }
+	else if(!strcmp("02",curr_para))
+	{
             // owner
             vtcm_input->entityType=0x02;
             vtcm_input->entityValue=0;
             sm3(pwdo,strlen(pwdk),auth);
-    }else{
-        printf("type is error");
+    	}
+	else
+	{
+        	printf("type is error");
+    	}
     }
-    }else{
+    else
+    {
         printf("parameter is error!\n");
     }
-   // memset(EAData,0,TCM_HASH_SIZE);
-    print_bin_data(auth,TCM_HASH_SIZE,TCM_HASH_SIZE/4);
+
+    // Fill command's parameters;
+
     int ordinal=htonl(vtcm_input->ordinal);
     UINT16 entityType=htons(vtcm_input->entityType);
-    vtcm_SM3_1(key,&(ordinal),sizeof(vtcm_input->ordinal),&(entityType),sizeof(vtcm_input->entityType));
-    i=0;
-    TSS_gennonce(nonce);
-    Memcpy(vtcm_input->nonce,nonce,TCM_HASH_SIZE);	
-    vtcm_SM3_hmac(nonce1,auth,32,key,32,nonce,32);
-    Memcpy(vtcm_input->authCode,nonce1,TCM_HASH_SIZE);
+    RAND_bytes(vtcm_input->nonce,TCM_HASH_SIZE);
 
+    // compute APCreate's input auth code and generate command blob
+
+    // let the entity's authdata template be the authcode	
+
+    sm3(pwds,Strlen(pwds),vtcm_input->authCode);
+	
+    ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_APCREATE_IN,NULL,vtcm_input->authCode);
+    
+    // Create an AuthSession slot	
     authdata=Create_AuthSession_Data(&(vtcm_input->entityType),vtcm_input->authCode,vtcm_input->nonce);
 
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_APCREATE_IN);
-    if(vtcm_template==NULL)
-        return -EINVAL;
-    vtcm_input->paramSize=0x50;
-    ret =  struct_2_blob(vtcm_input,Buf,vtcm_template);
+   // Build APCreate's command blob
+
+    ret=vtcm_Build_CmdBlob(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_APCREATE_IN,Buf);
+
     if(ret<0)
         return ret;
     print_bin_data(Buf,ret,8);
+
+    // Translate command data
     ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
     if(ret<0)
         return ret;
     print_bin_data(Buf,outlen,8);
+
+    //convert command data
     vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_APCREATE_OUT);
     if(vtcm_template==NULL)
         return -EINVAL;
    ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
    if(ret<0)
-     return ret;
+         return ret;
 
-   ret=struct_2_json(vtcm_output,Buf,vtcm_template);
-   if(ret<0)
-        return ret;
-    printf("%s\n",Buf);
+
     memcpy(authdata->sharedSecret, auth, TCM_NONCE_SIZE); 
     authhandle=Build_AuthSession(authdata,vtcm_output);	
     if(authhandle==0)
         return -EINVAL;	
+
+    // check authdata
+    {
+	BYTE CheckData[TCM_HASH_SIZE];
+
+	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_APCREATE_OUT,authdata,CheckData);
+	if(ret<0)
+		return -EINVAL;
+	if(Memcmp(CheckData,vtcm_output->authCode,DIGEST_SIZE)!=0)
+	{
+		printf("APCreate check output authCode failed!\n");
+		return -EINVAL;
+	}	
+    }	
 
     sprintf(Buf,"%d %x\n",vtcm_output->returnCode,vtcm_output->authHandle);
 

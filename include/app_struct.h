@@ -208,7 +208,14 @@ struct vtcm_external_input_command
 {
     UINT16 tag;
     int paramSize;
-    int ordinal;
+    UINT32 ordinal;
+}__attribute__((packed));
+
+struct vtcm_external_output_command
+{
+    UINT16 tag;
+    int paramSize;
+    UINT32 returnCode;
 }__attribute__((packed));
 
 

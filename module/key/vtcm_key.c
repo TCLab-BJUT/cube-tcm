@@ -809,8 +809,7 @@ int vtcm_Check_Permission(int ordinal,
         BYTE *Str_Hash = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE*2);
         BYTE *Str_Hash_out = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE*2);
         BYTE *checksum = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE*2);
-        int temp = htonl(ordinal);
-        memcpy(Str_Hash, &temp, 4);
+        memcpy(Str_Hash, &ordinal, 4);
         UINT16 temp_type = htons(entityType);
         memcpy(Str_Hash + 4, &temp_type, 2);
         vtcm_SM3(Str_Hash_out, Str_Hash, 6);
@@ -857,7 +856,8 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
     TCM_COUNTER_VALUE   *counterValue;                  // associated with entityValue 
     TCM_KEY             *authKey = NULL;                       // key to authorize 
     TCM_BOOL            parentPCRStatus;
-    
+    int returnCode=0;    
+
     //input process
     struct tcm_in_APCreate *vtcm_in;
     
@@ -1004,11 +1004,21 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
     //Verification authCode
     if(vtcm_in->entityType != TCM_ET_NONE)
     {
-        ret = vtcm_Check_Permission(vtcm_in->ordinal,
-                                    vtcm_in->entityType,
-                                    authData,
-                                    vtcm_in->nonce,
-                                    vtcm_in->authCode);
+	// compute checkcode
+	BYTE CheckData[TCM_HASH_SIZE];	
+	Memcpy(CheckData,authData,TCM_HASH_SIZE);
+    	ret=vtcm_Compute_AuthCode(vtcm_in,DTYPE_VTCM_IN,SUBTYPE_APCREATE_IN,NULL,CheckData);
+	if(ret!=0)
+	{
+		returnCode=TCM_BAD_PARAMETER;
+		goto apcreate_out;
+	}
+	if(Memcmp(CheckData,vtcm_in->authCode,TCM_HASH_SIZE)!=0)
+	{
+		returnCode=TCM_AUTHFAIL;
+		goto apcreate_out;
+	}
+
     }
     /* 2.c. shared secret */
     if(vtcm_in->entityType != TCM_ET_NONE)
@@ -1018,7 +1028,10 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
         Memcpy(buffer_hmac_sm3, vtcm_in->nonce, TCM_NONCE_SIZE);
         Memcpy(buffer_hmac_sm3+TCM_NONCE_SIZE, authSession->nonceEven, TCM_NONCE_SIZE);
         vtcm_HMAC_SM3(authData, TCM_NONCE_SIZE, buffer_hmac_sm3, TCM_NONCE_SIZE*2, authSession->sharedSecret);//!!!!
+
+
         //Entity authorization code
+/*
         BYTE *buffer_sm3 = (BYTE *)malloc(sizeof(BYTE)*80);
         BYTE *buffer_sm3_out = (BYTE *)malloc(sizeof(BYTE)*80);
             
@@ -1031,20 +1044,23 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
         temp = htonl(vtcm_out->sernum);
         Memcpy(buffer_sm3_out + TCM_NONCE_SIZE, &temp, 4);
         vtcm_HMAC_SM3(authSession->sharedSecret , TCM_NONCE_SIZE,  buffer_sm3_out, TCM_NONCE_SIZE+4, vtcm_out->authCode);
+*/
     }
 
+apcreate_out:
     //Response
     printf("proc_vtcm_APCreate : Response \n");
 
     vtcm_out->tag = 0xC500;
-    vtcm_out->returnCode = ret;
+    vtcm_out->returnCode = returnCode;
     vtcm_out->authHandle = authHandle;
 
     Memcpy(vtcm_out->nonceEven, authSession->nonceEven, TCM_NONCE_SIZE);
     
+    ret=vtcm_Compute_AuthCode(vtcm_out,DTYPE_VTCM_OUT,SUBTYPE_APCREATE_OUT,authSession,vtcm_out->authCode);
+
     int responseSize = 0;
-    BYTE* response = (BYTE*)malloc(sizeof(BYTE) * 700);
-    responseSize = struct_2_blob(vtcm_out, response, template_out);
+    responseSize = struct_2_blob(vtcm_out, Buf, template_out);
 
     vtcm_out->paramSize = responseSize;
     void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_APCREATE_OUT ,recv_msg);

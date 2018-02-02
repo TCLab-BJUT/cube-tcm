@@ -32,6 +32,20 @@
 
 static BYTE Buf[DIGEST_SIZE*64];
 
+void print_bin_data(BYTE * data,int len,int width)
+{
+    int i;
+    for(i=0;i<len;i++){
+        printf("%.2x ",data[i]);
+        if (width>0)
+        { 	
+            if((i+1)%width==0)
+                printf("\n");
+        }
+    }
+    printf("\n");
+}
+
 int vtcm_setscene(void * sub_proc,void * recv_msg)
 {
 	int ret;
@@ -2082,144 +2096,116 @@ int vtcm_Comp_PcrsDigest(TCM_PCR_COMPOSITE * pcrs, BYTE * digest)
 }
 
 int vtcm_Compute_AuthCode(void * vtcm_data,
-	TCM_SESSION_DATA * authsession1,
-	TCM_SESSION_DATA * authsession2,
+	int type,int subtype,
+	TCM_SESSION_DATA * authsession,BYTE * AuthCode)
+{
+	int offset;
+	void * vtcm_template;
+	struct vtcm_external_input_command * cmd_head=vtcm_data;
+	struct vtcm_external_output_command * return_head=vtcm_data;
+	BYTE AuthBuf[DIGEST_SIZE*4];
+	TCM_HANDLE * auth1handle;
+	TCM_HANDLE * auth2handle;
+	int ret;
+
+        // Compute command parameter's hash
+
+	vtcm_template=memdb_get_template(type,subtype);	
+	if(vtcm_template==NULL)
+		return -EINVAL;
+
+	if(type==DTYPE_VTCM_IN)
+	{
+		// input command hash value compute	
+    		offset = struct_2_part_blob(vtcm_data,Buf,vtcm_template,CUBE_ELEM_FLAG_KEY);
+    		if(offset<0)
+    			return offset;
+	}
+	else if(type==DTYPE_VTCM_OUT)
+	{
+    		offset = struct_2_part_blob(vtcm_data,Buf+8,vtcm_template,CUBE_ELEM_FLAG_KEY);
+		*(int *)Buf=htonl(return_head->returnCode);
+		Memcpy(Buf+sizeof(return_head->returnCode),&subtype,sizeof(subtype));
+		offset+=8;
+	}
+	else
+		return -EINVAL;
+
+	sm3(Buf,offset,AuthBuf);
+	offset=TCM_HASH_SIZE;
+
+	if(cmd_head->tag== htons(TCM_TAG_RQU_AUTH1_COMMAND))
+	{
+		switch(subtype)
+		{
+			case SUBTYPE_APCREATE_IN:
+    				ret = struct_2_part_blob(vtcm_data,AuthBuf+offset,vtcm_template,CUBE_ELEM_FLAG_INPUT);
+    				if(ret<0)
+    					return ret;
+    				sm3_hmac(AuthCode,TCM_HASH_SIZE,
+					AuthBuf,DIGEST_SIZE+ret,
+					AuthCode);
+				break;			
+			default:
+				return -EINVAL;
+				
+		}
+	}
+	else if(cmd_head->tag == htons(TCM_TAG_RSP_AUTH1_COMMAND))
+	{
+		switch(subtype)
+		{
+			case SUBTYPE_APCREATE_OUT:
+    				ret = struct_2_part_blob(vtcm_data,AuthBuf+offset,vtcm_template,CUBE_ELEM_FLAG_INPUT);
+    				if(ret<0)
+    					return ret;
+    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+					AuthBuf,DIGEST_SIZE+ret,AuthCode);
+				break;			
+			default:
+				return -EINVAL;
+				
+		}
+
+	}
+	else if(cmd_head->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
+	{
+	}
+	else if(cmd_head->tag == htons(TCM_TAG_RSP_AUTH2_COMMAND))
+	{
+	}
+	else
+	{
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int vtcm_Build_CmdBlob(void * vtcm_data,
 	int type,int subtype,
 	BYTE * blob)
 {
 	int offset;
 	void * vtcm_template;
 	struct vtcm_external_input_command * cmd_head=vtcm_data;
-	BYTE cmdHash[DIGEST_SIZE];
-	BYTE AuthBuf[DIGEST_SIZE*2];
-	TCM_HANDLE * auth1handle;
-	TCM_HANDLE * auth2handle;
-	BYTE *     auth1code;
-	BYTE *     auth2code;
 	int ret;
+	unsigned int tempint=0;
 
 	vtcm_template=memdb_get_template(type,subtype);	
 	if(vtcm_template==NULL)
 		return -EINVAL;
 			
-    	offset = struct_2_blob(vtcm_data,Buf,vtcm_template);
+    	offset = struct_2_blob(vtcm_data,blob,vtcm_template);
     	if(offset<0)
     		return offset;
 
-        uint32_t temp_int;
+	cmd_head->paramSize=offset;
 
-	if((cmd_head->tag == htons(TCM_TAG_RQU_AUTH1_COMMAND))
-		||(cmd_head->tag == htons(TCM_TAG_RSP_AUTH1_COMMAND)))	
-	{
-		auth1handle=(TCM_AUTHHANDLE *)(Buf+offset-36);		
-		auth1code=(TCM_AUTHHANDLE *)(Buf+offset-32);		
-		sm3(Buf+6,offset-6-36,cmdHash);
-		Memcpy(AuthBuf,cmdHash,DIGEST_SIZE);
-    		Memcpy(AuthBuf+DIGEST_SIZE,auth1handle,sizeof(uint32_t));
-    		sm3_hmac(authsession1->sharedSecret,TCM_HASH_SIZE,
-			AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
-			auth1code);
-	}
-	else if((cmd_head->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
-		||(cmd_head->tag == htons(TCM_TAG_RSP_AUTH2_COMMAND)))	
-	{
-		auth1handle=(TCM_AUTHHANDLE *)(Buf+offset-36*2);		
-		auth1code=(TCM_AUTHHANDLE *)(Buf+offset-36-32);		
-		auth2handle=(TCM_AUTHHANDLE *)(Buf+offset-36);		
-		auth2code=(TCM_AUTHHANDLE *)(Buf+offset-32);		
-		sm3(Buf+6,offset-6-36*2,cmdHash);
+	tempint=htonl(cmd_head->paramSize);
 
-		Memcpy(AuthBuf,cmdHash,DIGEST_SIZE);
-    		Memcpy(AuthBuf+DIGEST_SIZE,auth1handle,sizeof(uint32_t));
-    		sm3_hmac(authsession1->sharedSecret,TCM_HASH_SIZE,
-			AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
-			auth1code);
+	Memcpy(blob+2,&tempint,sizeof(cmd_head->paramSize));
 
-		Memcpy(AuthBuf,cmdHash,DIGEST_SIZE);
-    		Memcpy(AuthBuf+DIGEST_SIZE,auth2handle,sizeof(uint32_t));
-    		sm3_hmac(authsession2->sharedSecret,TCM_HASH_SIZE,
-			AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
-			auth2code);
-	}
-	else
-		return 0;
-	Memcpy(blob,Buf,offset);
 	return offset;
-}
-
-int vtcm_Check_AuthCode(void * vtcm_data,
-	TCM_SESSION_DATA * authsession1,
-	TCM_SESSION_DATA * authsession2,
-	int type,int subtype)
-{
-	int offset;
-	void * vtcm_template;
-	struct vtcm_external_input_command * cmd_head=vtcm_data;
-	BYTE cmdHash[DIGEST_SIZE];
-	TCM_HANDLE * auth1handle;
-	TCM_HANDLE * auth2handle;
-	BYTE *     auth1code;
-	BYTE *     auth2code;
-	BYTE auth1check[DIGEST_SIZE];
-	BYTE auth2check[DIGEST_SIZE];
-	int ret;
-
-	vtcm_template=memdb_get_template(type,subtype);	
-	if(vtcm_template==NULL)
-		return -EINVAL;
-			
-    	offset = struct_2_blob(vtcm_data,Buf,vtcm_template);
-    	if(offset<0)
-    		return offset;
-
-        uint32_t temp_int;
-
-	if((cmd_head->tag == htons(TCM_TAG_RQU_AUTH1_COMMAND))
-		||(cmd_head->tag == htons(TCM_TAG_RSP_AUTH1_COMMAND)))	
-	{
-		auth1handle=(TCM_AUTHHANDLE *)(Buf+offset-36);		
-		auth1code=(TCM_AUTHHANDLE *)(Buf+offset-32);		
-		sm3(Buf+6,offset-6-36,cmdHash);
-		Memcpy(Buf,cmdHash,DIGEST_SIZE);
-		temp_int=htonl(*auth1handle);
-    		Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    		sm3_hmac(authsession1->sharedSecret,TCM_HASH_SIZE,
-			Buf,DIGEST_SIZE+sizeof(uint32_t),
-			auth1check);
-		if(Memcpy(auth1check,auth1code,DIGEST_SIZE)==0)
-			return TCM_SUCCESS;
-		else
-			return TCM_AUTHFAIL;
-	}
-	else if((cmd_head->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
-		||(cmd_head->tag == htons(TCM_TAG_RSP_AUTH2_COMMAND)))	
-	{
-		auth1handle=(TCM_AUTHHANDLE *)(Buf+offset-36*2);		
-		auth1code=(TCM_AUTHHANDLE *)(Buf+offset-36-32);		
-		auth2handle=(TCM_AUTHHANDLE *)(Buf+offset-36);		
-		auth2code=(TCM_AUTHHANDLE *)(Buf+offset-32);		
-		sm3(Buf+6,offset-6-36*2,cmdHash);
-
-		Memcpy(Buf,cmdHash,DIGEST_SIZE);
-		temp_int=htonl(*auth1handle);
-    		Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    		sm3_hmac(authsession1->sharedSecret,TCM_HASH_SIZE,
-			Buf,DIGEST_SIZE+sizeof(uint32_t),
-			auth1check);
-		if(Memcpy(auth1check,auth1code,DIGEST_SIZE)!=0)
-			return TCM_AUTHFAIL;
-
-		Memcpy(Buf,cmdHash,DIGEST_SIZE);
-		temp_int=htonl(*auth2handle);
-    		Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    		sm3_hmac(authsession2->sharedSecret,TCM_HASH_SIZE,
-			Buf,DIGEST_SIZE+sizeof(uint32_t),
-			auth2check);
-		if(Memcpy(auth2check,auth2code,DIGEST_SIZE)==0)
-			return TCM_SUCCESS;
-		else
-			return TCM_AUTH2FAIL;
-	}
 }
 
 /*

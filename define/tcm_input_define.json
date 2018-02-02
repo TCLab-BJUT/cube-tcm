@@ -794,12 +794,15 @@
 				{"name":"authHandle","type":"TPM32"},
 				{"name":"ownerAuth","type":"BINDATA","size":"32"}
                         ]
-			"index":
+                },
+		"flag_no":1,
+		"index":
+		[
 			{
 				"flag":"KEY",
 				"elemlist":"tag,paramSize,ordinal,pubInfo,encAuth"
 			}
-                }
+		]
         }
 }
 {
@@ -1180,6 +1183,18 @@
 				{"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,entityType"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1205,6 +1220,18 @@
 				{"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"nonceEven"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"sernum"
+			}
+		]
 	}	
 }
 {
