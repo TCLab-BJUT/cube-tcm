@@ -53,6 +53,31 @@ struct tcm_out_ActivateIdentity
     BYTE ownerAuth[DIGEST_SIZE]; 
 }__attribute__((packed)) ;
 
+struct tcm_in_CertifyKey
+{
+    UINT16 tag ;
+    int paramSize ;
+    int ordinal ;
+    int keyCertified;
+    int keyCertify;
+    int encDataSize;
+    BYTE *encData;
+    int pikAuthHandle ;
+    BYTE pikAuth[DIGEST_SIZE];		
+    int ownerAuthHandle ;
+    BYTE ownerAuth[DIGEST_SIZE];		
+}__attribute__((packed)) ;
+
+struct tcm_out_CertifyKey
+{
+    UINT16 tag ;
+    int paramSize ;
+    int returnCode ;
+    TCM_SYMMETRIC_KEY symmkey ;
+    BYTE pikAuth[DIGEST_SIZE] ; 
+    BYTE ownerAuth[DIGEST_SIZE]; 
+}__attribute__((packed)) ;
+
 typedef struct tcm_pik_cert
 {
 	TCM_PAYLOAD_TYPE payLoad;   // should be 0x19

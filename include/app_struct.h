@@ -989,26 +989,6 @@ struct tcm_out_ChangeAuth
     BYTE entityAuth[32];
 }__attribute__((packed));
 
-struct tcm_in_CertifyKey
-{
-    UINT16 tag;
-    int paramSize;
-    int ordinal;
-    int certHandle;
-    int keyHandle;
-    BYTE certAuth[32];
-}__attribute__((packed));
-
-struct tcm_out_CertifyKey
-{
-    UINT16 tag;
-    int paramSize;
-    int returnCode;
-    int certifyInfo;
-    int outDataSize;
-    BYTE * outData;
-}__attribute__((packed));
-
 struct tcm_in_OwnerReadInternalPub
 {
     UINT16 tag;

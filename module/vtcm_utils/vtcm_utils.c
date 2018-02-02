@@ -3662,10 +3662,12 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
     int outlen;
     int i=0;
     int ret = 0;
+    int offset;
     struct tcm_in_ReadPubek * vtcm_input;
     struct tcm_out_ReadPubek * vtcm_output;
     void * vtcm_template;
-    unsigned char nonce[TCM_HASH_SIZE];
+    BYTE checksum[DIGEST_SIZE];
+
     printf("Begin readpubek:\n");
     vtcm_input = Talloc0(sizeof(*vtcm_input));
     if(vtcm_input==NULL)
@@ -3675,8 +3677,8 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
         return -ENOMEM;
     vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
     vtcm_input->ordinal=SUBTYPE_READPUBEK_IN;
-    TSS_gennonce(nonce);
-    Memcpy(vtcm_input->antiReplay,nonce,TCM_HASH_SIZE);
+    RAND_bytes(vtcm_input->antiReplay,TCM_HASH_SIZE);
+
     vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_READPUBEK_IN);
     if(vtcm_template==NULL)
         return -EINVAL;
@@ -3688,25 +3690,50 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
     print_bin_data(Buf,ret,8);
 
     BYTE *BBuffer = (BYTE *)malloc(sizeof(BYTE) * 512) ;
+
+    // send command and wait for the result
     ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,BBuffer);
     if(ret<0)
         return ret;
+
+    // output the data
+    print_bin_data(BBuffer,outlen,8);
+
+    // get the output struct 
     vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_READPUBEK_OUT);
     if(vtcm_template==NULL)
         return -EINVAL;
+    
     ret=blob_2_struct(BBuffer,vtcm_output,vtcm_template);
     if(ret<0)
         return ret;
 
-    print_bin_data(vtcm_output->pubEndorsementKey.pubKey.key,vtcm_output->pubEndorsementKey.pubKey.keyLength,8);
+    // verify checksum
 
-    pubEK=Dalloc0(sizeof(*pubEK),sub_proc);
-    if(pubEK==NULL)
-        return -ENOMEM;
     vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
     if(vtcm_template==NULL)
         return -EINVAL;
 
+    ret=struct_2_blob(&vtcm_output->pubEndorsementKey,Buf,vtcm_template);
+    if(ret<0)
+   	return -EINVAL;
+    Memcpy(Buf+ret,vtcm_input->antiReplay,DIGEST_SIZE);
+    sm3(Buf,ret+DIGEST_SIZE,checksum);
+
+    if(Memcmp(checksum,&vtcm_output->checksum,DIGEST_SIZE)==0)
+    {
+	printf("readPubek Checksum succeed!\n");
+    }
+    else
+    {
+	printf("readPubek Checksum failed!\n");
+	return -EINVAL;	
+    }
+    
+    // assign endorsement key's value to the  pubEK 
+    pubEK=Dalloc0(sizeof(*pubEK),sub_proc);
+    if(pubEK==NULL)
+        return -ENOMEM;
     ret=struct_clone(&vtcm_output->pubEndorsementKey,pubEK,vtcm_template);
 
     sprintf(Buf,"%d \n",vtcm_output->returnCode);
