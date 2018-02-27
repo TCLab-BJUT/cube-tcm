@@ -50,7 +50,7 @@
 #endif
 
 /* 2.2.1 Basic data types rev 87 */
-typedef unsigned char  BYTE;            /* Basic byte used to transmit all character fields.  */
+//typedef unsigned char  BYTE;            /* Basic byte used to transmit all character fields.  */
 typedef unsigned char  TCM_BOOL;        /* TRUE/FALSE field. TRUE = 0x01, FALSE = 0x00 Use TCM_BOOL
                                            because MS VC++ defines BOOL on Windows */
 

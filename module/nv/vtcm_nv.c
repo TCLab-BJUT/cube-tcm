@@ -7,9 +7,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <openssl/rsa.h>
-#include <openssl/sha.h>
-#include <openssl/evp.h>
 
 #include "data_type.h"
 #include "errno.h"
