@@ -10,8 +10,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <openssl/rsa.h>
-#include <openssl/evp.h>
 #include <string.h>
 #include "data_type.h"
 #include "errno.h"
