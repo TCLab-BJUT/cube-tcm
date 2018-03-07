@@ -2096,8 +2096,10 @@ int vtcm_Comp_PcrsDigest(TCM_PCR_COMPOSITE * pcrs, BYTE * digest)
 }
 
 int vtcm_Compute_AuthCode(void * vtcm_data,
-	int type,int subtype,
-	TCM_SESSION_DATA * authsession,BYTE * AuthCode)
+	                      int type,
+                          int subtype,
+	                      TCM_SESSION_DATA * authsession,
+                          BYTE * AuthCode)
 {
 	int offset;
 	void * vtcm_template;
@@ -2106,6 +2108,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	BYTE AuthBuf[DIGEST_SIZE*4];
 	TCM_HANDLE * auth1handle;
 	TCM_HANDLE * auth2handle;
+    uint32_t sernum;
 	int ret;
 
         // Compute command parameter's hash
@@ -2146,6 +2149,28 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 					AuthBuf,DIGEST_SIZE+ret,
 					AuthCode);
 				break;			
+			case SUBTYPE_SM4ENCRYPT_IN:
+			case SUBTYPE_SEAL_IN:
+			case SUBTYPE_CREATEWRAPKEY_IN:
+            case SUBTYPE_SM4DECRYPT_IN:
+            case SUBTYPE_SIGN_IN:
+            case SUBTYPE_OWNERCLEAR_IN:
+            case SUBTYPE_DISABLEOWNERCLEAR_IN:
+            case SUBTYPE_NV_DEFINESPACE_IN:
+            case SUBTYPE_SM2DECRYPT_IN:
+            case SUBTYPE_LOADKEY_IN:
+            case SUBTYPE_QUOTE_IN:
+                    sernum = htonl(authsession->SERIAL);
+                    Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
+    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
+					         AuthCode);
+				break;	
+            case SUBTYPE_TAKEOWNERSHIP_IN:
+    				sm3_hmac(AuthCode,TCM_HASH_SIZE,
+					AuthBuf,DIGEST_SIZE,
+					AuthCode);
+                    break;
 			default:
 				return -EINVAL;
 				
@@ -2162,6 +2187,28 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
     				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 					AuthBuf,DIGEST_SIZE+ret,AuthCode);
 				break;			
+			case SUBTYPE_SM4ENCRYPT_OUT:
+			case SUBTYPE_SEAL_OUT:
+			case SUBTYPE_CREATEWRAPKEY_OUT:
+            case SUBTYPE_SM4DECRYPT_OUT:
+            case SUBTYPE_SIGN_OUT:
+            case SUBTYPE_OWNERCLEAR_OUT:
+            case SUBTYPE_DISABLEOWNERCLEAR_OUT:
+            case SUBTYPE_NV_DEFINESPACE_OUT:
+            case SUBTYPE_SM2DECRYPT_OUT:
+            case SUBTYPE_LOADKEY_OUT:
+            case SUBTYPE_QUOTE_OUT:
+            case SUBTYPE_UNSEAL_OUT:
+                    sernum = htonl(authsession->SERIAL);
+                    Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
+    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
+					         AuthCode);
+				break;
+            case SUBTYPE_TAKEOWNERSHIP_OUT:
+                sm3_hmac(AuthCode, TCM_HASH_SIZE,
+                         AuthBuf,DIGEST_SIZE,AuthCode);
+                break;
 			default:
 				return -EINVAL;
 				
@@ -2170,9 +2217,35 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	}
 	else if(cmd_head->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
 	{
+      switch(subtype)
+      {
+      case SUBTYPE_UNSEAL_IN:
+      case SUBTYPE_MAKEIDENTITY_IN:
+                    sernum = htonl(authsession->SERIAL);
+                    Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
+    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
+					         AuthCode);
+        break;
+
+      default:
+        return -EINVAL;
+      }
 	}
 	else if(cmd_head->tag == htons(TCM_TAG_RSP_AUTH2_COMMAND))
 	{
+      switch(subtype)
+      {
+      case SUBTYPE_MAKEIDENTITY_OUT:
+                    sernum = htonl(authsession->SERIAL);
+                    Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
+    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
+					         AuthCode);
+        break;
+      default:
+        return -EINVAL;
+      }
 	}
 	else
 	{
@@ -2181,6 +2254,82 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	return 0;
 }
 
+int vtcm_Compute_AuthCode2(void * vtcm_data,
+	                      int type,
+                          int subtype,
+	                      TCM_SESSION_DATA * authsession,
+                          BYTE * AuthCode)
+{
+	int offset;
+	void * vtcm_template;
+	struct vtcm_external_input_command * cmd_head=vtcm_data;
+	struct vtcm_external_output_command * return_head=vtcm_data;
+	BYTE AuthBuf[DIGEST_SIZE*4];
+	TCM_HANDLE * auth1handle;
+	TCM_HANDLE * auth2handle;
+    uint32_t sernum;
+	int ret;
+
+        // Compute command parameter's hash
+
+	vtcm_template=memdb_get_template(type,subtype);	
+	if(vtcm_template==NULL)
+		return -EINVAL;
+
+	if(type==DTYPE_VTCM_IN)
+	{
+		// input command hash value compute	
+    		offset = struct_2_part_blob(vtcm_data,Buf,vtcm_template,CUBE_ELEM_FLAG_KEY);
+    		if(offset<0)
+    			return offset;
+	}
+	else if(type==DTYPE_VTCM_OUT)
+	{
+    		offset = struct_2_part_blob(vtcm_data,Buf+8,vtcm_template,CUBE_ELEM_FLAG_KEY);
+		*(int *)Buf=htonl(return_head->returnCode);
+		Memcpy(Buf+sizeof(return_head->returnCode),&subtype,sizeof(subtype));
+		offset+=8;
+	}
+	else
+		return -EINVAL;
+
+	sm3(Buf,offset,AuthBuf);
+	offset=TCM_HASH_SIZE;
+
+	if(cmd_head->tag== htons(TCM_TAG_RQU_AUTH1_COMMAND))
+        return -EINVAL;
+	else if(cmd_head->tag == htons(TCM_TAG_RSP_AUTH1_COMMAND))
+        return -EINVAL;
+	else if(cmd_head->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
+	{
+      switch(subtype)
+      {
+
+                  default:
+           return -EINVAL;
+      }
+	}
+	else if(cmd_head->tag == htons(TCM_TAG_RSP_AUTH2_COMMAND))
+	{
+      switch(subtype)
+      {
+          case SUBTYPE_MAKEIDENTITY_OUT:
+                  sernum = htonl(authsession->SERIAL);
+                  Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
+    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+					    AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
+					    AuthCode);
+				break;			
+          default:
+              return -EINVAL;
+      }
+	}
+	else
+	{
+		return -EINVAL;
+	}
+	return 0;
+}
 int vtcm_Build_CmdBlob(void * vtcm_data,
 	int type,int subtype,
 	BYTE * blob)

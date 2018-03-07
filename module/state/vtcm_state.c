@@ -1077,7 +1077,7 @@ int proc_vtcm_GetRandom(void * sub_proc, void * recv_msg)
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
-
+/*
 int vtcm_AuthData_Check_OwnerClear(int ordinal,
                                    TCM_SESSION_DATA *auth_session_data,
                                    BYTE *authCode)
@@ -1164,13 +1164,13 @@ int vtcm_AuthData_Check_OwnerClearout(int returnCode,
     free(checksum);
     return ret;
 }
-
+*/
 int proc_vtcm_DisableOwnerClear(void * sub_proc, void * recv_msg)
 {
     printf("proc_vtcm_DisableOwnerClear : Start\n");
     int ret = 0;
-    int i = 0;
     TCM_SESSION_DATA *auth_session_data = NULL;
+    BYTE CheckData[TCM_HASH_SIZE];
 
     struct tcm_in_DisableOwnerClear *tcm_DisableOwnerClear_in;
     ret = message_get_record(recv_msg, (void **)&tcm_DisableOwnerClear_in, 0);
@@ -1197,11 +1197,24 @@ int proc_vtcm_DisableOwnerClear(void * sub_proc, void * recv_msg)
                                    tcm_DisableOwnerClear_in->authHandle);
             printf("Serial is %08x\n", auth_session_data->SERIAL);
     }
+
+    if(ret == TCM_SUCCESS) {
+      memcpy(CheckData, auth_session_data->sharedSecret, TCM_HASH_SIZE);
+      ret = vtcm_Compute_AuthCode(tcm_DisableOwnerClear_in, DTYPE_VTCM_IN, SUBTYPE_DISABLEOWNERCLEAR_IN, auth_session_data, CheckData);
+    }
+    if(ret == TCM_SUCCESS) {
+      if(memcmp(tcm_DisableOwnerClear_in->ownerAuth, CheckData, TCM_HASH_SIZE) != 0){
+        ret = TCM_AUTHFAIL;
+        printf("\nerror, checkdata is wrong\n");
+      }
+    }
+    /*
     if(ret == TCM_SUCCESS) {
         vtcm_AuthData_Check_OwnerClear(tcm_DisableOwnerClear_in->ordinal,
                                        auth_session_data,
                                        tcm_DisableOwnerClear_in->ownerAuth);
     }
+    */
     tcm_state->tcm_permanent_flags.disableOwnerClear = TRUE;
 
     //output
@@ -1211,12 +1224,15 @@ int proc_vtcm_DisableOwnerClear(void * sub_proc, void * recv_msg)
 
     //tcm_DisableOwnerClear_out->resAuth = ;
 
+    
     if(ret == TCM_SUCCESS) {
-        vtcm_AuthData_Check_OwnerClearout(tcm_DisableOwnerClear_out->returnCode,
-                                          tcm_DisableOwnerClear_in->ordinal,
-                                          auth_session_data,
-                                          tcm_DisableOwnerClear_out->resAuth);
+      ret = vtcm_Compute_AuthCode(tcm_DisableOwnerClear_out,
+                                  DTYPE_VTCM_OUT,
+                                  SUBTYPE_DISABLEOWNERCLEAR_OUT,
+                                  auth_session_data,
+                                  tcm_DisableOwnerClear_out->resAuth);
     }
+    
     void *send_msg = message_create(DTYPE_VTCM_OUT, SUBTYPE_DISABLEOWNERCLEAR_OUT, recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
@@ -2219,6 +2235,7 @@ int proc_vtcm_OwnerClear(void * sub_proc,void * recv_msg)
     printf("proc_vtcm_OwnerClear : Start\n") ;
     int ret = 0;
     TCM_SESSION_DATA *auth_session_data = NULL;
+    BYTE CheckData[TCM_HASH_SIZE];  
     
     struct tcm_in_OwnerClear *tcm_input;
 
@@ -2245,23 +2262,32 @@ int proc_vtcm_OwnerClear(void * sub_proc,void * recv_msg)
                                    tcm_input->authHandle);
             printf("Serial is %08x\n", auth_session_data->SERIAL);
     }
+    if(ret == TCM_SUCCESS)
+    {
+      Memcpy(CheckData, auth_session_data->sharedSecret, TCM_HASH_SIZE);
+      ret = vtcm_Compute_AuthCode(tcm_input, DTYPE_VTCM_IN, SUBTYPE_OWNERCLEAR_IN, auth_session_data, CheckData);
+
+    }
     if(ret == TCM_SUCCESS) {
-        vtcm_AuthData_Check_OwnerClear(tcm_input->ordinal,
-                                       auth_session_data,
-                                       tcm_input->ownerAuth);
+      if(memcmp(tcm_input->ownerAuth, CheckData, TCM_HASH_SIZE) != 0 ) {
+        ret = TCM_AUTHFAIL;
+        printf("\nerror! The CheckData is wrong\n");
+      }
     }
     //Response 
     tcm_output->tag = 0xC500;
     tcm_output->paramSize = 42;
     tcm_output->returnCode = 0;
 
+    
     if(ret == TCM_SUCCESS) {
-        vtcm_AuthData_Check_OwnerClearout(tcm_output->returnCode,
-                                          tcm_input->ordinal,
-                                          auth_session_data,
-                                          tcm_output->resAuth);
+      ret = vtcm_Compute_AuthCode(tcm_output,
+                                   DTYPE_VTCM_OUT,
+                                   SUBTYPE_OWNERCLEAR_OUT,
+                                   auth_session_data,
+                                   tcm_output->resAuth);
     }
-
+    
     void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_OWNERCLEAR_OUT,recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
