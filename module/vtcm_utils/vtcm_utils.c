@@ -3653,9 +3653,12 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
         return -EINVAL;	
 
     // check authdata
+
+    if(authdata->entityTypeByte !=TCM_ET_NONE)
     {
 	BYTE CheckData[TCM_HASH_SIZE];
 
+	
 	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_APCREATE_OUT,authdata,CheckData);
 	if(ret<0)
 		return -EINVAL;
