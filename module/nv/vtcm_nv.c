@@ -150,6 +150,7 @@ int proc_vtcm_NvDefinespace(void *sub_proc, void *recv_msg)
         TCM_BOOL writeAllNV = FALSE;
         TCM_BOOL writeLocalities = FALSE;
         TCM_DIGEST nvAuth;
+        BYTE CheckData[TCM_HASH_SIZE];
 	void * vtcm_template;
 
     /*
@@ -198,6 +199,22 @@ int proc_vtcm_NvDefinespace(void *sub_proc, void *recv_msg)
         }
     }
     // 4 a.Validate ownerAuth
+    if (ret == TCM_SUCCESS) 
+    {
+      ret = vtcm_Compute_AuthCode(vtcm_in, 
+                                  DTYPE_VTCM_IN, 
+                                  SUBTYPE_NV_DEFINESPACE_IN, 
+                                  authSession, 
+                                  CheckData);
+    }
+    if(ret == TCM_SUCCESS) 
+    {
+      if(memcmp(CheckData, vtcm_in->ownerAuth, TCM_HASH_SIZE) != 0)
+      {
+        ret = TCM_AUTHFAIL;
+        printf("\nerror! compare authcode error\n");
+      }
+    }
     if(vtcm_in->tag == TCM_TAG_RQU_AUTH1_COMMAND)
     {
         returnCode = vtcm_AuthSessions_GetEntry(&authSession, curr_tcm->tcm_stany_data.sessions, vtcm_in->authHandle);
@@ -243,6 +260,15 @@ int proc_vtcm_NvDefinespace(void *sub_proc, void *recv_msg)
                     
     }
 
+    if(ret == TCM_SUCCESS)
+    {
+      ret = vtcm_Compute_AuthCode(vtcm_out,
+                                  DTYPE_VTCM_OUT,
+                                  SUBTYPE_NV_DEFINESPACE_OUT,
+                                  authSession,
+                                  vtcm_out->ownerAuth
+                                 );
+    }
     // 5) 
         // a. Create D1
        returnCode = vtcm_NVIndexEntries_GetEntry(&nv_sens, &curr_tcm->tcm_nv_index_entries, vtcm_in->pubInfo.nvIndex);

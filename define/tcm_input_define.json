@@ -795,13 +795,17 @@
 				{"name":"ownerAuth","type":"BINDATA","size":"32"}
                         ]
                 },
-		"flag_no":1,
+		"flag_no":2,
 		"index":
 		[
 			{
 				"flag":"KEY",
 				"elemlist":"tag,paramSize,ordinal,pubInfo,encAuth"
-			}
+			},
+        {
+          "flag":"INPUT",
+          "elemlist":"nonce"
+        }
 		]
         }
 }
@@ -825,6 +829,18 @@
                                 {"name":"ownerAuth","type":"BINDATA","size":"32"}
                         ]
                 }
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":""
+			},
+        {
+          "flag":"INPUT",
+          "elemlist":"nonce"
+        }
+		]
         }
 }
 {
@@ -1261,6 +1277,18 @@
 				{"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,protocolID,encOwnerAuthSize,encOwnerAuth,encSmkAuthSize,encSmkAuth,smkParms"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1284,6 +1312,18 @@
 				{"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"smkPub"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1351,6 +1391,18 @@
                 {"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1373,6 +1425,18 @@
                 {"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":""
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 
@@ -1618,6 +1682,18 @@
                 {"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1640,6 +1716,18 @@
                 {"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":""
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1667,6 +1755,18 @@
                 {"name":"pubAuth","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,dataUsageAuth,dataMigrationAuth,keyInfo"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1690,6 +1790,18 @@
                 {"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"wrappedKey"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1715,6 +1827,18 @@
                 {"name":"parentAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal, inKey"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1738,6 +1862,18 @@
                 {"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":""
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1814,6 +1950,18 @@
                 {"name":"privAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,externalData,targetPCR"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1839,6 +1987,18 @@
                 		{"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"pcrData,sig"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1865,6 +2025,18 @@
                 {"name":"DecryptAuthVerfication","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,DecryptDataSize,DecryptData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1889,6 +2061,18 @@
                 {"name":"DecryptedAuthVerfication","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"DecryptedDataSize,DecryptedData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1916,6 +2100,18 @@
                 {"name":"EncryptAuthVerfication","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,CBCusedIV,EncryptDataSize,EncryptData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1940,6 +2136,18 @@
                 {"name":"EncryptedAuthVerfication","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"EncryptedDataSize,EncryptedData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1967,6 +2175,18 @@
                 {"name":"DecryptAuthVerfication","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,CBCusedIV,DecryptDataSize,DecryptData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -1991,6 +2211,18 @@
                 {"name":"DecryptedAuthverfication","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"DecryptedDataSize,DecryptedData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -2017,6 +2249,18 @@
                 {"name":"privAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal, areaToSignSize, areaToSign"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -2041,6 +2285,18 @@
                 {"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"sigSize, sig"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 
@@ -2070,6 +2326,18 @@
                 {"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,pikAuth,pubDigest,pikParams"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -2096,6 +2364,22 @@
                 {"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        "flag_no":3,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"pikPub"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+			{
+				"flag":"DESC",
+				"elemlist":"pikPub,CertSize,CertData"
+			}
+		]
 	}	
 }
 {
@@ -2177,6 +2461,18 @@
                 {"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"ordinal,encAuth,pcrInfoSize,pcrInfo,InDataSize,InData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -2200,6 +2496,18 @@
                 {"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"sealedData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -2227,6 +2535,18 @@
                 {"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"encAuth"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {
@@ -2252,6 +2572,18 @@
                 {"name":"authCode","type":"BINDATA","size":"32"}
 			]
 		}
+		"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"PrintData"
+			},
+			{
+				"flag":"INPUT",
+				"elemlist":"nonce"
+			}
+		]
 	}	
 }
 {

@@ -176,4 +176,8 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	int type,int subtype,
 	TCM_SESSION_DATA * authsession,
 	BYTE * AuthCode);
+int vtcm_Compute_AuthCode2(void * vtcm_data,
+	int type,int subtype,
+	TCM_SESSION_DATA * authsession,
+	BYTE * AuthCode);
 #endif

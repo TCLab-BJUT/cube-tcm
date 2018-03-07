@@ -124,6 +124,7 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
     uint32_t returnCode=0;
     BYTE ownerauth[TCM_HASH_SIZE];
     BYTE smkauth[TCM_HASH_SIZE];
+    BYTE CheckData[TCM_HASH_SIZE];
     
     printf("proc_vtcm_TakeOwnership : Start\n");
     ret = message_get_record(recv_msg, (void **)&vtcm_in, 0); // get structure 
@@ -167,20 +168,36 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
     		return offset;
 	
     	// compute authCode
-    	sm3(Buf+6,offset-6-36,Buf+offset);
+        memcpy(CheckData, ownerauth, TCM_HASH_SIZE);
+        if(ret == TCM_SUCCESS) {
+          ret = vtcm_Compute_AuthCode(vtcm_in,
+                                      DTYPE_VTCM_IN,
+                                      SUBTYPE_TAKEOWNERSHIP_IN,
+                                      NULL,
+                                      CheckData);
+        }
+    	//sm3(Buf+6,offset-6-36,Buf+offset);
 
-    	Memcpy(Buf,Buf+offset,TCM_HASH_SIZE);
+    	//Memcpy(Buf,Buf+offset,TCM_HASH_SIZE);
     
-    	Memcpy(Buf+TCM_HASH_SIZE,Buf+offset-36,sizeof(TCM_HANDLE));
+    	//Memcpy(Buf+TCM_HASH_SIZE,Buf+offset-36,sizeof(TCM_HANDLE));
   
-    	sm3_hmac(ownerauth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE+sizeof(TCM_HANDLE),Buf+offset);
+    	//sm3_hmac(ownerauth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE+sizeof(TCM_HANDLE),Buf+offset);
     		
     	// Compare the AuthCode 
+        /*
     	if(Memcmp(Buf+offset,vtcm_in->authCode,TCM_HASH_SIZE)!=0)
     	{
 		returnCode=TCM_AUTHFAIL;
 		goto takeown_out;
-    	}   
+    	} 
+        */
+        if(memcmp(CheckData, vtcm_in->authCode, TCM_HASH_SIZE) != 0)
+        {
+          ret = TCM_AUTHFAIL;
+          printf("\ncompare authcode in failed\n");
+          goto takeown_out;
+        }
         // copy ownerAuth data to permanent_data struct
 	Memcpy(curr_tcm->tcm_permanent_data.ownerAuth,ownerauth,TCM_SECRET_SIZE);
 
@@ -230,14 +247,23 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
 	}
     }
 
-takeown_out:
+   takeown_out:
 
     vtcm_out=Talloc0(sizeof(*vtcm_out));
     if(vtcm_out==NULL)
 	return -ENOMEM;
     vtcm_out->tag=0xC500;
-    vtcm_out->returnCode=returnCode;
+    vtcm_out->returnCode=ret;
 
+    memcpy(vtcm_out->resAuth, ownerauth, TCM_HASH_SIZE);
+    if(ret == TCM_SUCCESS) 
+    {
+     ret = vtcm_Compute_AuthCode(vtcm_out,
+                                 DTYPE_VTCM_OUT,
+                                 SUBTYPE_TAKEOWNERSHIP_OUT,
+                                 NULL,
+                                 vtcm_out->resAuth);
+   }
     vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
     if(vtcm_template==NULL)
 	return -EINVAL;
@@ -308,6 +334,8 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
     BYTE smkauth[TCM_HASH_SIZE];
     BYTE pikauth[TCM_HASH_SIZE];
     BYTE cmdHash[TCM_HASH_SIZE];
+    BYTE CheckData[TCM_HASH_SIZE];
+    BYTE CheckData2[TCM_HASH_SIZE];
     
     printf("proc_vtcm_MakeIdentity : Start\n");
     ret = message_get_record(recv_msg, (void **)&vtcm_in, 0); // get structure 
@@ -348,6 +376,7 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
     	if(offset<0)
     		return offset;
 
+        /*
     // check smkAuth
     uint32_t temp_int;
     // compute smkauthCode
@@ -376,10 +405,33 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
     sm3_hmac(ownerauthSession->sharedSecret,TCM_HASH_SIZE,
 	Buf,DIGEST_SIZE+sizeof(uint32_t),
 	ownerauth);
-
-    if(Memcmp(ownerauth,vtcm_in->ownerAuth,TCM_HASH_SIZE)!=0)
+*/
+        if(ret == TCM_SUCCESS)
+        {
+          ret = vtcm_Compute_AuthCode(vtcm_in,
+                                      DTYPE_VTCM_IN,
+                                      SUBTYPE_MAKEIDENTITY_IN,
+                                      smkauthSession,
+                                      CheckData);
+        }
+    if(Memcmp(CheckData,vtcm_in->smkAuth,TCM_HASH_SIZE)!=0)
+    {
+	returnCode=TCM_AUTHFAIL;
+    printf("\nerror, smkauth compare in failed\n");
+	goto makeidentity_out;
+    }
+        if(ret == TCM_SUCCESS)
+        {
+          ret = vtcm_Compute_AuthCode(vtcm_in,
+                                      DTYPE_VTCM_IN,
+                                      SUBTYPE_MAKEIDENTITY_IN,
+                                      ownerauthSession,
+                                      CheckData2);
+        }
+    if(Memcmp(CheckData2,vtcm_in->ownerAuth,TCM_HASH_SIZE)!=0)
     {
 	returnCode=TCM_AUTH2FAIL;
+    printf("\nownerauth compare in failed\n");
 	goto makeidentity_out;
     }	
 
@@ -531,9 +583,25 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
 */
 makeidentity_out:
 
-    vtcm_out->tag=0xC500;
+    vtcm_out->tag=0xC600;
     vtcm_out->returnCode=returnCode;
 
+    if(ret == TCM_SUCCESS)
+    {
+        ret = vtcm_Compute_AuthCode(vtcm_out,
+                                    DTYPE_VTCM_OUT,
+                                    SUBTYPE_MAKEIDENTITY_OUT,
+                                    smkauthSession,
+                                    vtcm_out->smkAuth);
+    }
+    if(ret == TCM_SUCCESS)
+    {
+        ret = vtcm_Compute_AuthCode2(vtcm_out,
+                                    DTYPE_VTCM_OUT,
+                                    SUBTYPE_MAKEIDENTITY_OUT,
+                                    ownerauthSession,
+                                    vtcm_out->ownerAuth);
+    }
     void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_MAKEIDENTITY_OUT ,recv_msg);
     if(send_msg == NULL)
     {
@@ -780,6 +848,7 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
     TCM_QUOTE_INFO quoteinfo;
     BYTE * signdata;
     BYTE cmdHash[DIGEST_SIZE];
+    BYTE CheckData[TCM_HASH_SIZE];
 
     //input process
     struct tcm_in_Quote *vtcm_in;
@@ -834,17 +903,25 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
     // check privAuth
     uint32_t temp_int;
     // compute authCode
-    sm3(Buf+6,offset-6-36,cmdHash);
+    //sm3(Buf+6,offset-6-36,cmdHash);
 
-    Memcpy(Buf,cmdHash,DIGEST_SIZE);
-    temp_int=htonl(vtcm_in->authHandle);
-    Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
+    //Memcpy(Buf,cmdHash,DIGEST_SIZE);
+    //temp_int=htonl(vtcm_in->authHandle);
+    //Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
     
-    sm3_hmac(authSession->sharedSecret,TCM_HASH_SIZE,
-	Buf,DIGEST_SIZE+sizeof(uint32_t),
-	pikauth);
+    //sm3_hmac(authSession->sharedSecret,TCM_HASH_SIZE,
+	//Buf,DIGEST_SIZE+sizeof(uint32_t),
+	//pikauth);
 
-    if(Memcmp(pikauth,vtcm_in->privAuth,TCM_HASH_SIZE)!=0)
+    if(ret == TCM_SUCCESS)
+    {
+      ret = vtcm_Compute_AuthCode(vtcm_in,
+                                  DTYPE_VTCM_IN,
+                                  SUBTYPE_QUOTE_IN,
+                                  authSession,
+                                  CheckData);
+    }
+    if(Memcmp(CheckData, vtcm_in->privAuth, TCM_HASH_SIZE)!=0)
     {
 	returnCode=TCM_AUTHFAIL;
 	goto quote_out;
@@ -931,7 +1008,14 @@ quote_out:
     vtcm_out->tag=0xC500;
     vtcm_out->returnCode=returnCode;
 
-    	
+    if(ret == TCM_SUCCESS)
+    {
+      ret = vtcm_Compute_AuthCode(vtcm_out,
+                                  DTYPE_VTCM_OUT,
+                                  SUBTYPE_QUOTE_OUT,
+                                  authSession,
+                                  vtcm_out->resAuth);
+    }
     void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_QUOTE_OUT ,recv_msg);
     if(send_msg == NULL)
     {
