@@ -172,22 +172,6 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
                                       NULL,
                                       CheckData);
         }
-    	//sm3(Buf+6,offset-6-36,Buf+offset);
-
-    	//Memcpy(Buf,Buf+offset,TCM_HASH_SIZE);
-    
-    	//Memcpy(Buf+TCM_HASH_SIZE,Buf+offset-36,sizeof(TCM_HANDLE));
-  
-    	//sm3_hmac(ownerauth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE+sizeof(TCM_HANDLE),Buf+offset);
-    		
-    	// Compare the AuthCode 
-        /*
-    	if(Memcmp(Buf+offset,vtcm_in->authCode,TCM_HASH_SIZE)!=0)
-    	{
-		returnCode=TCM_AUTHFAIL;
-		goto takeown_out;
-    	} 
-        */
         if(memcmp(CheckData, vtcm_in->authCode, TCM_HASH_SIZE) != 0)
         {
           ret = TCM_AUTHFAIL;
@@ -251,6 +235,12 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
     vtcm_out->tag=0xC500;
     vtcm_out->returnCode=ret;
 
+    // duplicate the vtcm key params
+    ret=struct_clone(&vtcm_in->smkParams,&vtcm_out->smkPub,vtcm_template);
+    if(ret<0)
+	return -EINVAL;
+    	
+
     memcpy(vtcm_out->resAuth, ownerauth, TCM_HASH_SIZE);
     if(ret == TCM_SUCCESS) 
     {
@@ -264,10 +254,6 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
     if(vtcm_template==NULL)
 	return -EINVAL;
 			
-    ret=struct_clone(&vtcm_in->smkParams,&vtcm_out->smkPub,vtcm_template);
-    if(ret<0)
-	return -EINVAL;
-    	
     void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_TAKEOWNERSHIP_OUT ,recv_msg);
     if(send_msg == NULL)
     {

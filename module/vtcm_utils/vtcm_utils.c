@@ -843,6 +843,7 @@ if(vtcm_input->DecryptData==NULL)
     print_bin_data(Buf,outlen,8);
 
     sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    printf("Output para: %s\n",Buf);
     void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
     if(send_msg==NULL)
       return -EINVAL;
@@ -990,6 +991,7 @@ int proc_vtcmutils_NV_WriteValue(void * sub_proc, void * para){
     return ret;
   print_bin_data(Buf,outlen,8);
   sprintf(Buf,"%d\n ",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
 
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
 
@@ -1118,6 +1120,7 @@ int proc_vtcmutils_NV_ReadValue(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
 
   sprintf(Buf,"%d %d %s\n ",vtcm_output->returnCode,vtcm_output->dataSize,vtcm_output->data);
+  printf("Output para: %s\n",Buf);
 
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
@@ -1413,6 +1416,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
   close(fd);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -1528,35 +1532,40 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
   int i=1;
   int ret=0;
   char *keyfile=NULL;
+  char *readfile=NULL;
   char *writefile=NULL;
   void * vtcm_template;
-  char *encryptFile="helloworld";
   struct tcm_utils_input * input_para=para;
-  char *curr_para;
-  while (i<input_para->param_num) {
-    curr_para=input_para->params+i*DIGEST_SIZE;
-    if (!strcmp("-rf",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i < input_para->param_num)
-      {
-        keyfile=curr_para;
-      }else{
-        printf("Missing parameter for -if.\n");
-        return -1;
+  char * index_para;
+  char * value_para;
+
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-kf",index_para))
+		{
+        		keyfile=value_para;
+		}	
+		else if(!Strcmp("-rf",index_para))
+		{
+			readfile=value_para;
+		}
+		else if(!Strcmp("-wf",index_para))
+		{
+			writefile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -kf keyfile -rf plain_file -wf crypt_file"
+				"[-pwd passwd]",input_para->params);
+			return -EINVAL;
+		}
       } 
-    }else if(!strcmp(curr_para,"-wf")){
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if(i<input_para->param_num){
-        writefile=curr_para;
-      }
-    }
-    i++;
   }
-  encData=(BYTE*)malloc(sizeof(BYTE)*512);
-  int length=512;
-  BYTE * keyFile=(BYTE*)malloc(sizeof(BYTE)*keyLength);
   int fd;
   int datasize;
   fd=open(keyfile,O_RDONLY);
@@ -1568,14 +1577,20 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
   if(ret>DIGEST_SIZE*32)
   {
     printf("key file too large!\n");
-    return -EINVAL;     
+    return -EINVAL;
   }
   close(fd);
-  datasize=ret;
-  // proc_vtcmutils_ReadFile(keyLength,keyFile);
+  encData=(BYTE*)malloc(sizeof(BYTE)*512);
+  int length=512;
+  BYTE * keyFile=(BYTE*)malloc(sizeof(BYTE)*keyLength);
+
+  //  load key
+
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
   if(vtcm_template==NULL)
     return -EINVAL;
+
+  datasize=ret;
 
   keyOut=Talloc0(sizeof(*keyOut));
   if(keyOut==NULL)
@@ -1586,12 +1601,35 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
     printf("read key file error!\n");
     return -EINVAL;
   }
-  int returnlen= GM_SM2Encrypt(encData, &length,encryptFile ,strlen(encryptFile),keyOut->pubKey.key, keyOut->pubKey.keyLength);
+
+  // proc_vtcmutils_ReadFile(keyLength,keyFile);
+  // read data
+  fd=open(readfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("read file too large!\n");
+    return -EINVAL;     
+  }
+  close(fd);
+  datasize=ret;
+  // proc_vtcmutils_ReadFile(keyLength,keyFile);
+  // read data
+
+
+
+
+
+  int returnlen= GM_SM2Encrypt(encData, &length,Buf ,datasize,keyOut->pubKey.key, keyOut->pubKey.keyLength);
   if(returnlen!=0){
     printf("SM2Encrypt is fail\n");
     return -EINVAL;
   }
-  printf("%d\n",strlen(encryptFile));
+  printf("%d\n",datasize);
   printf("%d\n",returnlen);
   printf("gongyao is :\n");
   print_bin_data(keyOut->pubKey.key,keyOut->pubKey.keyLength,8);
@@ -1605,6 +1643,7 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
   write(fd,encData,length);
   close(fd);
   sprintf(Buf,"%d \n",0);
+  printf("Output para: %s\n",Buf);
 
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
 
@@ -1857,6 +1896,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -1993,6 +2033,7 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
   printf("\n");
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -2066,6 +2107,7 @@ int proc_vtcmutils_SM3CompleteExtend(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -2560,6 +2602,7 @@ int proc_vtcmutils_OwnerClear(void * sub_proc, void * para){
   printf("Receive  output is:\n");
   print_bin_data(Buf,outlen,8);
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL); 
   if(send_msg==NULL)
     return -EINVAL;
@@ -3012,6 +3055,8 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
   print_bin_data(Buf,outlen,8);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
+
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -3184,6 +3229,7 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -3602,6 +3648,7 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
   close(fd);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -3749,6 +3796,7 @@ int proc_vtcmutils_LoadKey(void * sub_proc, void * para){
   // Output the info
   printf("KeyHandle %x\n",vtcm_output->inKeyHandle);
   sprintf(Buf,"%d %x\n",vtcm_output->returnCode,vtcm_output->inKeyHandle);
+  printf("Output para: %s\n",Buf);
 
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
 
@@ -3863,12 +3911,12 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
 
   //sm3(pwds,Strlen(pwds),vtcm_input->authCode);
   Memcpy(vtcm_input->authCode, auth, TCM_HASH_SIZE);
-  puts("Start\n");
-  for(i = 0 ;i < TCM_NONCE_SIZE; ++i) 
-  {    
-    printf("%02x ",auth[i]);
-  }    
-  puts("End\n");
+//  puts("Start\n");
+//  for(i = 0 ;i < TCM_NONCE_SIZE; ++i) 
+//  {    
+//    printf("%02x ",auth[i]);
+//  }    
+//  puts("End\n");
 
 
   ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_APCREATE_IN,NULL,vtcm_input->authCode);
@@ -3911,7 +3959,6 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
 
   BYTE CheckData[TCM_HASH_SIZE];
   ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_APCREATE_OUT,authdata,CheckData);
-  printf("CheckData is :\n");
   if(ret<0)
     return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->authCode,DIGEST_SIZE)!=0)
@@ -3921,6 +3968,7 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
   }	
 
   sprintf(Buf,"%d %x\n",vtcm_output->returnCode,vtcm_output->authHandle);
+  printf("Output para: %s\n",Buf);
 
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
 
@@ -4011,6 +4059,7 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
   ret=struct_clone(&vtcm_output->pubEndorsementKey,pubEK,vtcm_template);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -4103,6 +4152,7 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
   print_bin_data(BBuffer_1,outlen,8);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -4188,6 +4238,7 @@ int proc_vtcmutils_Extend(void * sub_proc, void * para){
   printf("\n");
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -4327,6 +4378,7 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
   print_bin_data(vtcm_output->outDigest,32,8);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -4654,6 +4706,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
   close(fd);
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;
@@ -4875,6 +4928,7 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
   close(fd);
   */
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
     return -EINVAL;

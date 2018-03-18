@@ -96,40 +96,6 @@ int getCmdLen(unsigned char * buffer)
     }
     return result;
 }
-/*
- * int message_read_from_conn(void **message,void * conn)
- * {
- *     const int fixed_buf_size=4096;
- *     char readbuf[fixed_buf_size];
- *     void * message_box;
- *     MSG_HEAD * message_head;
- *     int offset=0;
- *     int ret;
- *     int retval;
- *     int flag;
- *     struct tcloud_connector * temp_conn = conn;
- *     int message_size;
- * 
- *     ret = read_message_from_src(message, conn,
- *             (int (*)(void *, char *, int))temp_conn->conn_ops->read);
- *     if (ret <= 0)
- *         return ret;
- *     offset = ret;
- *     flag = message_get_flag(*message);
- *     if(!(flag & MSG_FLAG_CRYPT))
- *     {
- *         ret = message_load_record(*message);
- *         if(ret<0)
- *         {
- *             printf("load record failed in message_read_from_conn! use bin format\n");
- *         }
- *     }
- * 
- *     ret = message_load_expand(*message);
- *     return offset;           // all the message's data are read
- * }
- */
-
 
 /*
  * Read text data from config file,
@@ -140,6 +106,7 @@ int getCmdLen(unsigned char * buffer)
  * return value: read data size,
  * negative value if it has special error
  */
+
 int read_conn_cfg_buffer(FILE * stream, char * buf, int size)
 {
     long offset = 0;
