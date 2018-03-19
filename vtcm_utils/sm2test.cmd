@@ -13,5 +13,5 @@ out: 1:$keyHandle
 in: apcreate -it 01 -iv $keyHandle
 out: 1:$keyAuthHandle
 
-in: sm2decrypt -ikh $keyHandle -idh $keyAuthHandle -rf sm2crypt.dat  
+in: sm2decrypt -ik $keyHandle -is $keyAuthHandle -rf sm2crypt.dat  -wf sm2decrypt.dat
 

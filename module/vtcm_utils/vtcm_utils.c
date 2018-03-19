@@ -1522,8 +1522,6 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
   if(ret<0)
     return ret;
   print_bin_data(Buf,outlen,8);
-
-
 }
 
 int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
@@ -1620,10 +1618,6 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
   // proc_vtcmutils_ReadFile(keyLength,keyFile);
   // read data
 
-
-
-
-
   int returnlen= GM_SM2Encrypt(encData, &length,Buf ,datasize,keyOut->pubKey.key, keyOut->pubKey.keyLength);
   if(returnlen!=0){
     printf("SM2Encrypt is fail\n");
@@ -1659,7 +1653,8 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
   int i=1;
   int outlen;
   int ret=0;
-  char *keyfile=NULL;
+  char *readfile=NULL;
+  char * writefile=NULL;
   void * vtcm_template;
   unsigned char hashout[TCM_HASH_SIZE];
   unsigned char hmacout[TCM_HASH_SIZE];
@@ -1675,42 +1670,48 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_SM2DECRYPT_IN;
   struct tcm_utils_input * input_para=para;
-  char *curr_para;
-  while (i<input_para->param_num) {
-    curr_para=input_para->params+i*DIGEST_SIZE;
-    if (!strcmp("-ikh",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i < input_para->param_num)
-      {
-        sscanf(curr_para,"%x",&vtcm_input->keyHandle); 
-      }else{
-        printf("Missing parameter for -ikh.\n");
-        return -1;
+  char * index_para;
+  char * value_para;
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-ik",index_para))
+		{
+      			sscanf(value_para,"%x",&vtcm_input->keyHandle);
+		}	
+		else if(!Strcmp("-is",index_para))
+		{
+      			sscanf(value_para,"%x",&vtcm_input->DecryptAuthHandle);
+		}	
+		else if(!Strcmp("-rf",index_para))
+		{
+			readfile=value_para;
+		}
+		else if(!Strcmp("-wf",index_para))
+		{
+			writefile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -ik keyhandle -is sessionhandle -rf crypt_file -wf decrypt_file"
+				"[-pwd passwd]",input_para->params);
+			return -EINVAL;
+		}
       } 
-    }else if (!strcmp("-idh",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i < input_para->param_num)
-      {
-        sscanf(curr_para,"%x",&vtcm_input->DecryptAuthHandle); 
-      }else{
-        printf("Missing parameter for -idh.\n");
-        return -1;
-      } 
-    }else if(!strcmp(curr_para,"-rf")){
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if(i<input_para->param_num){
-        keyfile=curr_para;
-      }
-    }
-    i++;
   }
   int fd;
   int datasize;
   authdata=Find_AuthSession(0x01,vtcm_input->DecryptAuthHandle);
-  fd=open(keyfile,O_RDONLY);
+  if(authdata==NULL)
+  {
+	printf("can't find decrypt session!\n");
+	return -EINVAL;
+  }
+  fd=open(readfile,O_RDONLY);
   if(fd<0)
     return -EIO;
   ret=read(fd,Buf,DIGEST_SIZE*32+1);
@@ -1718,7 +1719,7 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
     return -EIO;
   if(ret>DIGEST_SIZE*32)
   {
-    printf("key file too large!\n");
+    printf("crypt file too large!\n");
     return -EINVAL;     
   }
   datasize=ret;
@@ -1758,14 +1759,20 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
     return -EINVAL;
   }
   print_bin_data(Buf,outlen,8);
-  printf("Decrypted data is:\n");
-  BYTE dedata[10];
-  for(i=0;i<10;i++){
-    dedata[i]=Buf[14+i];
-    printf("%c",dedata[i]);
-    // printf("%c",(char)dedata[i]);
+  fd=open(writefile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  if(fd<0){
+    printf("file open error!\n");
+    return -EIO;
   }
-  printf("\n");
+  write(fd,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
+  close(fd);
+  sprintf(Buf,"%d \n",vtcm_output->returnCode);
+  printf("Output para: %s\n",Buf);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  if(send_msg==NULL)
+    return -EINVAL;
+  ex_module_sendmsg(sub_proc,send_msg);		
+  return 0;
 }
 int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
   int outlen;
