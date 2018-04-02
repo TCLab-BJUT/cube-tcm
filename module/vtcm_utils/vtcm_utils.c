@@ -2916,19 +2916,21 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
   struct tcm_utils_input * input_para=para;
   struct tcm_in_TakeOwnership * vtcm_input;
   struct tcm_out_TakeOwnership * vtcm_output;
-  char * pwdo="ooo";
-  char * pwds="sss";
+  char * pwdo;
+  char * pwds;
   BYTE ownerauth[TCM_HASH_SIZE];
   BYTE smkauth[TCM_HASH_SIZE];
   int  enclen=512;
   TCM_SYMMETRIC_KEY_PARMS * sm4_parms;
   TCM_SESSION_DATA * authdata;
+  char * index_para;
+  char * value_para;
   vtcm_input = Talloc0(sizeof(*vtcm_input));
   if(vtcm_input==NULL)
     return -ENOMEM;
   vtcm_output = Talloc0(sizeof(*vtcm_output));
   if(vtcm_output==NULL)
-    return -ENOMEM;
+      return -ENOMEM;
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_TAKEOWNERSHIP_IN;
   vtcm_input->protocolID=htons(TCM_PID_OWNER);
@@ -2940,6 +2942,29 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
     printf("can't find session for takeownership!\n");
     return -EINVAL;
   }	
+	if((input_para->param_num>0)&&
+		(input_para->param_num%2==1))
+	{
+		for(i=1;i<input_para->param_num;i+=2)
+		{
+        		index_para=input_para->params+i*DIGEST_SIZE;
+        		value_para=index_para+DIGEST_SIZE;
+			if(!Strcmp("-pwdo",index_para))
+			{
+        			pwdo=value_para;
+			}	
+			else if(!Strcmp("-pwds",index_para))
+			{
+				pwds=value_para;
+			}
+			else
+			{
+				printf("Error cmd format! should be %s -pwdo ownerpass -pwds smkpass",
+					input_para->params);
+				return -EINVAL;
+			}
+		}
+	}	
 
   sm3(pwdo,Strlen(pwdo),ownerauth);
   sm3(pwds,Strlen(pwds),smkauth);
@@ -3835,77 +3860,45 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
     return -ENOMEM;
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_APCREATE_IN;
+  char * pwd;
   char * pwdo="ooo";
   char * pwds="sss";
   char * pwdk="kkk";
   struct tcm_utils_input * input_para=para;
   struct tcm_utils_output * output_para;
-  char * curr_para;
-  curr_para=input_para->params+i*DIGEST_SIZE;
-  if(!strcmp("-it",curr_para)){
-    i++;
-    curr_para=input_para->params+i*DIGEST_SIZE;
-    if(!strcmp("12",curr_para))
-    {
-      //nonce
-      vtcm_input->entityType=0x12;
-      vtcm_input->entityValue=0;
+  char * index_para;
+  char * value_para;
+
       memset(auth,0,TCM_HASH_SIZE);
-    }
-    else if(!strcmp("01",curr_para))
-    {
-      //keyhandle
-      vtcm_input->entityType=0x01;
-      vtcm_input->entityValue=0;
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if(strcmp("-iv",curr_para))
-      {
-        printf("Error cmd format! Need entityValue!\n");
-        return -EINVAL;
-      }
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      sscanf(curr_para,"%x",&vtcm_input->entityValue);
+	if((input_para->param_num>0)&&
+		(input_para->param_num%2==1))
+	{
+		for(i=1;i<input_para->param_num;i+=2)
+		{
+        		index_para=input_para->params+i*DIGEST_SIZE;
+        		value_para=index_para+DIGEST_SIZE;
+			if(!Strcmp("-it",index_para))
+			{
+        			sscanf(value_para,"%x",&vtcm_input->entityType);
+			}	
+			else if(!Strcmp("-iv",index_para))
+			{
+      				sscanf(value_para,"%x",&vtcm_input->entityValue);
+			}
+			else if(!Strcmp("-pwd",index_para))
+			{
+				pwd=value_para;
+      				sm3(pwd,strlen(pwd),auth);
+			}
+			else
+			{
+				printf("Error cmd format! should be %s -it entitytype [-iv entityvalue] "
+					"[-pwd passwd]",input_para->params);
+				return -EINVAL;
+			}
+		}
 
-      sm3(pwdk,strlen(pwdk),auth);
     }
-    else if(!strcmp("04",curr_para))
-    {
-      // smk
-      vtcm_input->entityType=0x04;
-      vtcm_input->entityValue=0;
-      sm3(pwds,Strlen(pwds),auth);
-    }
-    else if(!strcmp("0b",curr_para))
-    {
-      // NV
-      vtcm_input->entityType=0x0b;
-      vtcm_input->entityValue=0;
-    }
-    else if(!strcmp("05",curr_para))
-    {
-      // key related
-      vtcm_input->entityType=0x05;
-      vtcm_input->entityValue=0;
-    }
-    else if(!strcmp("02",curr_para))
-    {
-      // owner
-      vtcm_input->entityType=0x02;
-      vtcm_input->entityValue=0;
-      sm3(pwdo,strlen(pwdk),auth);
-    }
-    else
-    {
-      printf("type is error");
-    }
-  }
-  else
-  {
-    printf("parameter is error!\n");
-  }
-
   // Fill command's parameters;
 
   int ordinal=htonl(vtcm_input->ordinal);

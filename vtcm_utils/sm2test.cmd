@@ -5,7 +5,7 @@ out: 1:$smkHandle
 
 in: createwrapkey -ih $smkHandle -is sm2 -kf sm2.key
 
-in: sm2encrypt -rf sm2.key -wf sm2crypt.dat  
+in: sm2encrypt -kf sm2.key -rf sm2test.dat -wf sm2crypt.dat  
 
 in: loadkey -ih $smkHandle -kf sm2.key
 out: 1:$keyHandle
