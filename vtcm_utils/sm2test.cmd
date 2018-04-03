@@ -1,6 +1,6 @@
 # this cmdlist is for tcm_emulator test 
 
-in:  apcreate -it 04
+in:  apcreate -it 04 -pwd sss
 out: 1:$smkHandle
 
 in: createwrapkey -ih $smkHandle -is sm2 -kf sm2.key
