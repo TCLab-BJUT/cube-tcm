@@ -10,7 +10,11 @@
 		"elemlist":
 		[
 			"VTCM_IN=0x2010",
+			"VTCM_IN_AUTH1=0x2011",
+			"VTCM_IN_AUTH2=0x2012",
 			"VTCM_OUT=0x2020",
+			"VTCM_OUT_AUTH1=0x2021",
+			"VTCM_OUT_AUTH2=0x2022",
 			"VTCM_HEAD=0x2030",
 			"VTCM_UTILS=0x2040"
 		]
