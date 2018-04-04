@@ -122,7 +122,7 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SM4DECRYPT_IN)) {
             proc_vtcm_Sm4Decrypt(sub_proc, recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SM2DECRYPT_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SM2DECRYPT_IN)) {
             proc_vtcm_SM2Decrypt(sub_proc, recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SIGN_IN)) {
@@ -2226,7 +2226,6 @@ int proc_vtcm_SM2Decrypt(void *sub_proc, void* recv_msg)
         printf("can't solve this command!\n");
     }    
     vtcm_out = malloc(struct_size(template_out));
-    
     //Processing
     //Get AuthSession
     if(ret == TCM_SUCCESS)
@@ -2235,6 +2234,24 @@ int proc_vtcm_SM2Decrypt(void *sub_proc, void* recv_msg)
                                          tcm_state->tcm_stany_data.sessions,
                                          vtcm_in->DecryptAuthHandle);
     }
+    //Compute DecryptedAuthVerfication
+    if(ret == TCM_SUCCESS)
+    {
+      ret = vtcm_Compute_AuthCode(vtcm_in, 
+                                  DTYPE_VTCM_IN_AUTH1, 
+                                  SUBTYPE_SM2DECRYPT_IN, 
+                                  authSession, CheckData);
+    }
+    if(ret == TCM_SUCCESS) 
+    {
+      if(memcmp(CheckData, vtcm_in->DecryptAuthVerfication, TCM_HASH_SIZE) != 0) 
+      {
+        ret = TCM_AUTHFAIL;
+        printf("\nerror,authcode compare fail\n");
+      }
+      goto sm2decrypt_out;	
+    }
+    
     //Verification authCode
    /* if(ret == TCM_SUCCESS)
     {
@@ -2298,22 +2315,6 @@ int proc_vtcm_SM2Decrypt(void *sub_proc, void* recv_msg)
             vtcm_out->DecryptedData = (BYTE *)malloc(sizeof(BYTE)*(vtcm_out->DecryptedDataSize));
             Memcpy(vtcm_out->DecryptedData, buffer_1, vtcm_out->DecryptedDataSize);
         }
-    }
-    //Compute DecryptedAuthVerfication
-    if(ret == TCM_SUCCESS)
-    {
-      ret = vtcm_Compute_AuthCode(vtcm_in, 
-                                  DTYPE_VTCM_IN, 
-                                  SUBTYPE_SM2DECRYPT_IN, 
-                                  authSession, CheckData);
-    }
-    if(ret == TCM_SUCCESS) 
-    {
-      if(memcmp(CheckData, vtcm_in->DecryptAuthVerfication, TCM_HASH_SIZE) != 0) 
-      {
-        ret = TCM_AUTHFAIL;
-        printf("\nerror,authcode compare fail\n");
-      }
     }
     //Response
     printf("proc_vtcm_Sm2Decrypt : Response \n");

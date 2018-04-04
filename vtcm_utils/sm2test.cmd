@@ -10,7 +10,7 @@ in: sm2encrypt -kf sm2.key -rf sm2test.dat -wf sm2crypt.dat
 in: loadkey -ih $smkHandle -kf sm2.key
 out: 1:$keyHandle
 
-in: apcreate -it 01 -iv $keyHandle
+in: apcreate -it 01 -iv $keyHandle -pwd kkk
 out: 1:$keyAuthHandle
 
 in: sm2decrypt -ik $keyHandle -is $keyAuthHandle -rf sm2crypt.dat  -wf sm2decrypt.dat

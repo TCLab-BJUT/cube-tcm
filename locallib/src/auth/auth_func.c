@@ -2117,7 +2117,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	if(vtcm_template==NULL)
 		return -EINVAL;
 
-	if(type==DTYPE_VTCM_IN)
+	if((type==DTYPE_VTCM_IN) ||(type==DTYPE_VTCM_IN_AUTH1))
 	{
 		// input command hash value compute	
     		offset = struct_2_part_blob(vtcm_data,Buf,vtcm_template,CUBE_ELEM_FLAG_KEY);

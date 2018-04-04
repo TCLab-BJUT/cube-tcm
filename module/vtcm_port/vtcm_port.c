@@ -433,8 +433,17 @@ int vtcm_port_start(void * sub_proc,void * para)
 				case 0xC200:
 				case 0xC300:
 				{ 
-					type=DTYPE_VTCM_IN;
+				//	if(output_data->tag==0xC100)
+						type=DTYPE_VTCM_IN;
+				//	else if(output_data->tag==0xC200)
+				//		type=DTYPE_VTCM_IN_AUTH1;
+				//	if(output_data->tag==0xC300)
+				//		type=DTYPE_VTCM_IN_AUTH2;
+					
 					subtype=output_data->ordinal;
+					if(output_data->ordinal == SUBTYPE_SM2DECRYPT_IN)
+						type=DTYPE_VTCM_IN_AUTH1;
+
                         		ret = struct_2_json(output_data,json_str,extend_template) ;
                         		printf("convert struct to %d size json str: %s\n",ret,json_str) ;
                         		usleep(time_val.tv_usec);

@@ -1647,6 +1647,7 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
   ex_module_sendmsg(sub_proc,send_msg);		
   return ret;
 }
+
 int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
   TCM_KEY *keyOut;
   unsigned char *encData=NULL;
@@ -1730,11 +1731,11 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
     return -EINVAL;
   print_bin_data(Buf,datasize,8);
   Memcpy(vtcm_input->DecryptData,Buf,vtcm_input->DecryptDataSize); 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM2DECRYPT_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM2DECRYPT_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   //compute DecryptAuthVerfication
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_SM2DECRYPT_IN,authdata,vtcm_input->DecryptAuthVerfication);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM2DECRYPT_IN,authdata,vtcm_input->DecryptAuthVerfication);
   ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(ret<0)
     return -EINVAL;

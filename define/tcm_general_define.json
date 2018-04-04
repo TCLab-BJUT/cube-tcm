@@ -11,14 +11,14 @@
                 [
                         "VTCM_INTERNAL=0x2001",
                         "VTCM_EXTERNAL=0x2002",
-                        "VTCM_IN_CAP=0x2011",
-			            "VTCM_IN_KEY=0x2012",
-                        "VTCM_NV=0x2013",
-                        "VTCM_PCR=0x2014",
-                        "VTCM_AUTH=0x2015",
-                        "VTCM_KEY=0x2016",
-                        "VTCM_IDENTITY=0x2017",
-                        "VTCM_SEAL=0x2018"
+                        "VTCM_IN_CAP=0x2003",
+			"VTCM_IN_KEY=0x2004",
+                        "VTCM_NV=0x2005",
+                        "VTCM_PCR=0x2006",
+                        "VTCM_AUTH=0x2007",
+                        "VTCM_KEY=0x2008",
+                        "VTCM_IDENTITY=0x2009",
+                        "VTCM_SEAL=0x200A"
                 ]
         }
 }
