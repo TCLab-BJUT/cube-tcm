@@ -2242,51 +2242,17 @@ int proc_vtcm_SM2Decrypt(void *sub_proc, void* recv_msg)
                                   SUBTYPE_SM2DECRYPT_IN, 
                                   authSession, CheckData);
     }
+    //Verification authCode
     if(ret == TCM_SUCCESS) 
     {
       if(memcmp(CheckData, vtcm_in->DecryptAuthVerfication, TCM_HASH_SIZE) != 0) 
       {
-        ret = TCM_AUTHFAIL;
-        printf("\nerror,authcode compare fail\n");
+         ret = TCM_AUTHFAIL;
+         printf("\nerror,authcode compare fail\n");
+         goto sm2decrypt_out;	
       }
-      goto sm2decrypt_out;	
     }
     
-    //Verification authCode
-   /* if(ret == TCM_SUCCESS)
-    {
-
-    // generate command's bin blob
-    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM2DECRYPT_IN);
-    	if(vtcm_template==NULL)
-    		return -EINVAL;
-    	offset = struct_2_blob(vtcm_in,Buf,vtcm_template);
-    	if(offset<0)
-    		return offset;
-
-    // check privAuth
-    	uint32_t temp_int;
-    	BYTE cmdHash[DIGEST_SIZE];
-    // compute authCode
-    	sm3(Buf+6,offset-6-36,cmdHash);
-
-    	Memcpy(Buf,cmdHash,DIGEST_SIZE);
-    	temp_int=htonl(vtcm_in->DecryptAuthHandle);
-    	Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    
-    	sm3_hmac(authSession->sharedSecret,TCM_HASH_SIZE,
-		Buf,DIGEST_SIZE+sizeof(uint32_t),
-		keyauth);
-
-    	if(Memcmp(keyauth,vtcm_in->DecryptAuthVerfication,TCM_HASH_SIZE)!=0)
-    	{
-		returnCode=TCM_AUTHFAIL;
-	//	goto sm2decrypt_out;
-    	}	
- 
-
-    }
-    */
     // Rely on the handle to get the key
     if(ret == TCM_SUCCESS)
     {
