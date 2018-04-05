@@ -1741,39 +1741,62 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
     return -EINVAL;
   printf("Input for SM2Decrypt:\n");
   print_bin_data(Buf,ret,8);
+
+  // send command to TCM and get return Data (Block Mode)
   ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
   if(ret<0)
     return ret;
-  // Check authdata
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT);
+
+  // bottom half process: check return data head to decide if return error
+  struct vtcm_external_output_command return_head;
+  vtcm_template=memdb_get_template(DTYPE_VTCM_EXTERNAL,SUBTYPE_RETURN_DATA_EXTERNAL);
   if(vtcm_template==NULL)
-    return -EINVAL;
-  ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+      return -EINVAL;
+  ret=blob_2_struct(Buf,&return_head,vtcm_template);
   if(ret<0)
-    return ret;
-  BYTE CheckData[TCM_HASH_SIZE];
-  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT,authdata,CheckData);
-  if(ret<0)
-    return -EINVAL;
-  if(Memcmp(CheckData,vtcm_output->DecryptedAuthVerfication,DIGEST_SIZE)!=0){
-    printf("SM2Decrypt check output failed!\n");
-    return -EINVAL;
-  }
-  print_bin_data(Buf,outlen,8);
-  fd=open(writefile,O_CREAT|O_TRUNC|O_WRONLY,0666);
-  if(fd<0){
-    printf("file open error!\n");
-    return -EIO;
-  }
-  write(fd,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
-  close(fd);
-  sprintf(Buf,"%d \n",vtcm_output->returnCode);
-  printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
-  if(send_msg==NULL)
-    return -EINVAL;
-  ex_module_sendmsg(sub_proc,send_msg);		
-  return 0;
+      return ret;
+  if(return_head.returnCode!=0)
+  {
+	// return Error	
+  	print_bin_data(Buf,ret,8);
+  	sprintf(Buf,"%d \n",return_head.returnCode);
+  }	
+  else
+  {
+  	// Check authdata
+  	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT);
+  	if(vtcm_template==NULL)
+    		return -EINVAL;
+  	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+  	if(ret<0)
+    		return ret;
+  	print_bin_data(Buf,ret,8);
+  	BYTE CheckData[TCM_HASH_SIZE];
+  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT,authdata,CheckData);
+  	if(ret<0)
+	{
+    		return -EINVAL;
+	}
+  	if(Memcmp(CheckData,vtcm_output->DecryptedAuthVerfication,DIGEST_SIZE)!=0){
+    		printf("SM2Decrypt check output failed!\n");
+    		return -EINVAL;
+  	}
+  	fd=open(writefile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  	if(fd<0){
+    		printf("file open error!\n");
+    		return -EIO;
+  	}
+  	write(fd,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
+  	close(fd);
+  	sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    }
+
+    printf("Output para: %s\n",Buf);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+    	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+    return 0;
 }
 int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
   int outlen;

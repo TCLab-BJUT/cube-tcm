@@ -151,7 +151,8 @@ enum tcm_internal_subtype
 
 enum vtcm_external_subtype
 {
-	SUBTYPE_INPUT_COMMAND_EXTERNAL=0x01
+	SUBTYPE_INPUT_COMMAND_EXTERNAL=0x01,
+	SUBTYPE_RETURN_DATA_EXTERNAL=0x02
 };
 
 enum subtype_vtcm_capability_struct

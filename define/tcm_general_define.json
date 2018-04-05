@@ -47,10 +47,11 @@
         "record":
         {    
                 "type":"VTCM_EXTERNAL",
-                "elem_no":1,
+                "elem_no":2,
                 "elemlist":
                 [
-                        "INPUT_COMMAND=0x01"
+                        "INPUT_COMMAND=0x01",
+                        "RETURN_DATA=0x02"
                 ]
         }
 }   
@@ -121,22 +122,6 @@
         }   
 }
 {
-        "head": 
-        {
-                "name":"subtype_vtcm_external",
-                "type":"SUBTYPELIST"
-        },
-        "record":
-        {    
-                "type":"VTCM_EXTERNAL",
-                "elem_no":1,
-                "elemlist":
-                [
-                        "INPUT_COMMAND=0x01"
-                ]
-        }
-} 
-{
     "head":
     {
         "name":"subtype_vtcm_identity",
@@ -179,7 +164,7 @@
 {
         "head":
         {
-                "name":"subtype_vtcm_capability_struct",
+                "name":"vtcm_external_input_command",
                 "type":"RECORDTYPE"
         },
         "record":
@@ -193,6 +178,27 @@
                                 {"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
                                 {"name":"paramSize","type":"TPM32"},
                                 {"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"}
+                        ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"vtcm_external_return_data",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"VTCM_EXTERNAL",
+                "subtype":"RETURN_DATA",
+                "struct_desc":
+                {
+                        "elem_desc":
+                        [
+                                {"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
+                                {"name":"paramSize","type":"TPM32"},
+                                {"name":"returnCode","type":"TPM32"}
                         ]
                 }
         }
