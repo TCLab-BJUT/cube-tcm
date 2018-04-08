@@ -2241,8 +2241,7 @@ int proc_vtcm_SM2Decrypt(void *sub_proc, void* recv_msg)
     //Verification authCode
     if(ret == TCM_SUCCESS) 
     {
-//      if(memcmp(CheckData, vtcm_in->DecryptAuthVerfication, TCM_HASH_SIZE) != 0) 
-      if(memcmp(CheckData, vtcm_in->DecryptAuthVerfication, TCM_HASH_SIZE) == 0) 
+      if(memcmp(CheckData, vtcm_in->DecryptAuthVerfication, TCM_HASH_SIZE) != 0) 
       {
          ret = TCM_AUTHFAIL;
 	 returnCode=TCM_AUTHFAIL;

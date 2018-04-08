@@ -3506,8 +3506,8 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
   unsigned char hmacout[TCM_HASH_SIZE];
   unsigned char authdata1[TCM_HASH_SIZE];
   unsigned char migrationdata[TCM_HASH_SIZE];
-  char *pwdk="kkk";
-  char *pwdm="mmm";
+  char *pwdk=NULL;
+  char *pwdm=NULL;
   TCM_SESSION_DATA * authdata;
   struct tcm_in_CreateWrapKey *vtcm_input;
   struct tcm_out_CreateWrapKey *vtcm_output;
@@ -3518,8 +3518,6 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
   char * keyfile=NULL;
   char * select=NULL;
 
-  sm3(pwdk,strlen(pwdk),authdata1);
-  sm3(pwdm,strlen(pwdm),migrationdata);
   TCM_SYMMETRIC_KEY_PARMS *sm4_parms;
   TCM_SM2_ASYMKEY_PARAMETERS *sm2_parms;
   vtcm_input = Talloc0(sizeof(*vtcm_input));
@@ -3551,10 +3549,18 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
       {
         keyfile=value_para;
       }
+      else if(!Strcmp("-pwdk",index_para))
+      {
+        pwdk=value_para;
+      }
+      else if(!Strcmp("-pwdm",index_para))
+      {
+        pwdm=value_para;
+      }
       else
       {
         printf("Error cmd format! should be %s -ih smkauthhandle -is keyusage -kf keyfile"
-               "[-pwd passwd]",input_para->params);
+               "[-pwdk keypasswd] -[-pwdm migpasswd]",input_para->params);
         return -EINVAL;
       }
     }
@@ -3636,18 +3642,28 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
   offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
   printf("%d\n",offset);
   //  memset(APKey,0,TCM_HASH_SIZE);
+  // compute ownerauth and migrationauth
+  if(pwdk!=NULL)
+  {
+	sm3(pwdk,Strlen(pwdk),ownerauth);
+  }
+  else
+  {
+	Memset(ownerauth,0,TCM_HASH_SIZE);		
+  }
+  if(pwdm!=NULL)
+  {
+	sm3(pwdm,Strlen(pwdm),migrationauth);
+  }
+  else
+  {
+	Memset(migrationauth,0,TCM_HASH_SIZE);		
+  }
+		
+
   authdata=Find_AuthSession(0x04,vtcm_input->authHandle);
-  vtcm_AuthSessionData_Encrypt(ownerauth,authdata,authdata1);
-  Memcpy(vtcm_input->dataUsageAuth,ownerauth,TCM_HASH_SIZE);	
-  vtcm_AuthSessionData_Encrypt(migrationauth,authdata,migrationdata);
-  Memcpy(vtcm_input->dataMigrationAuth,migrationauth,TCM_HASH_SIZE);
- // int ordinal=htonl(vtcm_input->ordinal);
- // vtcm_SM3_2(hashout,&(ordinal),4,vtcm_input->dataUsageAuth,TCM_HASH_SIZE,vtcm_input->dataMigrationAuth,TCM_HASH_SIZE,
- //            Buffer,ret1);
- // int serial = htonl(authdata->SERIAL);
- // printf("%x\n",serial);
- // vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
- // Memcpy(vtcm_input->pubAuth,hmacout,TCM_HASH_SIZE); 
+  vtcm_AuthSessionData_Encrypt(vtcm_input->dataUsageAuth,authdata,ownerauth);
+  vtcm_AuthSessionData_Encrypt(vtcm_input->dataMigrationAuth,authdata,migrationauth);
   
   // compute authcode
   ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_CREATEWRAPKEY_IN,authdata,vtcm_input->pubAuth);
