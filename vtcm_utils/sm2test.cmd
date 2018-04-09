@@ -3,7 +3,7 @@
 in:  apcreate -it 04 -pwd sss
 out: 1:$smkHandle
 
-in: createwrapkey -ih $smkHandle -is sm2 -kf sm2.key -pwdk kss
+in: createwrapkey -ikh 40000000 -ish $smkHandle -is sm2 -kf sm2.key -pwdk kss
 
 in: sm2encrypt -kf sm2.key -rf sm2test.dat -wf sm2crypt.dat  
 

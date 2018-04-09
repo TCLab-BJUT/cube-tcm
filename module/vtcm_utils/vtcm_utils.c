@@ -3528,7 +3528,7 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
     return -ENOMEM;
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_CREATEWRAPKEY_IN;
-  vtcm_input->parentHandle=0x40;
+  vtcm_input->parentHandle=0x40000000;
 
   if((input_para->param_num>0)&&
      (input_para->param_num%2==1))
@@ -3537,7 +3537,11 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
     {
       index_para=input_para->params+i*DIGEST_SIZE;
       value_para=index_para+DIGEST_SIZE;
-      if(!Strcmp("-ih",index_para))
+      if(!Strcmp("-ikh",index_para))
+      {
+        sscanf(value_para,"%x",&vtcm_input->parentHandle);
+      }	
+      else if(!Strcmp("-ish",index_para))
       {
         sscanf(value_para,"%x",&vtcm_input->authHandle);
       }	
