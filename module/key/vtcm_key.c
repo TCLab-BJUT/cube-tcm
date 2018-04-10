@@ -2538,66 +2538,78 @@ int vtcm_AuthData_Checkout_Sm4(int returnCode,
 int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
 {
     printf("proc_vtcm_Sm4Encrypt: Start\n") ;
+    BYTE CheckData[TCM_HASH_SIZE];
     int ret = TCM_SUCCESS;
-    TCM_SESSION_DATA *auth_session_data = NULL;
-    struct tcm_in_Sm4Encrypt *tcm_input;
-
-    BYTE *Key = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE/2);
+    BYTE *Key = (BYTE *)Talloc0(sizeof(BYTE) * TCM_NONCE_SIZE);
     TCM_KEY *tcm_key = NULL;
-    TCM_STORE_SYMKEY *tcm_store_symkey = NULL;
     TCM_BOOL parentPCRStatus;
-    BYTE CheckData[TCM_HASH_SIZE];  
-    sm4_context ctx;
-    ret = message_get_record(recv_msg, (void **)&tcm_input, 0); // get structure 
-    if(ret < 0)
+    TCM_SESSION_DATA *authSession = NULL;
+    TCM_STORE_SYMKEY *tcm_store_symkey = NULL;
+    BYTE keyauth[DIGEST_SIZE];
+    int offset=0;
+
+    struct tcm_in_Sm4Encrypt *vtcm_in;
+    struct tcm_out_Sm4Encrypt *vtcm_out;
+    struct vtcm_external_output_command *vtcm_err_out;  // err output data
+    void * vtcm_template;
+    int   returnCode=0;
+    
+    // get input data struct
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0);  
+    if(ret < 0) 
         return ret;
-    if(tcm_input == NULL)
+    else ret = 0;
+    if(vtcm_in == NULL)
         return -EINVAL;
-     int outLength;
-
-    //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM4ENCRYPT_OUT);//Get the entire command template
-    if(command_template == NULL)
-    {
-        printf("can't solve this command!\n");
-    }
-    outLength = tcm_input->EncryptDataSize;
-    struct tcm_out_Sm4Encrypt * tcm_output = malloc(struct_size(command_template));
-
+    // get tcm context's pointer
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
+    sm4_context ctx;
+     int outLength;
+
     //Processing
-    if(ret == TCM_SUCCESS) {
-        vtcm_AuthSessions_GetEntry(&auth_session_data, 
-                                   tcm_state->tcm_stany_data.sessions, 
-                                   tcm_input->EncryptAuthHandle);
-        printf("Serial is %08x\n", auth_session_data->SERIAL);
+    //Get AuthSession
+    if(ret == TCM_SUCCESS)
+    {
+        ret = vtcm_AuthSessions_GetEntry(&authSession,
+                                         tcm_state->tcm_stany_data.sessions,
+                                         vtcm_in->EncryptAuthHandle);
     }
     if(ret == TCM_SUCCESS)
     {
-      ret = vtcm_Compute_AuthCode(tcm_input, 
+      ret = vtcm_Compute_AuthCode(vtcm_in, 
                                   DTYPE_VTCM_IN,
                                   SUBTYPE_SM4ENCRYPT_IN, 
-                                  auth_session_data, 
+                                  authSession, 
                                   CheckData);
-      if(ret == TCM_SUCCESS)
+    }
+    //Verification authCode
+    if(ret == TCM_SUCCESS) 
+    {
+      if(Memcmp(CheckData, vtcm_in->EncryptAuthVerfication, TCM_HASH_SIZE) != 0) 
       {
-          if(Memcmp(CheckData,tcm_input->EncryptAuthVerfication,TCM_HASH_SIZE) != 0)
-          {    
-              ret = TCM_AUTHFAIL;
-              printf("Compare AuthCode Error\n");
-          }
-          else
-          {
-              printf("Compare AuthCode Success\n");
-          }
+         ret = TCM_AUTHFAIL;
+	 returnCode=TCM_AUTHFAIL;
+         printf("\nerror,authcode compare fail\n");
+         goto sm4encrypt_out;	
       }
     }
+
+    //output process
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM4ENCRYPT_OUT);//Get the entire command template
+    if(template_out == NULL)
+    {    
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT);
+	return -EINVAL;
+    }    
+    vtcm_out = Talloc(struct_size(template_out));
+
+    // Rely on the handle to get the key
     if(ret == TCM_SUCCESS) {
         ret = vtcm_KeyHandleEntries_GetKey(&tcm_key,
                                            &parentPCRStatus,
                                            tcm_state,
-                                           tcm_input->keyHandle,
+                                           vtcm_in->keyHandle,
                                            FALSE,
                                            FALSE,
                                            FALSE);
@@ -2616,39 +2628,71 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
         //void sm4_crypt_cbc( sm4_context *ctx,int mode,int length,unsigned char iv[16],
         //                    unsigned char *input,unsigned char *output);
 
-        tcm_output->EncryptedDataSize=tcm_input->EncryptDataSize; 	
-        tcm_output->EncryptedData = (BYTE *)malloc(sizeof(BYTE)*(tcm_output->EncryptedDataSize));
-        sm4_crypt_cbc(&ctx, 1, outLength, tcm_input->CBCusedIV, tcm_input->EncryptData,
-                      tcm_output->EncryptedData);
+        vtcm_out->EncryptedDataSize=vtcm_in->EncryptDataSize; 	
+        vtcm_out->EncryptedData = (BYTE *)Talloc0(sizeof(BYTE)*(vtcm_out->EncryptedDataSize));
+        sm4_crypt_cbc(&ctx, 1, outLength, vtcm_in->CBCusedIV, vtcm_out->EncryptedData,
+                      vtcm_out->EncryptedData);
     }
     //Response 
 
-    tcm_output->tag = 0xC500;
-    tcm_output->paramSize = 46 + tcm_output->EncryptedDataSize;
-    tcm_output->returnCode = ret;
-    
-    if(ret == TCM_SUCCESS) 
+sm4encrypt_out:
+
+    vtcm_out->tag = 0xC500;
+    vtcm_out->returnCode = returnCode;
+
+    void * send_msg;
+    if(returnCode!=0)
     {
-        ret = vtcm_Compute_AuthCode(tcm_output, 
-                                    DTYPE_VTCM_OUT,
-                                    SUBTYPE_SM4ENCRYPT_OUT, 
-                                    auth_session_data,
-                                    tcm_output->EncryptedAuthVerfication);
+    	// error output process
+	Free(vtcm_out);
+	vtcm_err_out=Talloc(sizeof(*vtcm_err_out));
+	if(vtcm_err_out==NULL)
+		return -ENOMEM;
+    	vtcm_err_out->tag = 0xC400;
+    	vtcm_err_out->paramSize = sizeof(*vtcm_err_out);
+    	vtcm_err_out->returnCode = returnCode;
+    	send_msg = message_create(DTYPE_VTCM_EXTERNAL ,SUBTYPE_RETURN_DATA_EXTERNAL,recv_msg);
+    	if(send_msg == NULL)
+    	{
+        	printf("send_msg == NULL\n");
+        	return -EINVAL;      
+    	}
+    	message_add_record(send_msg, vtcm_out);
     }
+    else
+    { 
+	// normal output process	
 
-    void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_SM4ENCRYPT_OUT,recv_msg);
-    if(send_msg == NULL)
-        return -EINVAL;
-    message_add_record(send_msg ,tcm_output);
 
-     // add vtcm's expand info	
-    ret=vtcm_addcmdexpand(send_msg,recv_msg);
-    if(ret<0)
-    {
-	printf("fail to add vtcm copy info!\n");
+    	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, template_out);
+
+        ret = vtcm_Compute_AuthCode(vtcm_out,
+                 DTYPE_VTCM_OUT,
+                 SUBTYPE_SM4ENCRYPT_OUT,
+                 authSession,
+                 vtcm_out->EncryptedAuthVerfication);
+	if(ret<0)
+	{
+		printf("Fatal error: compute output authcode failed!\n");
+		return -EINVAL;
+	}
+	
+
+    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SM4ENCRYPT_OUT ,recv_msg);
+    	if(send_msg == NULL)
+    	{
+        	printf("send_msg == NULL\n");
+        	return -EINVAL;      
+    	}
+    	message_add_record(send_msg, vtcm_out);
     }	
-    ret = ex_module_sendmsg(sub_proc ,send_msg);
-
+    // add vtcm's expand info	
+    ret=vtcm_addcmdexpand(send_msg,recv_msg);
+    if(ret < 0)
+    {
+	    printf("fail to add vtcm copy info!\n");
+    }	
+    ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
 
