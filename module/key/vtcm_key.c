@@ -2599,7 +2599,7 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM4ENCRYPT_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT);
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SM4ENCRYPT_OUT);
 	return -EINVAL;
     }    
     vtcm_out = Talloc(struct_size(template_out));
@@ -2630,7 +2630,7 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
 
         vtcm_out->EncryptedDataSize=vtcm_in->EncryptDataSize; 	
         vtcm_out->EncryptedData = (BYTE *)Talloc0(sizeof(BYTE)*(vtcm_out->EncryptedDataSize));
-        sm4_crypt_cbc(&ctx, 1, outLength, vtcm_in->CBCusedIV, vtcm_out->EncryptedData,
+        sm4_crypt_cbc(&ctx, 1, vtcm_in->EncryptDataSize, vtcm_in->CBCusedIV, vtcm_in->EncryptData,
                       vtcm_out->EncryptedData);
     }
     //Response 
@@ -2699,60 +2699,75 @@ sm4encrypt_out:
 int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
 {
     printf("proc_vtcm_Sm4Decrypt: Start\n") ;
-    int ret = TCM_SUCCESS;
-    TCM_SESSION_DATA *auth_session_data = NULL;
-    struct tcm_in_Sm4Decrypt *tcm_input;
-    TCM_KEY *tcm_key = NULL;
-    TCM_STORE_SYMKEY *tcm_store_symkey = NULL;
-    TCM_BOOL parentPCRStatus;
-    sm4_context ctx;
-    int outLength;
     BYTE CheckData[TCM_HASH_SIZE];
-    BYTE *Key = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE/2);
-    ret = message_get_record(recv_msg, (void **)&tcm_input, 0); // get structure 
+    int ret = TCM_SUCCESS;
+    BYTE *Key = (BYTE *)Talloc0(sizeof(BYTE) * TCM_NONCE_SIZE);
+    TCM_KEY *tcm_key = NULL;
+    TCM_BOOL parentPCRStatus;
+    TCM_SESSION_DATA *authSession = NULL;
+    TCM_STORE_SYMKEY *tcm_store_symkey = NULL;
+    BYTE keyauth[DIGEST_SIZE];
+    int offset=0;
+
+    struct tcm_in_Sm4Decrypt *vtcm_in;
+    struct tcm_out_Sm4Decrypt * vtcm_out;
+    struct vtcm_external_output_command *vtcm_err_out;  // err output data
+    void * vtcm_template;
+    int   returnCode=0;
+
+
+    // get input data struct
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0); // get structure 
     if(ret < 0)
         return ret;
-    if(tcm_input == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
 
-    //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT);//Get the entire command template
-    if(command_template == NULL)
-    {
-        printf("can't solve this command!\n");
-    }
-    struct tcm_out_Sm4Decrypt * tcm_output = malloc(struct_size(command_template));
-
+    // get tcm context's pointer
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
-    outLength = tcm_input->DecryptDataSize; 
+
+    sm4_context ctx;
+    int outLength;
 
     //Processing
     if(ret == TCM_SUCCESS) {
-        vtcm_AuthSessions_GetEntry(&auth_session_data, 
+        vtcm_AuthSessions_GetEntry(&authSession, 
                                    tcm_state->tcm_stany_data.sessions, 
-                                   tcm_input->DecryptAuthHandle);
-        printf("Serial is %08x\n", auth_session_data->SERIAL);
+                                   vtcm_in->DecryptAuthHandle);
+        printf("Serial is %08x\n", authSession->SERIAL);
     }
     if(ret == TCM_SUCCESS) {
-      ret = vtcm_Compute_AuthCode(tcm_input,
+      ret = vtcm_Compute_AuthCode(vtcm_in,
                                   DTYPE_VTCM_IN,
                                   SUBTYPE_SM4DECRYPT_IN,
-                                  auth_session_data,
+                                  authSession,
                                   CheckData);
     }
     if(ret == TCM_SUCCESS) {
-      if(memcmp(CheckData, tcm_input->DecryptAuthVerfication, TCM_HASH_SIZE) != 0)
+      if(Memcmp(CheckData, vtcm_in->DecryptAuthVerfication, TCM_HASH_SIZE) != 0)
       {
         ret = TCM_AUTHFAIL;
+	 returnCode=TCM_AUTHFAIL;
         printf("\nCompare AuthCode Error\n");
+        goto sm4decrypt_out;
       }
     }
+    //output process
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT);//Get the entire command template
+    if(template_out == NULL)
+    {
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT);
+	return -EINVAL;
+    }
+    vtcm_out = Talloc(struct_size(template_out));
+
+
 
     if(ret == TCM_SUCCESS) {
         ret = vtcm_KeyHandleEntries_GetKey(&tcm_key,
                                            &parentPCRStatus,
                                            tcm_state,
-                                           tcm_input->keyHandle,
+                                           vtcm_in->keyHandle,
                                            FALSE,
                                            FALSE,
                                            FALSE);
@@ -2766,38 +2781,74 @@ int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
                          TCM_NONCE_SIZE/2,
                          tcm_store_symkey->size);
     }
-    sm4_setkey_dec(&ctx, Key);
+    if(ret == TCM_SUCCESS) {
+    	sm4_setkey_dec(&ctx, Key);
 
-    tcm_output->DecryptedData = (BYTE *)malloc(sizeof(BYTE)*(tcm_input->DecryptDataSize));
-    sm4_crypt_cbc(&ctx, 0, outLength, tcm_input->CBCusedIV, tcm_input->DecryptData,
-                  tcm_output->DecryptedData);
-    tcm_output->DecryptedDataSize = tcm_input->DecryptDataSize;
+    	vtcm_out->DecryptedDataSize = vtcm_in->DecryptDataSize; 
+        vtcm_out->DecryptedData = (BYTE *)Talloc(sizeof(BYTE)*(vtcm_in->DecryptDataSize));
+        sm4_crypt_cbc(&ctx, 0, vtcm_in->DecryptDataSize, vtcm_in->CBCusedIV, vtcm_in->DecryptData,
+                  vtcm_out->DecryptedData);
+    }
+    returnCode=ret;
     
     //Response 
+sm4decrypt_out:
+    vtcm_out->tag = 0xC500;
+    vtcm_out->returnCode=returnCode;
 
-    tcm_output->tag = 0xC500;
-    tcm_output->paramSize = 46 + tcm_output->DecryptedDataSize;
-    tcm_output->returnCode = ret;
-    if(ret == TCM_SUCCESS) {
-      ret = vtcm_Compute_AuthCode(tcm_output,
-                                  DTYPE_VTCM_OUT,
-                                  SUBTYPE_SM4DECRYPT_OUT,
-                                  auth_session_data,
-                                  tcm_output->DecryptedAuthVerfication);
-    }
-    void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT,recv_msg);
-    if(send_msg == NULL)
-        return -EINVAL;
-    message_add_record(send_msg ,tcm_output);
-
-     // add vtcm's expand info	
-    ret=vtcm_addcmdexpand(send_msg,recv_msg);
-    if(ret<0)
+    void * send_msg;
+    if(returnCode!=0)
     {
-	printf("fail to add vtcm copy info!\n");
-    }	
-    ret = ex_module_sendmsg(sub_proc ,send_msg);
+    	// error output process
+	Free(vtcm_out);
+	vtcm_err_out=Talloc(sizeof(*vtcm_err_out));
+	if(vtcm_err_out==NULL)
+		return -ENOMEM;
+    	vtcm_err_out->tag = 0xC400;
+    	vtcm_err_out->paramSize = sizeof(*vtcm_err_out);
+    	vtcm_err_out->returnCode = returnCode;
+    	send_msg = message_create(DTYPE_VTCM_EXTERNAL ,SUBTYPE_RETURN_DATA_EXTERNAL,recv_msg);
+    	if(send_msg == NULL)
+    	{
+        	printf("send_msg == NULL\n");
+        	return -EINVAL;      
+    	}
+    	message_add_record(send_msg, vtcm_out);
+    }
+    else
+    { 
+	// normal output process	
 
+
+    	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, template_out);
+
+        ret = vtcm_Compute_AuthCode(vtcm_out,
+                 DTYPE_VTCM_OUT,
+                 SUBTYPE_SM4ENCRYPT_OUT,
+                 authSession,
+                 vtcm_out->DecryptedAuthVerfication);
+	if(ret<0)
+	{
+		printf("Fatal error: compute output authcode failed!\n");
+		return -EINVAL;
+	}
+	
+
+    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SM4ENCRYPT_OUT ,recv_msg);
+    	if(send_msg == NULL)
+    	{
+        	printf("send_msg == NULL\n");
+        	return -EINVAL;      
+    	}
+    	message_add_record(send_msg, vtcm_out);
+    }	
+    // add vtcm's expand info	
+    ret=vtcm_addcmdexpand(send_msg,recv_msg);
+    if(ret < 0)
+    {
+	    printf("fail to add vtcm copy info!\n");
+    }	
+    ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
 
