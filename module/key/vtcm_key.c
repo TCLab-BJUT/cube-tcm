@@ -2824,7 +2824,7 @@ sm4decrypt_out:
 
         ret = vtcm_Compute_AuthCode(vtcm_out,
                  DTYPE_VTCM_OUT,
-                 SUBTYPE_SM4ENCRYPT_OUT,
+                 SUBTYPE_SM4DECRYPT_OUT,
                  authSession,
                  vtcm_out->DecryptedAuthVerfication);
 	if(ret<0)
@@ -2834,7 +2834,7 @@ sm4decrypt_out:
 	}
 	
 
-    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SM4ENCRYPT_OUT ,recv_msg);
+    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SM4DECRYPT_OUT ,recv_msg);
     	if(send_msg == NULL)
     	{
         	printf("send_msg == NULL\n");
