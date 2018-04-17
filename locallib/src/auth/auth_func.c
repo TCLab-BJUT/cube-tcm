@@ -2357,39 +2357,35 @@ int vtcm_Build_CmdBlob(void * vtcm_data,
 	return offset;
 }
 
-/*
-int vtcm_AuthSessions_GetData(TCM_SESSION_DATA **tcm_session_data,
-                              TCM_SECRET *hmacKey,
-                              tcm_state_t *tcm_state,
-                              TCM_AUTHHANDLE authHandle,
-                              TCM_PROTOCOL_ID protocolID;
-                              TCM_ENT_TYPE entityType,
-                              TCM_COMMAND_CODE ordinal,
-                              TCM_KEY *tcmkey,
-                              TCM_SECRET *entityAuth,
-                              TCM_DIGEST entityDigest)
+void sm4_cbc_data_prepare(int input_len,BYTE * input_data,int * output_len,BYTE * output_data)
 {
-    int ret = 0;
-    printf("vtcm_AuthSessions_GetData: authHandle %08x\n", authHandle);
-    if(ret == 0) {
-        ret = vtcm_AuthSessions_GetEntry(tcm_session_data,
-                                         tcm_state->tcm_stclear_data.sessions,
-                                         authHandle);
-        if(ret !=0) {
-            printf("vtcm_AuthSessions_GetData: Error, authHandle %08x not found\n", authHandle);
-        }
-    }
-    if(ret == 0) {
-        if(entity == TCM_EN_OWNER) {
-            if(!tcm_state->tcm_permanent_data.ownerInstalled) {
-                printf("vtcm_AuthSessions_GetData: Error, no owner installed\n");
-                ret = TCM_AUTHFAIL;
-            }
-        }
-    }
-    if(ret == 0) {
-        switch((*tcm_session_data)->protocolID) {
+	int pad_len;
+	BYTE pad_value;
+        int block_size=16;   
 
-        }
-    }
-}*/
+	pad_len=block_size-(input_len%block_size);
+	pad_value=(BYTE)pad_len;
+
+	*output_len=input_len+pad_len;
+	Memcpy(output_data,input_data,input_len);
+	Memset(output_data+input_len,pad_value,pad_len);
+	return;
+}
+
+int sm4_cbc_data_recover(int input_len,BYTE * input_data,int * output_len,BYTE * output_data)
+{
+	int pad_len;
+	BYTE pad_value;
+        int block_size=16;  
+
+	pad_value=input_data[input_len-1];
+        if(pad_value>=block_size)
+		return -EINVAL;
+	pad_len=(int)pad_value; 
+             
+
+	*output_len=input_len-pad_len;
+	
+	Memcpy(output_data,input_data,*output_len);
+	return *output_len;
+}

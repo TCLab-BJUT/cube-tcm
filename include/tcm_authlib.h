@@ -180,4 +180,8 @@ int vtcm_Compute_AuthCode2(void * vtcm_data,
 	int type,int subtype,
 	TCM_SESSION_DATA * authsession,
 	BYTE * AuthCode);
+
+void sm4_cbc_data_prepare(int input_len,BYTE * input_data,int * output_len,BYTE * output_data);
+int sm4_cbc_data_recover(int input_len,BYTE * input_data,int * output_len,BYTE * output_data);
+
 #endif

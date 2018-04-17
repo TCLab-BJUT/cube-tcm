@@ -2627,10 +2627,11 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
         sm4_setkey_enc(&ctx, Key);
         //void sm4_crypt_cbc( sm4_context *ctx,int mode,int length,unsigned char iv[16],
         //                    unsigned char *input,unsigned char *output);
+        //vtcm_out->EncryptedDataSize=vtcm_in->EncryptDataSize; 	
 
-        vtcm_out->EncryptedDataSize=vtcm_in->EncryptDataSize; 	
+	sm4_cbc_data_prepare(vtcm_in->EncryptDataSize,vtcm_in->EncryptData,&vtcm_out->EncryptedDataSize,Buf);
         vtcm_out->EncryptedData = (BYTE *)Talloc0(sizeof(BYTE)*(vtcm_out->EncryptedDataSize));
-        sm4_crypt_cbc(&ctx, 1, vtcm_in->EncryptDataSize, vtcm_in->CBCusedIV, vtcm_in->EncryptData,
+        sm4_crypt_cbc(&ctx, 1, vtcm_out->EncryptedDataSize, vtcm_in->CBCusedIV, Buf,
                       vtcm_out->EncryptedData);
     }
     //Response 
@@ -2783,11 +2784,11 @@ int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
     }
     if(ret == TCM_SUCCESS) {
     	sm4_setkey_dec(&ctx, Key);
-
-    	vtcm_out->DecryptedDataSize = vtcm_in->DecryptDataSize; 
+        sm4_crypt_cbc(&ctx, 0, vtcm_in->DecryptDataSize, vtcm_in->CBCusedIV, vtcm_in->DecryptData,Buf);
         vtcm_out->DecryptedData = (BYTE *)Talloc(sizeof(BYTE)*(vtcm_in->DecryptDataSize));
-        sm4_crypt_cbc(&ctx, 0, vtcm_in->DecryptDataSize, vtcm_in->CBCusedIV, vtcm_in->DecryptData,
-                  vtcm_out->DecryptedData);
+        
+	sm4_cbc_data_recover(vtcm_in->DecryptDataSize,Buf,&vtcm_out->DecryptedDataSize,vtcm_out->DecryptedData);
+    	//vtcm_out->DecryptedDataSize = vtcm_in->DecryptDataSize; 
     }
     returnCode=ret;
     
