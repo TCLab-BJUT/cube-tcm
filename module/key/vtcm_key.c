@@ -2933,114 +2933,166 @@ int vtcm_AuthData_Check_Signout(int returnCode,
 int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
 {
     printf("proc_vtcm_Sign : Start\n") ;
+    // internal parameters define
+    BYTE CheckData[TCM_HASH_SIZE];
     int ret = TCM_SUCCESS;
-    TCM_SESSION_DATA *auth_session_data = NULL;
+    TCM_KEY *tcm_key = NULL;
+    TCM_BOOL parentPCRStatus;
+    TCM_STORE_ASYMKEY *tcm_store_asymkey = NULL;
+    TCM_SESSION_DATA *authSession = NULL;
 
     BYTE UserID[DIGEST_SIZE];
     unsigned long lenUID = DIGEST_SIZE;
     memset(UserID, 'A', 32);
-    TCM_STORE_ASYMKEY *tcm_store_asymkey = NULL;
-    TCM_KEY *key = NULL;
-    BYTE *keyUsageAuth;
-    TCM_BOOL parentPCRStatus;
-    struct tcm_in_Sign *tcm_input;
-    int outLength;
-    BYTE CheckData[TCM_HASH_SIZE];
+//    BYTE *keyUsageAuth;
+    BYTE keyauth[DIGEST_SIZE];
+    int offset=0;
+//    struct tcm_in_Sign *tcm_input;
+//    int outLength;
+    //input/output struct  process
+    struct tcm_in_Sign *vtcm_in;  // input data
+    struct tcm_out_Sign *vtcm_out;  // normal output data
+    struct vtcm_external_output_command *vtcm_err_out;  // err output data
+    void * vtcm_template;
+    int   returnCode=0;
 
-    ret = message_get_record(recv_msg, (void **)&tcm_input, 0) ; // get structure 
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0) ; // get structure 
     if(ret < 0)
         return ret;
-    if(tcm_input == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
 
-    //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);//Get the entire command template
-    if(command_template == NULL)
-    {
-        printf("can't solve this command!\n");
-    }
-    struct tcm_out_Sign * tcm_output = malloc(struct_size(command_template));
-
+    // get tcm context's pointer
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
-     outLength = tcm_input->areaToSignSize;
-     tcm_output->sigSize = outLength;
     //Processing
-    if(ret == TCM_SUCCESS) {
-        vtcm_AuthSessions_GetEntry(&auth_session_data,
-                                   tcm_state->tcm_stany_data.sessions,
-                                   tcm_input->authHandle);
-        printf("Serial is %08x\n", auth_session_data->SERIAL);
+    //Get AuthSession
+    if(ret == TCM_SUCCESS)
+    {
+        ret = vtcm_AuthSessions_GetEntry(&authSession,
+                                         tcm_state->tcm_stany_data.sessions,
+                                         vtcm_in->authHandle);
+    }
+    //Compute SignAuthVerfication
+    if(ret == TCM_SUCCESS)
+    {
+      ret = vtcm_Compute_AuthCode(vtcm_in, 
+                                  DTYPE_VTCM_IN, 
+                                  SUBTYPE_SIGN_IN, 
+                                  authSession, CheckData);
     }
     if(ret == TCM_SUCCESS) {
-      ret = vtcm_Compute_AuthCode(tcm_input,
-                                  DTYPE_VTCM_IN,
-                                  SUBTYPE_SIGN_IN,
-                                  auth_session_data,
-                                  CheckData);
-    }
-    if(ret == TCM_SUCCESS) {
-      if(memcmp(CheckData, tcm_input->privAuth, TCM_HASH_SIZE) != 0)
+      if(Memcmp(CheckData, vtcm_in->privAuth, TCM_HASH_SIZE) != 0)
       {
         ret = TCM_AUTHFAIL;
-        printf("\nCompare AuthCode Error\n");
+	 returnCode=TCM_AUTHFAIL;
+         printf("\nerror,authcode compare fail\n");
+         goto sign_out;	
       }
     }
-    if(tcm_input->areaToSignSize == 0) {
+    if(vtcm_in->areaToSignSize == 0) {
         ret = TCM_BAD_PARAMETER;
+	 returnCode=TCM_AUTHFAIL;
+         printf("\nerror,sign size fail\n");
+         goto sign_out;	
     }
+    //output process
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);//Get the entire command template
+    if(template_out == NULL)
+    {
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);
+	return -EINVAL;
+    }
+    vtcm_out = Talloc(struct_size(template_out));
+
     if(ret == TCM_SUCCESS) {
-        ret = vtcm_KeyHandleEntries_GetKey(&key,
+        ret = vtcm_KeyHandleEntries_GetKey(&tcm_key,
                                            &parentPCRStatus,
                                            tcm_state,
-                                           tcm_input->keyHandle,
+                                           vtcm_in->keyHandle,
                                            FALSE,
                                            FALSE,
                                            FALSE);
 
     }
-    if(ret == TCM_SUCCESS) {
-        ret = vtcm_Key_GetUsageAuth(&keyUsageAuth, key);
-    }
+//    if(ret == TCM_SUCCESS) {
+//        ret = vtcm_Key_GetUsageAuth(&keyUsageAuth, tcm_key);
+//    }
     if(ret == TCM_SUCCESS) {
         ret = vtcm_Key_GetStoreAsymkey(&tcm_store_asymkey, 
-                                       key);
+                                       tcm_key);
     }
-    tcm_store_asymkey->privKey.key = (BYTE *)malloc(sizeof(BYTE)*tcm_store_asymkey->privKey.keyLength);
-    BYTE *buffer = (BYTE *)malloc(sizeof(BYTE) * 128);
+
+    vtcm_out->sigSize=vtcm_in->areaToSignSize;
 
     //Response 
-    GM_SM2Sign(buffer, &tcm_output->sigSize, 
-               tcm_input->areaToSign, tcm_input->areaToSignSize,
+    GM_SM2Sign(Buf, &vtcm_out->sigSize, 
+               vtcm_in->areaToSign, vtcm_in->areaToSignSize,
                UserID, lenUID, 
                tcm_store_asymkey->privKey.key, tcm_store_asymkey->privKey.keyLength);
-    tcm_output->sig = (BYTE *)malloc(sizeof(BYTE) * tcm_output->sigSize);
-    memcpy(tcm_output->sig, buffer, tcm_output->sigSize);
-    tcm_output->tag = 0xC500;
-    tcm_output->paramSize = 46 + tcm_output->sigSize;
-    tcm_output->returnCode = 0;
+    vtcm_out->sig = (BYTE *)malloc(sizeof(BYTE) * vtcm_out->sigSize);
+    Memcpy(vtcm_out->sig, Buf, vtcm_out->sigSize);
+    //Response
+    printf("proc_vtcm_Sm2Decrypt : Response \n");
 
-    if(ret == TCM_SUCCESS) {
-      ret = vtcm_Compute_AuthCode(tcm_output,
-                                  DTYPE_VTCM_OUT,
-                                  SUBTYPE_SIGN_OUT,
-                                  auth_session_data,
-                                  tcm_output->resAuth);
-    }
+sign_out:
+    vtcm_out->tag = 0xC500;
+    vtcm_out->returnCode = returnCode;
 
-    void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT,recv_msg);
-    if(send_msg == NULL)
-        return -EINVAL;
-    message_add_record(send_msg ,tcm_output);
+    void * send_msg;
 
-     // add vtcm's expand info	
-    ret=vtcm_addcmdexpand(send_msg,recv_msg);
-    if(ret<0)
+    if(returnCode!=0)
     {
-	printf("fail to add vtcm copy info!\n");
-    }	
-    ret = ex_module_sendmsg(sub_proc ,send_msg);
+    	// error output process
+	Free(vtcm_out);
+	vtcm_err_out=Talloc(sizeof(*vtcm_err_out));
+	if(vtcm_err_out==NULL)
+		return -ENOMEM;
+    	vtcm_err_out->tag = 0xC400;
+    	vtcm_err_out->paramSize = sizeof(*vtcm_err_out);
+    	vtcm_err_out->returnCode = returnCode;
+    	send_msg = message_create(DTYPE_VTCM_EXTERNAL ,SUBTYPE_RETURN_DATA_EXTERNAL,recv_msg);
+    	if(send_msg == NULL)
+    	{
+        	printf("send_msg == NULL\n");
+        	return -EINVAL;      
+    	}
+    	message_add_record(send_msg, vtcm_out);
+    }
+    else
+    {	
+	// normal output process	
 
+
+    	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, template_out);
+
+        ret = vtcm_Compute_AuthCode(vtcm_out,
+                 DTYPE_VTCM_OUT,
+                 SUBTYPE_SIGN_OUT,
+                 authSession,
+                 vtcm_out->resAuth);
+	if(ret<0)
+	{
+		printf("Fatal error: compute output authcode failed!\n");
+		return -EINVAL;
+	}
+	
+
+    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SIGN_OUT ,recv_msg);
+    	if(send_msg == NULL)
+    	{
+        	printf("send_msg == NULL\n");
+        	return -EINVAL;      
+    	}
+    	message_add_record(send_msg, vtcm_out);
+    }	
+    // add vtcm's expand info	
+    ret=vtcm_addcmdexpand(send_msg,recv_msg);
+    if(ret < 0)
+    {
+	    printf("fail to add vtcm copy info!\n");
+    }	
+    ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
 

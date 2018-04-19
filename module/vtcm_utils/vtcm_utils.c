@@ -88,8 +88,8 @@ void * vtcm_auto_build_outputmsg(char * out_line, void * active_msg)
 
 TCM_KEY *global_tcm_key;
 BYTE *global_DecryptData=NULL;
-int keyLength=0;
-int sm2Length=0;
+int keyLength=32;
+int sm2Length=32;
 struct tcm_entity_appinfo
 {
   BYTE uuid[DIGEST_SIZE];
@@ -450,6 +450,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   else if(strcmp(input_para->params,"sign")==0)
   {
     ret=proc_vtcmutils_Sign(sub_proc,input_para);
+  }
+  else if(strcmp(input_para->params,"verify")==0)
+  {
+    ret=proc_vtcmutils_ExVerify(sub_proc,input_para);
   }
   else if(strcmp(input_para->params,"wrapkey")==0)
   {
@@ -1430,6 +1434,9 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
   int ret=0;
   void * vtcm_template;
   char *sign="signdata";
+  char * readfile=NULL;
+  char * writefile=NULL;
+
   unsigned char signeddata[TCM_HASH_SIZE];
   unsigned char hashout[TCM_HASH_SIZE];
   unsigned char hmacout[TCM_HASH_SIZE];
@@ -1445,48 +1452,65 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_SIGN_IN;
   struct tcm_utils_input * input_para=para;
-  char *curr_para;
-  while (i<input_para->param_num) {
-    curr_para=input_para->params+i*DIGEST_SIZE;
-    if (!strcmp("-ikh",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i < input_para->param_num)
-      {
-        sscanf(curr_para,"%x",&vtcm_input->keyHandle); 
-      }else{
-        printf("Missing parameter for -ikh.\n");
-        return -1;
+  char * index_para;
+  char * value_para;
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-ik",index_para))
+		{
+      			sscanf(value_para,"%x",&vtcm_input->keyHandle);
+		}	
+		else if(!Strcmp("-is",index_para))
+		{
+      			sscanf(value_para,"%x",&vtcm_input->authHandle);
+		}	
+		else if(!Strcmp("-rf",index_para))
+		{
+			readfile=value_para;
+		}
+		else if(!Strcmp("-wf",index_para))
+		{
+			writefile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -ik keyhandle -is sessionhandle -rf data_file -wf sign_file",
+				input_para->params);
+			return -EINVAL;
+		}
       } 
-    }else if (!strcmp("-idh",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i < input_para->param_num)
-      {
-        sscanf(curr_para,"%x",&vtcm_input->authHandle); 
-      }else{
-        printf("Missing parameter for -idh.\n");
-        return -1;
-      } 
-    }
-    i++;
   }
   //    sm3(sign,strlen(sign),signeddata);
 
-  vtcm_input->areaToSignSize=8;
+  int fd;
+  int datasize;
+  authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
+  if(authdata==NULL)
+  {
+	printf("can't find sign session!\n");
+	return -EINVAL;
+  }
+  fd=open(readfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("sign file too large!\n");
+    return -EINVAL;     
+  }
+  vtcm_input->areaToSignSize=ret;
   vtcm_input->areaToSign=Talloc0(vtcm_input->areaToSignSize);
   if(vtcm_input->areaToSign==NULL)
     return -EINVAL;
-  Memcpy(vtcm_input->areaToSign,sign,8);
-  //    Memcpy(vtcm_input->areaToSign,signeddata,TCM_HASH_SIZE) ; 
-  // compute authcode
-  //  int ordinal = htonl(vtcm_input->ordinal);
-  //  int signdatalength=htonl(vtcm_input->areaToSignSize);
-  //  vtcm_SM3_3(hashout,&ordinal,4,&signdatalength,4,vtcm_input->areaToSign,vtcm_input->areaToSignSize);
-  authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
-  //  int serial = htonl(authdata->SERIAL);
-  //  vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
-  //  Memcpy(vtcm_input->privAuth,hmacout,TCM_HASH_SIZE); 
+  Memcpy(vtcm_input->areaToSign,Buf,vtcm_input->areaToSignSize);
   // compute authcode
   ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_SIGN_IN,authdata,vtcm_input->privAuth);
 
@@ -1501,27 +1525,56 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
   print_bin_data(Buf,ret,8);                                                                            
 
   ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
-  // check authcode
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);
+  if(ret<0)
+    return ret;
+
+  // bottom half process: check return data head to decide if return error
+  struct vtcm_external_output_command return_head;
+  vtcm_template=memdb_get_template(DTYPE_VTCM_EXTERNAL,SUBTYPE_RETURN_DATA_EXTERNAL);
   if(vtcm_template==NULL)
-    return -EINVAL;
-  ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+      return -EINVAL;
+  ret=blob_2_struct(Buf,&return_head,vtcm_template);
   if(ret<0)
-    return ret;
-  BYTE CheckData[TCM_HASH_SIZE];
-  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT,authdata,CheckData);
-  if(ret<0)
-    return -EINVAL;
-  printf("CheckData is:\n");
-  print_bin_data(CheckData,32,8);
-  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+      return ret;
+  if(return_head.returnCode!=0)
   {
-    printf("sign check output authCode failed!\n");
-    return -EINVAL;
+	// return Error	
+  	print_bin_data(Buf,ret,8);
+  	sprintf(Buf,"%d \n",return_head.returnCode);
   }	
-  if(ret<0)
-    return ret;
-  print_bin_data(Buf,outlen,8);
+  else
+  {
+ 	 // check authcode
+	  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);
+	  if(vtcm_template==NULL)
+		return -EINVAL;
+ 	 ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+  	if(ret<0)
+    		return ret;
+  	print_bin_data(Buf,ret,8);
+  	BYTE CheckData[TCM_HASH_SIZE];
+  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT,authdata,CheckData);
+  	if(ret<0)
+    		return -EINVAL;
+  	if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0){
+    		printf("SM2Decrypt check output failed!\n");
+    		return -EINVAL;
+  	}
+  	fd=open(writefile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  	if(fd<0){
+    		printf("file open error!\n");
+    		return -EIO;
+  	}
+  	write(fd,vtcm_output->sig,vtcm_output->sigSize);
+  	close(fd);
+  	sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    }	
+    printf("Output para: %s\n",Buf);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+    	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+    return 0;
 }
 
 int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
@@ -4086,9 +4139,22 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
   struct tcm_in_ReadPubek * vtcm_input;
   struct tcm_out_ReadPubek * vtcm_output;
   void * vtcm_template;
+  char * ekfile=NULL;
   BYTE checksum[DIGEST_SIZE];
 
   printf("Begin readpubek:\n");
+
+  struct tcm_utils_input * input_para=para;
+  char * curr_para;
+  while(i<input_para->param_num){                                        
+    curr_para=input_para->params+i*DIGEST_SIZE;
+    if(!strcmp("-wf",curr_para)){
+      i++;
+      curr_para=input_para->params+i*DIGEST_SIZE;
+      ekfile=curr_para;     
+    }
+    i++;
+  }
   vtcm_input = Talloc0(sizeof(*vtcm_input));
   if(vtcm_input==NULL)
     return -ENOMEM;
@@ -4109,22 +4175,20 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
 
   print_bin_data(Buf,ret,8);
 
-  BYTE *BBuffer = (BYTE *)malloc(sizeof(BYTE) * 512) ;
-
   // send command and wait for the result
-  ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,BBuffer);
+  ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
   if(ret<0)
     return ret;
 
   // output the data
-  print_bin_data(BBuffer,outlen,8);
+  print_bin_data(Buf,outlen,8);
 
   // get the output struct 
   vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_READPUBEK_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
 
-  ret=blob_2_struct(BBuffer,vtcm_output,vtcm_template);
+  ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   if(ret<0)
     return ret;
 
@@ -4156,6 +4220,19 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
     return -ENOMEM;
   ret=struct_clone(&vtcm_output->pubEndorsementKey,pubEK,vtcm_template);
 
+  if(ekfile!=NULL)
+  {
+  	int fd;
+  	fd = open(ekfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  	if(fd<0)
+       		return -EIO;
+  	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
+  	ret = struct_2_blob(&(vtcm_output->pubEndorsementKey),Buf,vtcm_template);
+  	if(ret<0)
+    		return -EIO;
+  	write(fd,Buf,ret);
+  	close(fd);
+  }
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
@@ -4163,8 +4240,9 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
 
-  return ret;
+  return 0;
 }
+
 int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
   int outlen;
   int i=1;
@@ -4246,6 +4324,7 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
   if(ret<0)
     return -EIO;
   write(fd,Buf,ret);
+  close(fd);
   printf("CreateEKPair is:\n");
   print_bin_data(BBuffer_1,outlen,8);
 
@@ -4414,11 +4493,15 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
   int ret = 0;
   int index = -1;
   int outlen;
+  char * pcrfile=NULL;
 
   struct tcm_in_pcrread * vtcm_input;
   struct tcm_out_pcrread * vtcm_output;
   void * vtcm_template;
-  char * curr_para;
+
+  struct tcm_utils_input * input_para=para;
+  char * index_para;
+  char * value_para;
 
   unsigned char digest[TCM_HASH_SIZE];
   printf("begin proc pcrread \n");
@@ -4428,30 +4511,30 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
     return -ENOMEM;	
   vtcm_output=Talloc0(sizeof(*vtcm_output));
   if(vtcm_output==NULL)
-    return -ENOMEM;	
+  return -ENOMEM;	
 
-  struct tcm_utils_input * input_para=para;
-
-  while (i < input_para->param_num) {
-    curr_para=input_para->params+i*DIGEST_SIZE;
-    if (!strcmp("-ix",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i <= input_para->param_num)
-      {
-        sscanf(curr_para,"%d",&vtcm_input->pcrIndex);
-      } 
-      else {
-        printf("Missing parameter for -ix.\n");
-        return -1;
-      }
-    } 
-    else {
-      printf("\n%s is not a valid option\n", curr_para);
-      break;
-    }
-    i++;
+  if((input_para->param_num>0)&&(input_para->param_num%2==1))
+  {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+       		index_para=input_para->params+i*DIGEST_SIZE;
+       		value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-ix",index_para))
+		{
+       			sscanf(value_para,"%x",&vtcm_input->pcrIndex);
+		}	
+		else if(!Strcmp("-wf",index_para))
+		{
+  			pcrfile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -ix pcrindex -wf pcrfile",input_para->params);
+			return -EINVAL;
+		}
+	}
   }
+
   vtcm_input->tag=htons(TCM_TAG_RQU_COMMAND);
   vtcm_input->ordinal=SUBTYPE_PCRREAD_IN;		
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_PCRREAD_IN);
@@ -4461,25 +4544,87 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
   vtcm_input->paramSize=sizeof(*vtcm_input);
   ret=struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(ret<0)
-    return ret;
+      return ret;
   print_bin_data(Buf,ret,8);
   ret=vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);		
   if(ret<0)
-    return ret;
+      return ret;
   vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_PCRREAD_OUT);
   if(vtcm_template==NULL)
-    return -EINVAL;
+      return -EINVAL;
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   if(ret<0)
-    return ret;
+      return ret;
   printf("Pcr %d value:\n",vtcm_input->pcrIndex);
   print_bin_data(vtcm_output->outDigest,32,8);
 
+  if(pcrfile!=NULL)
+  {
+	// add read pcr value to the pcrfile (TCM_PCR_COMPOSITE format)
+	int fd ;
+	vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_PCR_COMPOSITE);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+	TCM_PCR_COMPOSITE * pcr_comp=Talloc0(sizeof(*pcr_comp));
+	fd=open(pcrfile,O_RDWR);
+	if(fd<0)
+        {
+		fd=open(pcrfile,O_RDWR|O_CREAT);
+		if(fd<0)
+		{
+    			printf("No pik file %s!\n",pcrfile);
+    			return -EINVAL;
+		}
+		ret=vtcm_Init_PcrComposite(pcr_comp);
+		close(fd);
+	}
+	else
+	{
+		ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  		if(ret<0)
+  		{
+    			printf("can't read pcrfile data!\n");
+    			return -EINVAL;
+  		}
+  		if(ret>DIGEST_SIZE*32)
+  		{
+    			printf("pcr file too long!\n");
+    			return -EINVAL;
+  		}
+		close(fd);
+		if(ret<DIGEST_SIZE)
+		{
+			ret=vtcm_Init_PcrComposite(pcr_comp);
+		}
+		else
+		{
+			ret=blob_2_struct(Buf,pcr_comp,vtcm_template);
+			if(ret<0)
+				return -EINVAL;
+		}
+	}
+
+	ret=vtcm_Dup_PCRComposite(pcr_comp,vtcm_input->pcrIndex,vtcm_output->outDigest);
+	if(ret<0)
+		return -EINVAL;
+	ret=struct_2_blob(pcr_comp,Buf,vtcm_template);
+	if(ret<0)
+		return ret;
+  	fd=open(pcrfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  	if(fd<0)
+    		return -EIO;
+  	write(fd,Buf,ret);
+  	close(fd);
+	
+  }
+
+
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
+
   printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
   if(send_msg==NULL)
-    return -EINVAL;
+      return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
 
   /* i=0;
@@ -5099,7 +5244,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
       }	
       else if(!Strcmp("-ix",index_para))
       {
-        sscanf(value_para,"%d",&pcrIndex);
+        sscanf(value_para,"%x",&pcrIndex);
       }
       else if(!Strcmp("-of",index_para))
       {
@@ -5136,12 +5281,14 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
 
   // file pcr_select struct
   vtcm_Init_PcrSelection(&vtcm_input->targetPCR);
-  ret=vtcm_Set_PcrSelection(&vtcm_input->targetPCR,pcrIndex);
-  if(ret<0)
-  {
-    printf("Invalid pcrIndex!\n");
-    return -EINVAL;
-  }
+   
+  Memcpy(vtcm_input->targetPCR.pcrSelect,&pcrIndex,TCM_NUM_PCR/CHAR_BIT);
+//  ret=vtcm_Set_PcrSelection(&vtcm_input->targetPCR,pcrIndex);
+//  if(ret<0)
+//  {
+//    printf("Invalid pcrIndex!\n");
+//    return -EINVAL;
+//  }
 
   // output command's bin value 
 

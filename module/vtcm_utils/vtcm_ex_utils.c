@@ -250,7 +250,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	char * value_para;
 	int i;
 	TCM_KEY pik;
-	TCM_KEY ek;
+	TCM_PUBKEY ekpub;
 	TCM_ASYM_CA_CONTENTS ca_conts;
 	TCM_SYMMETRIC_KEY * symm_key=&ca_conts.sessionKey;
 	TCM_PIK_CERT * pik_cert;
@@ -260,6 +260,8 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	//  cmd's params
 	char * user_file=NULL;
 	char * pik_file=NULL;
+	char * ek_file=NULL;
+	char * req_file=NULL;
 	char * cert_file=NULL;
 	char * symmkey_file=NULL;
     	printf("Begin ex CA Sign:\n");
@@ -279,6 +281,14 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 			{
 				pik_file=value_para;
 			}
+			else if(!Strcmp("-ek",index_para))
+			{
+				ek_file=value_para;
+			}
+			else if(!Strcmp("-req",index_para))
+			{
+				req_file=value_para;
+			}
 			else if(!Strcmp("-cert",index_para))
 			{
 				cert_file=value_para;
@@ -290,7 +300,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 			else
 			{
 				printf("Error cmd format! should be %s -user user_info_file -pik pik_file -ek ek.file"
-					" -cert cert_file",input_para->params);
+					" -req req_file -cert cert_file -symm symmkey_file",input_para->params);
 				return -EINVAL;
 			}
 		}
@@ -367,6 +377,34 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	sm3(Buf,ret,pik_cert->pubDigest);		
 	Memcpy(&ca_conts.idDigest,pik_cert->pubDigest,DIGEST_SIZE);
    
+       // Read ek's pubkey
+    	fd=open(ek_file,O_RDONLY);
+    	if(fd<0)
+    	{
+  		printf("No ek file %s!\n",pik_file);
+		return -EINVAL;
+    	}
+    	ret=read(fd,Buf,DIGEST_SIZE*31+1);
+    	if(ret<0)
+    	{
+		printf("can't read ek data!\n");
+		return -EINVAL;
+    	}
+    	if(ret>DIGEST_SIZE*31)
+    	{
+		printf("pik data too long!\n");
+		return -EINVAL;
+	}
+
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+
+	ret=blob_2_struct(Buf, &ekpub,vtcm_template);
+	if(ret<0)
+		return ret;
+    
+
        // sign data with CAprikey
 
     	if(CAprikey==NULL)
@@ -438,13 +476,8 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 	ret=struct_2_blob(&ca_conts,Buf,vtcm_template);
 	if(ret<0)
 		return ret;
-	// Crypt the symm_key blob with pubek and write it
-        if(pubEK==NULL)
-	{
-		printf("can't find pubEK, perhaps you should run readpubek first!\n");
-	}
 
-	ret=GM_SM2Encrypt(EncBuf,&Enclen,Buf,ret,pubEK->pubKey.key,pubEK->pubKey.keyLength);
+	ret=GM_SM2Encrypt(EncBuf,&Enclen,Buf,ret,ekpub.pubKey.key,ekpub.pubKey.keyLength);
 	if(ret!=0)	
 	{
         	printf("pubek's SM2Encrypt is fail\n");
@@ -467,4 +500,133 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
    	ex_module_sendmsg(sub_proc,send_msg);		
 
 	return ret;
+}
+
+int proc_vtcmutils_ExVerify(void * sub_proc, void * para){
+  TCM_KEY *keyOut;
+  unsigned char *encData=NULL;
+  int i=1;
+  int ret=0;
+  char *keyfile=NULL;
+  char *datafile=NULL;
+  char *signfile=NULL;
+  void * vtcm_template;
+  struct tcm_utils_input * input_para=para;
+  char * index_para;
+  char * value_para;
+
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-kf",index_para))
+		{
+        		keyfile=value_para;
+		}	
+		else if(!Strcmp("-rf",index_para))
+		{
+			datafile=value_para;
+		}
+		else if(!Strcmp("-sf",index_para))
+		{
+			signfile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -kf keyfile -rf datafile -sf signfile",input_para->params);
+			return -EINVAL;
+		}
+      } 
+  }
+  int fd;
+  int datasize;
+  int signsize;
+  fd=open(keyfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("key file too large!\n");
+    return -EINVAL;
+  }
+  close(fd);
+  encData=(BYTE*)malloc(sizeof(BYTE)*512);
+  int length=512;
+
+  //  load key
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+
+  datasize=ret;
+
+  keyOut=Talloc0(sizeof(*keyOut));
+  if(keyOut==NULL)
+    return -ENOMEM;
+
+  ret=blob_2_struct(Buf,keyOut,vtcm_template);
+  if(ret<0||ret>datasize){
+    printf("read key file error!\n");
+    return -EINVAL;
+  }
+
+  // proc_vtcmutils_ReadFile(keyLength,keyFile);
+  // read data
+  fd=open(datafile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("read file too large!\n");
+    return -EINVAL;     
+  }
+  close(fd);
+  datasize=ret;
+
+  // read sig
+  fd=open(signfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  BYTE * SignData=Buf+datasize+DIGEST_SIZE;
+  ret=read(fd,SignData,DIGEST_SIZE*8+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*8)
+  {
+    printf("read file too large!\n");
+    return -EINVAL;     
+  }
+  close(fd);
+  signsize=ret;
+  // proc_vtcmutils_ReadFile(keyLength,keyFile);
+  // read data
+
+    BYTE UserID[DIGEST_SIZE];
+    unsigned long lenUID = DIGEST_SIZE;
+    memset(UserID, 'A', 32);
+
+  ret=GM_SM2VerifySig(SignData,signsize,
+		Buf,datasize,
+		UserID,lenUID,
+		keyOut->pubKey.key, keyOut->pubKey.keyLength);
+  sprintf(Buf,"%d \n",ret);
+  printf("Output para: %s\n",Buf);
+
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+
+  if(send_msg==NULL)
+    return -EINVAL;
+
+  ex_module_sendmsg(sub_proc,send_msg);		
+  return ret;
 }

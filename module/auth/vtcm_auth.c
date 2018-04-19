@@ -358,36 +358,6 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
     	if(offset<0)
     		return offset;
 
-        /*
-    // check smkAuth
-    uint32_t temp_int;
-    // compute smkauthCode
-    sm3(Buf+6,offset-6-36*2,cmdHash);
-
-    Memcpy(Buf,cmdHash,DIGEST_SIZE);
-    temp_int=htonl(vtcm_in->smkHandle);
-    Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    
-    sm3_hmac(smkauthSession->sharedSecret,TCM_HASH_SIZE,
-	Buf,DIGEST_SIZE+sizeof(uint32_t),
-	smkauth);
-
-    if(Memcmp(smkauth,vtcm_in->smkAuth,TCM_HASH_SIZE)!=0)
-    {
-	returnCode=TCM_AUTHFAIL;
-	goto makeidentity_out;
-    }	
-
-    // compute ownerauthCode
-
-    Memcpy(Buf,cmdHash,DIGEST_SIZE);
-    temp_int=htonl(vtcm_in->ownerHandle);
-    Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    
-    sm3_hmac(ownerauthSession->sharedSecret,TCM_HASH_SIZE,
-	Buf,DIGEST_SIZE+sizeof(uint32_t),
-	ownerauth);
-*/
         if(ret == TCM_SUCCESS)
         {
           ret = vtcm_Compute_AuthCode(vtcm_in,

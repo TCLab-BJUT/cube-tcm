@@ -1925,12 +1925,21 @@ int vtcm_Add_PCRComposite(TCM_PCR_COMPOSITE * pcr_comp,int index,BYTE * value)
 			{
 				pcr_select_offset=i/8;
 				select_value=1<<(i%8);
-				pcr_select->pcrSelect[pcr_select_offset]|=select_value;
+				if(select_value&pcr_select->pcrSelect[pcr_select_offset])
+				{
+					Memcpy(Buf,buffer+pcr_value_offset,DIGEST_SIZE);
+					Memcpy(Buf+DIGEST_SIZE,value,DIGEST_SIZE);
+					sm3(Buf,DIGEST_SIZE*2,buffer+pcr_value_offset);
+				}
+				else
+				{
+					Memset(Buf,0,DIGEST_SIZE);
+					Memcpy(Buf+DIGEST_SIZE,value,DIGEST_SIZE);
+					sm3(Buf,DIGEST_SIZE*2,buffer+pcr_value_offset);
+					pcr_select->pcrSelect[pcr_select_offset]|=select_value;
+				}
 	
 				// do the pcr extend
-				Memcpy(Buf,pcr_set->pcrValue+pcr_value_offset,DIGEST_SIZE);
-				Memcpy(Buf+DIGEST_SIZE,value,DIGEST_SIZE);
-				sm3(Buf,DIGEST_SIZE*2,pcr_set->pcrValue+pcr_value_offset);
 				pcr_value_offset+=DIGEST_SIZE;
 			}
 			else 
@@ -2007,7 +2016,7 @@ int vtcm_Dup_PCRComposite(TCM_PCR_COMPOSITE * pcr_comp,int index,BYTE * value)
 				pcr_select->pcrSelect[pcr_select_offset]|=select_value;
 	
 				// do the pcr duplicate
-				Memcpy(pcr_set->pcrValue+pcr_value_offset,value,DIGEST_SIZE);
+				Memcpy(buffer+pcr_value_offset,value,DIGEST_SIZE);
 				pcr_value_offset+=DIGEST_SIZE;
 			}
 			else 
