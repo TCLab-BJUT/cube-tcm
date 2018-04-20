@@ -1,0 +1,2 @@
+To know how to install and run the cube-tcm, see the tcm_principle.pdf(Note there is only the chinese version)
+Now there is a bug in gm_sm2 lib which cause verify command failed in signtest.cmd，will fix it soon.  
