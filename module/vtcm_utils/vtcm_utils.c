@@ -33,7 +33,7 @@
 
 static  BYTE Buf[DIGEST_SIZE*32];
 static  BYTE Output[DIGEST_SIZE*32];
-Record_List sessions_list;
+Record_List sessions_list; // tcm caller's tcm session list
 TCM_PUBKEY *pubEK;
 TCM_SECRET ownerAuth;
 TCM_SECRET smkAuth;
@@ -314,8 +314,6 @@ int vtcm_SM3_hmac(BYTE* checksum , unsigned char* key,int klen,unsigned char* hm
 
 int vtcm_utils_init(void * sub_proc,void * para)
 {
-  INIT_LIST_HEAD(&sessions_list.list);
-  sessions_list.record=NULL;
 
   INIT_LIST_HEAD(&sessions_list.list);
   sessions_list.record=NULL;
