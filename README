@@ -1,2 +1,8 @@
+本软件包模拟中国可信计算相关标准规定的TCM芯片，可信由北京工业大学可信计算实验室沈昌祥、张建标团队开发。
+软件包依赖于一个中国密码算法软件包的裁剪修改版(https://github.com/TCLab-BJUT/gm_sm2),该算法包源自一个
+国密算法开源项目https://github.com/stevenpsm/GM_SM2，使用了国外的一个大数算法软件包libtommath ),
+软件包架构于开源可信计算框架Cube-1.3版(https://github.com/biparadox/cube-1.3),
+目前软件包为试用版。
+软件包操作说明为tcm_principle.pdf(目前只有中文版本)
+
 To know how to install and run the cube-tcm, see the tcm_principle.pdf(Note there is only the chinese version)
-Now there is a bug in gm_sm2 lib which cause verify command failed in signtest.cmd，will fix it soon.  
