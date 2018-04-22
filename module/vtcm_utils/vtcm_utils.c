@@ -5190,13 +5190,10 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
   char * index_para;
   char * value_para;
   int pcrIndex;
-  char * infofile;
+  char * reportfile=NULL;
 
   struct tcm_in_Quote * vtcm_input;
   struct tcm_out_Quote * vtcm_output;
-  char * pwdo="ooo";
-  char * pwds="sss";
-  char * pwdk="kkk";
 
   BYTE externalData[TCM_HASH_SIZE];
   BYTE pikauth[TCM_HASH_SIZE];
@@ -5209,10 +5206,6 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
 
   // makeidentity's param
   TCM_AUTHHANDLE pikhandle;		
-
-  char * userinfo=NULL;
-  char * reqfile=NULL;		
-  char * keyfile=NULL;		
 
   vtcm_input = Talloc0(sizeof(*vtcm_input));
   if(vtcm_input==NULL)
@@ -5246,11 +5239,11 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
       }
       else if(!Strcmp("-of",index_para))
       {
-        infofile=value_para;
+        reportfile=value_para;
       }
       else
       {
-        printf("Error cmd format! should be %s -ikh keyhandle -ish authhandle -ix pcrindex -of infofile",
+        printf("Error cmd format! should be %s -ikh keyhandle -ish authhandle -ix pcrindex -of reportfile",
                input_para->params);
         return -EINVAL;
       }
@@ -5266,16 +5259,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
     return -EINVAL;
   }	
 
-
-  // compute the pik auth value
-
-  sm3(pwdk,Strlen(pwdk),pikauth);
-
-  // compute crypt pik auth
-  vtcm_AuthSessionData_Encrypt(vtcm_input->privAuth,pikauthdata,pikauth);
-
   Memset(vtcm_input->externalData,'\02',DIGEST_SIZE);	
-
 
   // file pcr_select struct
   vtcm_Init_PcrSelection(&vtcm_input->targetPCR);
@@ -5300,17 +5284,6 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
   vtcm_input->paramSize=offset;
 
   uint32_t temp_int;
-  // compute smkauthCode
-  //sm3(Buf+6,offset-6-36,pikauth);
-
-  //Memcpy(Buf,pikauth,DIGEST_SIZE);
-  //temp_int=htonl(vtcm_input->authHandle);
-  //Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-
-  //sm3_hmac(pikauthdata->sharedSecret,TCM_HASH_SIZE,
-    //       Buf,DIGEST_SIZE+sizeof(uint32_t),
-    //       vtcm_input->privAuth);
-
   //compute smkauthcode
   ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_QUOTE_IN,pikauthdata,vtcm_input->privAuth); 
 
@@ -5323,50 +5296,80 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
   ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
   if(ret<0)
     return ret;
-  // printf("quote:\n");
-  //print_bin_data(Buf,outlen,8);
-  // check authcode
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT);
+
+
+  // bottom half process: check return data head to decide if return error
+  struct vtcm_external_output_command return_head;
+  vtcm_template=memdb_get_template(DTYPE_VTCM_EXTERNAL,SUBTYPE_RETURN_DATA_EXTERNAL);
   if(vtcm_template==NULL)
-    return -EINVAL;
-  ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+      return -EINVAL;
+  ret=blob_2_struct(Buf,&return_head,vtcm_template);
   if(ret<0)
-    return -EINVAL;
-  BYTE CheckData[TCM_HASH_SIZE];
-  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT,pikauthdata,CheckData);
-  if(ret<0)
-    return -EINVAL;
-  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+      return ret;
+  if(return_head.returnCode!=0)
   {
-    printf("quote check output authCode failed!\n");
-    return -EINVAL;     
-  }
+	// return Error	
+  	print_bin_data(Buf,ret,8);
+  	sprintf(Buf,"%d \n",return_head.returnCode);
+  }	
+  else
+  {
 
+  	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT);
+  	if(vtcm_template==NULL)
+   	     return -EINVAL;
+  	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+  	if(ret<0)
+    		return -EINVAL;
+  	print_bin_data(Buf,ret,8);
+  	BYTE CheckData[TCM_HASH_SIZE];
+  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT,pikauthdata,CheckData);
+  	if(ret<0)
+    		return -EINVAL;
+  	if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+  	{
+    		printf("quote check output authCode failed!\n");
+    		return -EINVAL;     
+  	}
+  	fd=open(reportfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  	if(fd<0){
+    		printf("report file open error!\n");
+    		return -EIO;
+  	}
+	TCM_QUOTE_INFO * quoteinfo=Talloc0(sizeof(*quoteinfo));
+    	quoteinfo->info.tag=TCM_TAG_PCR_INFO;
+    	quoteinfo->info.localityAtCreation=0;
+    	quoteinfo->info.localityAtRelease=TCM_LOC_ONE|TCM_LOC_TWO|TCM_LOC_THREE|TCM_LOC_FOUR;
 
-  printf("quote:\n");
-  print_bin_data(Buf,outlen,8);
-  /*	
-        vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+    	Memcpy(&quoteinfo->info.creationPCRSelection,&vtcm_input->targetPCR,sizeof(TCM_PCR_SELECTION));
+
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_PCR_COMPOSITE);
+    	if(vtcm_template==NULL)
+        	return -EINVAL;
+    	ret=struct_2_blob(&vtcm_output->pcrData,Buf,vtcm_template);
+
+        sm3(Buf,ret,&quoteinfo->info.digestAtCreation);
+
+        quoteinfo->tag=TCM_TAG_QUOTE_INFO;
+        Memcpy(quoteinfo->fixed,"QUOT",4);
+        Memcpy(quoteinfo->externalData,vtcm_input->externalData,DIGEST_SIZE);
+        vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_QUOTE_INFO);
         if(vtcm_template==NULL)
-        return -EINVAL;	
+             return -EINVAL;
+        ret=struct_2_blob(quoteinfo,Buf,vtcm_template);
 
-  // write keyfile	
+  	write(fd,Buf,ret);
+        write(fd,&vtcm_output->sigSize,sizeof(vtcm_output->sigSize));
+	write(fd,vtcm_output->sig,vtcm_output->sigSize);
+  	close(fd);
+  	sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    }
 
-  ret=struct_2_blob(&vtcm_output->pik,Buf,vtcm_template);
-  if(ret<0)
-  return -EINVAL;
-  fd=open(keyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
-  if(fd<0)
-  return -EIO;
-  write(fd,Buf,ret);
-  close(fd);
+    printf("Output para: %s\n",Buf);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    if(send_msg==NULL)
+    	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
 
-  // write req file
-  fd=open(reqfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
-  if(fd<0)
-  return -EIO;
-  write(fd,vtcm_output->CertData,vtcm_output->CertSize);
-  close(fd);
-  */			
-  return ret;
+    return ret;
 }

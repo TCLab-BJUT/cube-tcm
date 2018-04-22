@@ -855,15 +855,6 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
     // check privAuth
     uint32_t temp_int;
     // compute authCode
-    //sm3(Buf+6,offset-6-36,cmdHash);
-
-    //Memcpy(Buf,cmdHash,DIGEST_SIZE);
-    //temp_int=htonl(vtcm_in->authHandle);
-    //Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    
-    //sm3_hmac(authSession->sharedSecret,TCM_HASH_SIZE,
-	//Buf,DIGEST_SIZE+sizeof(uint32_t),
-	//pikauth);
 
     if(ret == TCM_SUCCESS)
     {
