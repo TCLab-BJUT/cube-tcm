@@ -4637,45 +4637,45 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
 
 int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
 {
-  int ret;
-  int sockfd,sock_dt;
-  struct sockaddr_in my_addr;//local ip info
-  struct sockaddr_in dest_addr; //destnation ip info
+  	int ret;
+  	int sockfd,sock_dt;
+  	struct sockaddr_in my_addr;//local ip info
+  	struct sockaddr_in dest_addr; //destnation ip info
 
-  char * tcm_socket_name;
-  int tcm_port;
-  char * temp_str;
-  tcm_socket_name=getenv("TCM_SERVER_NAME");
-  if(tcm_socket_name==NULL)
-    return -EINVAL;
-  temp_str=getenv("TCM_SERVER_PORT");
-  if(temp_str==NULL)
-    return -EINVAL;
-  tcm_port=Atoi(temp_str,DIGEST_SIZE);	
+  	char * tcm_socket_name;
+  	int tcm_port;
+  	char * temp_str;
+  	tcm_socket_name=getenv("TCM_SERVER_NAME");
+  	if(tcm_socket_name==NULL)
+    		return -EINVAL;
+  	temp_str=getenv("TCM_SERVER_PORT");
+  	if(temp_str==NULL)
+    		return -EINVAL;
+  	tcm_port=Atoi(temp_str,DIGEST_SIZE);	
 
-  if(-1 == (sockfd = socket(AF_INET,SOCK_STREAM,0)) )
-  {
-    print_cubeerr("error in create socket\n");
-    return -1;
-  }
-  dest_addr.sin_family = AF_INET;
-  dest_addr.sin_port = htons(tcm_port);
-  dest_addr.sin_addr.s_addr = inet_addr(tcm_socket_name);
-  memset(&dest_addr.sin_zero,0,8);
-  if(-1 == connect(sockfd,(struct sockaddr*)&dest_addr,sizeof(struct sockaddr)))
-  {
-    print_cubeerr("connect error\n");
-    return -EINVAL;
-  }
-  ret = send(sockfd,in,in_len,0);
-  if(ret!=in_len)
-    return -EINVAL;
-  print_cubeaudit("write %d data!\n",ret);
-  ret=recv(sockfd,out,1024,0);
-  print_cubeaudit("read %d data!\n",ret);
-  close(sockfd);
-  *out_len=ret;
-  return ret;
+  	if(-1 == (sockfd = socket(AF_INET,SOCK_STREAM,0)) )
+  	{
+    		print_cubeerr("error in create socket\n");
+    		return -1;
+  	}
+  	dest_addr.sin_family = AF_INET;
+  	dest_addr.sin_port = htons(tcm_port);
+  	dest_addr.sin_addr.s_addr = inet_addr(tcm_socket_name);
+  	memset(&dest_addr.sin_zero,0,8);
+  	if(-1 == connect(sockfd,(struct sockaddr*)&dest_addr,sizeof(struct sockaddr)))
+  	{
+    		print_cubeerr("connect error\n");
+    		return -EINVAL;
+  	}
+  	ret = send(sockfd,in,in_len,0);
+  	if(ret!=in_len)
+    		return -EINVAL;
+  	print_cubeaudit("write %d data!\n",ret);
+  	ret=recv(sockfd,out,1024,0);
+  	print_cubeaudit("read %d data!\n",ret);
+  	close(sockfd);
+  	*out_len=ret;
+  	return ret;
 }
 
 int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
