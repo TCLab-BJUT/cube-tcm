@@ -759,3 +759,107 @@ int proc_vtcmutils_ExVerifyQuote(void * sub_proc, void * para){
   ex_module_sendmsg(sub_proc,send_msg);		
   return ret;
 }
+
+int proc_vtcmutils_ExCheckQuotePCR(void * sub_proc, void * para){
+
+  int i=1;
+  int ret=0;
+  char *pcrfile=NULL;
+  char *quoteinfofile=NULL;
+  TCM_QUOTE_INFO quoteinfo;
+  TCM_PCR_COMPOSITE pcrinfo;
+  BYTE checkdata[TCM_HASH_SIZE];
+  void * vtcm_template;
+  struct tcm_utils_input * input_para=para;
+  char * index_para;
+  char * value_para;
+
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-pf",index_para))
+		{
+        		pcrfile=value_para;
+		}	
+		else if(!Strcmp("-rf",index_para))
+		{
+			quoteinfofile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -kf keyfile -rf reportfile",input_para->params);
+			return -EINVAL;
+		}
+      } 
+  }
+  int fd;
+  int datasize;
+
+  // read pcr info
+  fd=open(pcrfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("key file too large!\n");
+    return -EINVAL;
+  }
+  close(fd);
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_PCR_COMPOSITE);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+
+  ret=blob_2_struct(Buf,&pcrinfo,vtcm_template);
+  if(ret<0)
+	return ret;
+  sm3(Buf,ret,checkdata);
+
+  // read report data
+  fd=open(quoteinfofile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("read file too large!\n");
+    return -EINVAL;     
+  }
+  close(fd);
+
+   // read quote info
+
+   vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_QUOTE_INFO);
+   if(vtcm_template==NULL)
+         return -EINVAL;
+   ret=blob_2_struct(Buf,&quoteinfo,vtcm_template);
+   if(ret<0)
+	return ret;
+
+   // compare checkdata and digest in report
+
+   if(Memcmp(checkdata,&quoteinfo.info.digestAtCreation,TCM_HASH_SIZE)==0)
+	ret=0;
+   else
+	ret=1;
+   
+  sprintf(Buf,"%d \n",ret);
+  printf("Output para: %s\n",Buf);
+
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+
+  if(send_msg==NULL)
+    return -EINVAL;
+
+  ex_module_sendmsg(sub_proc,send_msg);		
+  return ret;
+}
