@@ -932,8 +932,9 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
 	BYTE * signedData=Buf+ret+1;
 	unsigned long pulSigLen=512;
 	BYTE UserID[DIGEST_SIZE];
+	int datasize=ret;
 	unsigned long lenUID=DIGEST_SIZE;
-	Memset(UserID,"A",32);	
+	Memset(UserID,'A',32);	
 
 	
 	ret=GM_SM2Sign(signedData,&pulSigLen,Buf,ret,UserID,lenUID,privpik->privKey.key,privpik->privKey.keyLength);	
@@ -942,6 +943,7 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
 		returnCode=-TCM_BAD_SIGNATURE;
 		goto quote_out;	
 	}
+
 	vtcm_out->sigSize=pulSigLen;
 	vtcm_out->sig=Talloc0(vtcm_out->sigSize);
 	Memcpy(vtcm_out->sig,signedData,vtcm_out->sigSize);

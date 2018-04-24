@@ -630,3 +630,132 @@ int proc_vtcmutils_ExVerify(void * sub_proc, void * para){
   ex_module_sendmsg(sub_proc,send_msg);		
   return ret;
 }
+
+int proc_vtcmutils_ExVerifyQuote(void * sub_proc, void * para){
+  TCM_KEY *keyOut;
+  unsigned char *encData=NULL;
+  int i=1;
+  int ret=0;
+  char *keyfile=NULL;
+  char *reportfile=NULL;
+  TCM_QUOTE_INFO quoteinfo;
+  void * vtcm_template;
+  struct tcm_utils_input * input_para=para;
+  char * index_para;
+  char * value_para;
+
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-kf",index_para))
+		{
+        		keyfile=value_para;
+		}	
+		else if(!Strcmp("-rf",index_para))
+		{
+			reportfile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -kf keyfile -rf reportfile",input_para->params);
+			return -EINVAL;
+		}
+      } 
+  }
+  int fd;
+  int datasize;
+  fd=open(keyfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("key file too large!\n");
+    return -EINVAL;
+  }
+  close(fd);
+  encData=(BYTE*)malloc(sizeof(BYTE)*512);
+  int length=512;
+
+  //  load key
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+
+  datasize=ret;
+
+  keyOut=Talloc0(sizeof(*keyOut));
+  if(keyOut==NULL)
+    return -ENOMEM;
+
+  ret=blob_2_struct(Buf,keyOut,vtcm_template);
+  if(ret<0||ret>datasize){
+    printf("read key file error!\n");
+    return -EINVAL;
+  }
+
+  // read report data
+  fd=open(reportfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("read file too large!\n");
+    return -EINVAL;     
+  }
+  close(fd);
+
+  datasize=ret;
+
+   // read quote info
+
+   vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_QUOTE_INFO);
+   if(vtcm_template==NULL)
+         return -EINVAL;
+   ret=blob_2_struct(Buf,&quoteinfo,vtcm_template);
+   if(ret<0)
+	return ret;
+
+   // get sign data
+   
+   int signsize;
+   BYTE * signdata;
+ 
+   signsize=*(int *)(Buf+ret);
+   if(datasize-signsize!=ret+sizeof(int))
+	return -EINVAL;
+   signdata=Buf+ret+sizeof(int);  
+   datasize=ret;	
+  // verify signdata 
+
+    BYTE UserID[DIGEST_SIZE];
+    unsigned long lenUID = DIGEST_SIZE;
+    memset(UserID, 'A', 32);
+
+   
+
+  ret=GM_SM2VerifySig(signdata,signsize,
+		Buf,datasize,
+		UserID,lenUID,
+		keyOut->pubKey.key, keyOut->pubKey.keyLength);
+  sprintf(Buf,"%d \n",ret);
+  printf("Output para: %s\n",Buf);
+
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+
+  if(send_msg==NULL)
+    return -EINVAL;
+
+  ex_module_sendmsg(sub_proc,send_msg);		
+  return ret;
+}

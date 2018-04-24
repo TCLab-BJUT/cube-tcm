@@ -453,6 +453,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   {
     ret=proc_vtcmutils_ExVerify(sub_proc,input_para);
   }
+  else if(strcmp(input_para->params,"verifyquote")==0)
+  {
+    ret=proc_vtcmutils_ExVerifyQuote(sub_proc,input_para);
+  }
   else if(strcmp(input_para->params,"wrapkey")==0)
   {
     //   ret=proc_vtcmutils_WrapKey(sub_proc,input_para);
