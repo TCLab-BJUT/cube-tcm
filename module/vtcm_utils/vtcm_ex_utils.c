@@ -44,11 +44,17 @@ extern Record_List entitys_list;
 BYTE * CAprikey=NULL;
 unsigned long CAprilen=0;
 BYTE * CApubkey=NULL;
+unsigned long CApublen=64;
  
 int proc_vtcmutils_ExCreateSm2Key(void * sub_proc,void * para);
 int proc_vtcmutils_ExLoadCAKey(void * sub_proc,void * para);
 int proc_vtcmutils_ExCaSign(void * sub_proc,void * para);
+int proc_vtcmutils_ExCAVerify(void * sub_proc,void * para);
 int proc_vtcmutils_ExVerify(void * sub_proc,void * para);
+int proc_vtcmutils_ExVerifyQuote(void * sub_proc, void * para);
+int proc_vtcmutils_ExCheckQuotePCR(void * sub_proc, void * para);
+int proc_vtcmutils_ExDecryptPikCert(void * sub_proc,void * para);
+
 void * vtcm_auto_build_outputmsg(char * out_line, void * active_msg);
 
 
@@ -456,9 +462,9 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 
 	ret=blobsize%(DIGEST_SIZE/2);
 	offset-=ret;
-	blobsize+=ret;	
+	blobsize+=offset;	
     	sm4_setkey_enc(&ctx, symm_key->data);
-    	sm4_crypt_ecb(&ctx, 1, blobsize, Buf,EncBuf);
+    	sm4_crypt_ecb(&ctx, 1, blobsize, Buf+ret,EncBuf);
 
     	fd=open(cert_file,O_CREAT|O_TRUNC|O_WRONLY,0666);
     	if(fd<0){
@@ -500,6 +506,217 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
    	ex_module_sendmsg(sub_proc,send_msg);		
 
 	return ret;
+}
+
+int proc_vtcmutils_ExDecryptPikCert(void * sub_proc, void * para){
+  int i=1;
+  int ret=0;
+  char *keyfile=NULL;
+  char *certfile=NULL;
+  void * vtcm_template;
+  struct tcm_utils_input * input_para=para;
+  char * index_para;
+  char * value_para;
+  int returnCode=0;
+
+  TCM_ASYM_CA_CONTENTS ca_conts;
+  TCM_SYMMETRIC_KEY symmkey;
+  TCM_PIK_CERT pik_cert;
+
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-kf",index_para))
+		{
+			keyfile=value_para;
+		}
+		else if(!Strcmp("-cf",index_para))
+		{
+			certfile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -kf keyfile -cf certfile",input_para->params);
+			return -EINVAL;
+		}
+      } 
+  }
+  int fd;
+  int keysize;
+
+  int certsize;
+  int offset;
+
+  // readkey
+  fd=open(keyfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("key file too large!\n");
+    return -EINVAL;
+  }
+  close(fd);
+
+  //  load key
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY);
+  if(vtcm_template==NULL)
+      return -EINVAL;
+
+  keysize=ret;
+
+  ret=blob_2_struct(Buf,&symmkey,vtcm_template);
+  if(ret<0||ret>keysize){
+      printf("read key file error!\n");
+      return -EINVAL;
+  }
+  // read cert
+  fd=open(certfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+
+  ret=read(fd,Buf+DIGEST_SIZE*16,DIGEST_SIZE*16+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*16)
+  {
+    printf("cert file too large!\n");
+    return -EINVAL;
+  }
+  close(fd);
+  certsize=ret;
+  //  decrypt cert
+  sm4_context ctx;
+  
+  sm4_setkey_dec(&ctx,symmkey.data);
+  sm4_crypt_ecb(&ctx,0,certsize,Buf+DIGEST_SIZE*16,Buf);
+
+  for(offset=0;offset<TCM_HASH_SIZE/2;offset++)
+  {	
+ 	if(Buf[offset]!=0)
+		break;
+  }
+  if(offset==TCM_HASH_SIZE)
+	returnCode= -EINVAL;
+
+  fd=open(certfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  if(fd<0){
+          printf("cert file open error!\n");
+          return -EIO;
+  }
+  write(fd,Buf+offset,certsize-offset);
+  close(fd); 
+
+    sprintf(Buf,"%d \n",returnCode);
+    printf("Output para: %s\n",Buf);
+
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+
+  if(send_msg==NULL)
+    return -EINVAL;
+
+  ex_module_sendmsg(sub_proc,send_msg);		
+  return ret;
+}
+
+int proc_vtcmutils_ExCAVerify(void * sub_proc, void * para){
+  int i=1;
+  int ret=0;
+  char *certfile=NULL;
+  void * vtcm_template;
+  struct tcm_utils_input * input_para=para;
+  char * index_para;
+  char * value_para;
+
+  TCM_KEY pik;
+  TCM_ASYM_CA_CONTENTS ca_conts;
+  TCM_PIK_CERT pik_cert;
+
+  if((input_para->param_num>0) &&
+	(input_para->param_num%2==1))
+ {
+	for(i=1;i<input_para->param_num;i+=2)
+	{
+        	index_para=input_para->params+i*DIGEST_SIZE;
+        	value_para=index_para+DIGEST_SIZE;
+		if(!Strcmp("-cf",index_para))
+		{
+			certfile=value_para;
+		}
+		else
+		{
+			printf("Error cmd format! should be %s -cf certfile",input_para->params);
+			return -EINVAL;
+		}
+      } 
+  }
+  int fd;
+  int keysize;
+
+  int certsize;
+  int signsize;
+
+  // read cert
+  fd=open(certfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+
+  ret=read(fd,Buf+DIGEST_SIZE*16,DIGEST_SIZE*16+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*16)
+  {
+    printf("key file too large!\n");
+    return -EINVAL;
+  }
+  close(fd);
+
+  //  load cert
+
+	vtcm_template=memdb_get_template(DTYPE_VTCM_UTILS,SUBTYPE_TCM_PIK_CERT);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+
+  certsize=ret;
+
+  ret=blob_2_struct(Buf+DIGEST_SIZE*16,&pik_cert,vtcm_template);
+  if(ret<0||ret>certsize){
+      printf("read key file error!\n");
+      return -EINVAL;
+  }
+
+  //  load key
+  // proc_vtcmutils_ReadFile(keyLength,keyFile);
+  // read data
+
+    BYTE UserID[DIGEST_SIZE];
+    unsigned long lenUID = DIGEST_SIZE;
+    memset(UserID, 'A', 32);
+
+    Memcpy(Buf,pik_cert.userDigest,DIGEST_SIZE);
+    Memcpy(Buf+DIGEST_SIZE,pik_cert.pubDigest,DIGEST_SIZE);
+    ret=GM_SM2VerifySig(pik_cert.signData,pik_cert.signLen,
+		Buf,DIGEST_SIZE*2,
+		UserID,lenUID,
+		CApubkey, CApublen);
+
+    sprintf(Buf,"%d \n",ret);
+    printf("Output para: %s\n",Buf);
+
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+
+    if(send_msg==NULL)
+        return -EINVAL;
+
+    ex_module_sendmsg(sub_proc,send_msg);		
+    return ret;
 }
 
 int proc_vtcmutils_ExVerify(void * sub_proc, void * para){

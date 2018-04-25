@@ -2230,6 +2230,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
       {
       case SUBTYPE_UNSEAL_IN:
       case SUBTYPE_MAKEIDENTITY_IN:
+      case SUBTYPE_ACTIVATEIDENTITY_IN:
                     sernum = htonl(authsession->SERIAL);
                     Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
     				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
@@ -2245,7 +2246,8 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	{
       switch(subtype)
       {
-      case SUBTYPE_MAKEIDENTITY_OUT:
+      	case SUBTYPE_MAKEIDENTITY_OUT:
+      	case SUBTYPE_ACTIVATEIDENTITY_OUT:
                     sernum = htonl(authsession->SERIAL);
                     Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
     				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
@@ -2313,6 +2315,16 @@ int vtcm_Compute_AuthCode2(void * vtcm_data,
 	{
       switch(subtype)
       {
+      	    case SUBTYPE_UNSEAL_IN:
+            case SUBTYPE_MAKEIDENTITY_IN:
+            case SUBTYPE_ACTIVATEIDENTITY_IN:
+                    sernum = htonl(authsession->SERIAL);
+                    Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
+    		    sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+				AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
+				AuthCode);
+        		break;
+
 
                   default:
            return -EINVAL;
@@ -2323,6 +2335,7 @@ int vtcm_Compute_AuthCode2(void * vtcm_data,
       switch(subtype)
       {
           case SUBTYPE_MAKEIDENTITY_OUT:
+      	  case SUBTYPE_ACTIVATEIDENTITY_OUT:
                   sernum = htonl(authsession->SERIAL);
                   Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
     				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,

@@ -449,6 +449,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   {
     ret=proc_vtcmutils_Sign(sub_proc,input_para);
   }
+  else if(strcmp(input_para->params,"caverify")==0)
+  {
+    ret=proc_vtcmutils_ExCAVerify(sub_proc,input_para);
+  }
   else if(strcmp(input_para->params,"verify")==0)
   {
     ret=proc_vtcmutils_ExVerify(sub_proc,input_para);
@@ -564,6 +568,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   else if(strcmp(input_para->params,"activateidentity")==0)
   {
     ret=proc_vtcmutils_ActivateIdentity(sub_proc,input_para);
+  }
+  else if(strcmp(input_para->params,"decryptpikcert")==0)
+  {
+    ret=proc_vtcmutils_ExDecryptPikCert(sub_proc,input_para);
   }
   else if(strcmp(input_para->params,"quote")==0)
   {
@@ -5115,6 +5123,14 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
 
   uint32_t temp_int;
   // compute pikauthCode
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_ACTIVATEIDENTITY_IN,pikauthdata,vtcm_input->pikAuth);
+  if(ret==0)
+  {
+      ret=vtcm_Compute_AuthCode2(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_ACTIVATEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
+  }
+  else
+	return -EINVAL;
+  /*	
   sm3(Buf+6,offset-6-36*2,pikauth);
 
   Memcpy(Buf,pikauth,DIGEST_SIZE);
@@ -5133,7 +5149,7 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
   sm3_hmac(ownerauthdata->sharedSecret,TCM_HASH_SIZE,
            Buf,DIGEST_SIZE+sizeof(uint32_t),
            vtcm_input->ownerAuth);
-
+ */
   printf("Begin input for activeidentity:\n");
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(offset<0)
@@ -5153,29 +5169,48 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   if(ret<0)
     return -EINVAL;
-  /*   	
-        vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
-        if(vtcm_template==NULL)
-        return -EINVAL;	
 
-  // write keyfile	
-
-  ret=struct_2_blob(&vtcm_output->pikPub,Buf,vtcm_template);
-  if(ret<0)
-  return -EINVAL;
-  fd=open(keyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+   // write symmkey file
+	fd=open(symmkey_file,O_CREAT|O_TRUNC|O_WRONLY,0666);
+	if(fd<0)
+		return -EIO;	
+  	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY);
+  	if(vtcm_template==NULL)
+      		return -EINVAL;
+	
+	ret=struct_2_blob(&vtcm_output->symmkey,Buf,vtcm_template);
+	if(ret<0)
+		return ret;
+	write(fd,Buf,ret);
+	close(fd);
+  // read  cert file
+/*
+  int datasize;
+  fd=open(certfile,O_RDONLY);
   if(fd<0)
-  return -EIO;
-  write(fd,Buf,ret);
-  close(fd);
+  	return -EIO;
+  ret=read(fd,Buf+DIGEST_SIZE*16,DIGEST_SIZE*16+1);
+  if(ret>DIGEST_SIZE*16)
+  {
+	printf("cert file too large!\n");
+  }
 
-  // write req file
-  fd=open(reqfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
-  if(fd<0)
-  return -EIO;
-  write(fd,vtcm_output->CertData,vtcm_output->CertSize);
   close(fd);
-  */
+  datasize=ret;
+  
+  sm4_context ctx;
+  
+  sm4_setkey_enc(&ctx,&vtcm_output->symmkey);
+  sm4_crypt_ecb(&ctx,0,datasize,Buf+DIGEST_SIZE*16,Buf);
+
+  fd=open(certfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  if(fd<0){
+          printf("cert file open error!\n");
+          return -EIO;
+  }
+  write(fd,Buf,datasize);
+  close(fd); 
+*/
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
@@ -5183,9 +5218,9 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
 
-
   return ret;
 }
+
 int proc_vtcmutils_Quote(void * sub_proc, void * para)
 {
   int outlen;

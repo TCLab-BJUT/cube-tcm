@@ -30,3 +30,5 @@ out:
 
 in: apterminate -ih $smkHandle
 out: 
+
+in: decryptpikcert -kf symm.key -cf pik.cert
