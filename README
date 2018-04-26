@@ -3,6 +3,6 @@
 国密算法开源项目https://github.com/stevenpsm/GM_SM2，使用了国外的一个大数算法软件包libtommath ),
 软件包架构于开源可信计算框架Cube-1.3版(https://github.com/biparadox/cube-1.3),
 目前软件包为试用版。
-软件包操作说明为tcm_principle.pdf(目前只有中文版本)
+软件包操作说明为tcm_manual.pdf(目前只有中文版本)
 
 To know how to install and run the cube-tcm, see the tcm_principle.pdf(Note there is only the chinese version)
