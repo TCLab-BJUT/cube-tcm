@@ -5005,7 +5005,6 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
   TCM_KEY_HANDLE keyhandle;		
 
   char * symmkey_file=NULL;		
-  char * certfile=NULL;		
 
   vtcm_input = Talloc0(sizeof(*vtcm_input));
   if(vtcm_input==NULL)
@@ -5041,14 +5040,10 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
       {
         symmkey_file=value_para;
       }
-      else if(!Strcmp("-cert",index_para))
-      {
-        certfile=value_para;
-      }
       else
       {
         printf("Error cmd format! should be %s -ish piksessionhandle -ioh ownerhandle -ikh pikhandle "
-               "-symm symmetrickey(encryped by pubek) -cert certfile(encryptd by symmkey)",
+               "-symm symmetrickey(encryped by pubek) ",
                input_para->params);
         return -EINVAL;
       }
@@ -5183,34 +5178,6 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
 		return ret;
 	write(fd,Buf,ret);
 	close(fd);
-  // read  cert file
-/*
-  int datasize;
-  fd=open(certfile,O_RDONLY);
-  if(fd<0)
-  	return -EIO;
-  ret=read(fd,Buf+DIGEST_SIZE*16,DIGEST_SIZE*16+1);
-  if(ret>DIGEST_SIZE*16)
-  {
-	printf("cert file too large!\n");
-  }
-
-  close(fd);
-  datasize=ret;
-  
-  sm4_context ctx;
-  
-  sm4_setkey_enc(&ctx,&vtcm_output->symmkey);
-  sm4_crypt_ecb(&ctx,0,datasize,Buf+DIGEST_SIZE*16,Buf);
-
-  fd=open(certfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
-  if(fd<0){
-          printf("cert file open error!\n");
-          return -EIO;
-  }
-  write(fd,Buf,datasize);
-  close(fd); 
-*/
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);

@@ -20,7 +20,7 @@ in: apcreate -it 01 -iv $keyHandle -pwd kkk
 #创建pik会话，返回pik会话句柄
 out: 1:$authHandle
 
-in: activateidentity -ish $authHandle -ioh $ownerHandle -ikh $keyHandle -symm symm.key -cert pik.cert
+in: activateidentity -ish $authHandle -ioh $ownerHandle -ikh $keyHandle -symm symm.key
 
 in: apterminate -ih $authHandle
 out: 
