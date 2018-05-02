@@ -19,7 +19,7 @@
 #include "ex_module.h"
 
 #include "vtcm_input.h"
-#include "../../include/app_struct.h"
+#include "app_struct.h"
 
 
 static struct timeval time_val={0,50*1000};

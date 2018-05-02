@@ -1615,7 +1615,7 @@
             "elem_desc":
             [
                 {"name":"param_num","type":"INT"},
-                {"name":"params","type":"DEFSTRARRAY","size":"32","def":"param_num"}
+                {"name":"params","type":"DEFSTRARRAY","size":32,"def":"param_num"}
             ]
         }
     }

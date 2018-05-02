@@ -24,19 +24,16 @@
 #include "sys_func.h"
 
 #include "vtcm_auto.h"
-#include "../../include/app_struct.h"
+#include "app_struct.h"
+#include "vtcm_script.h"
 
-
-//int print_error(char * str, int result)
-//{
-//	printf("%s %s",str,tss_err_string(result));
-//}
 
 static BYTE Buf[DIGEST_SIZE*32];
 static struct tcm_utils_input cmd_input;
 static struct tcm_utils_output cmd_output;
 static char info[DIGEST_SIZE*16];
 static char cmd_line[DIGEST_SIZE*16];
+static int cmd_no;
 
 struct cmd_var
 {
@@ -45,6 +42,7 @@ struct cmd_var
 }__attribute__((packed));
 
 Record_List varList;
+Record_List scriptList;
 
 struct cmd_var * _add_cmd_var(char * var_name,char * var_data) 
 {
@@ -97,7 +95,6 @@ int _read_cmd_line(FILE * file,char * cmd)   	 // return type : 1-in, 2-out, 3-i
 	int ret;
 	int offset;
 	int i;
-	
 
 	do{
 			
@@ -142,6 +139,8 @@ int vtcm_auto_init(void * sub_proc,void * para)
 {
     INIT_LIST_HEAD(&varList.list);
     varList.record=NULL;
+    INIT_LIST_HEAD(&scriptList.list);
+    scriptList.record=NULL;
     return 0;
 }
 
@@ -158,33 +157,40 @@ int vtcm_auto_start(void * sub_proc,void * para)
 	int subtype;
 	FILE * file;
 	struct start_para * start_para=para;
+	struct vtcm_script_call * script_call;
+	int running_state=0;  // 0: wait
+                              // 1: cmd line type
+			      // 2: message type
 
 	printf("begin vtcm_auto start!\n");
 	
 	sleep(1);
 
-	if(start_para->argc<2)
-	{
-		printf("Error Usage! should be %s [cmd_list file]!\n",start_para->argv[0]);
-		return -EINVAL;
-	}
-
-	file=fopen(start_para->argv[1],"r");
-	if(file==NULL)
-	{
-		printf("can't open cmd_list file %s!\n",start_para->argv[1]);
-		return -EIO;
-	}	
 	
-	ret=_read_cmd_line(file,cmd_line);
+	if(para!=NULL)    // cmd line type
+        {
+		if(start_para->argc >=2)
+                { 
 
-	if(ret!=1)
-	{
-		printf("first command is not an input command!\n");
-		return -EINVAL;	
-	}
+			file=fopen(start_para->argv[1],"r");
+			if(file==NULL)
+			{
+				printf("can't open cmd_list file %s!\n",start_para->argv[1]);
+				return -EIO;
+			}
+			running_state=1;
+			ret=_read_cmd_line(file,cmd_line);
 
-	proc_vtcm_sendonecmd(sub_proc,cmd_line);
+			if(ret!=1)
+			{
+				printf("first command is not an input command!\n");
+				return -EINVAL;	
+			}
+
+			proc_vtcm_sendonecmd(sub_proc,cmd_line);
+		}
+	}	
+
 
 	while(1)
 	{
@@ -197,8 +203,39 @@ int vtcm_auto_start(void * sub_proc,void * para)
 
         	type=message_get_type(recv_msg);
         	subtype=message_get_subtype(recv_msg);
+
+		if((type==DTYPE_VTCM_SCRIPT) &&(subtype==VTCM_SCRIPT_CALL))
+		{
+			if(running_state!=0)
+                        {
+				printf("last script do not finished!\n");
+				continue;
+			}
+			ret=message_get_record(recv_msg,&script_call,0);
+			if(script_call==NULL)
+				return -EINVAL;
+			file=fopen(script_call->name,"r");
+			if(file==NULL)
+			{
+				printf("can't open cmd_list file %s!\n",script_call->name);
+				return -EIO;
+			}
+			running_state=2;
+			ret=_read_cmd_line(file,cmd_line);
+
+			if(ret!=1)
+			{
+				printf("first command is not an input command!\n");
+				return -EINVAL;	
+			}
+			proc_vtcm_sendonecmd(sub_proc,cmd_line);
+		}
+		
+
         	if((type==DTYPE_VTCM_UTILS) &&(subtype ==SUBTYPE_TCM_UTILS_OUTPUT))
 		{
+			if(running_state==0)
+				continue;
 			do{
 				ret=_read_cmd_line(file,cmd_line);
 			}while(ret==3);
@@ -220,20 +257,19 @@ int vtcm_auto_start(void * sub_proc,void * para)
 			{
 				printf("Finish cmd list!\n");
 				fclose(file);
-				return 0;
+				running_state=0;
+				continue;	
 			}		
 			if(ret!=1)
 			{
 				printf("not input command after outputcommand!\n");
 				return -EINVAL;	
-
 			}
 			ret=proc_vtcm_sendonecmd(sub_proc,cmd_line);
 			if(ret<0)
 				return ret;
 		}
 	}
-
 	return 0;
 };
 
