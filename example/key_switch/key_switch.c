@@ -35,6 +35,7 @@ int key_switch_start(void * sub_proc,void * para)
 {
 	int ret;
 	void * recv_msg;
+	void * data_msg;
 	int i;
 	int type;
 	int subtype;
@@ -58,6 +59,7 @@ int key_switch_start(void * sub_proc,void * para)
 		}
 		if((type==DTYPE_FILE_TRANS)&&(subtype==SUBTYPE_FILE_DATA))
 		{
+			data_msg=recv_msg;
 			if(message_get_flag(recv_msg) &MSG_FLAG_CRYPT)
 				proc_key_decrypt(sub_proc,recv_msg);
 			else
@@ -66,9 +68,9 @@ int key_switch_start(void * sub_proc,void * para)
 		if((type==DTYPE_VTCM_SCRIPT)&&(subtype==VTCM_SCRIPT_RET))
 		{
 			if(message_get_flag(recv_msg) &MSG_FLAG_CRYPT)
-				proc_key_recover(sub_proc,recv_msg);
+				proc_key_recover(sub_proc,data_msg);
 			else
-				proc_key_send(sub_proc,recv_msg);
+				proc_key_send(sub_proc,data_msg);
 		}
 	}
 	return 0;
