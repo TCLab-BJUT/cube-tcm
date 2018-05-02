@@ -33,7 +33,7 @@ static struct tcm_utils_input cmd_input;
 static struct tcm_utils_output cmd_output;
 static char info[DIGEST_SIZE*16];
 static char cmd_line[DIGEST_SIZE*16];
-static int cmd_no;
+static int cmd_no=0;
 
 struct cmd_var
 {
@@ -158,6 +158,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 	FILE * file;
 	struct start_para * start_para=para;
 	struct vtcm_script_call * script_call;
+	struct vtcm_script_ret * script_ret;
 	int running_state=0;  // 0: wait
                               // 1: cmd line type
 			      // 2: message type
@@ -228,6 +229,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				printf("first command is not an input command!\n");
 				return -EINVAL;	
 			}
+			cmd_no=0;
 			proc_vtcm_sendonecmd(sub_proc,cmd_line);
 		}
 		
@@ -236,6 +238,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 		{
 			if(running_state==0)
 				continue;
+			cmd_no++;
 			do{
 				ret=_read_cmd_line(file,cmd_line);
 			}while(ret==3);
@@ -258,6 +261,13 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				printf("Finish cmd list!\n");
 				fclose(file);
 				running_state=0;
+
+				script_ret=Talloc0(sizeof(*script_ret));
+				if(script_ret==NULL)
+					return -ENOMEM;
+				ret=proc_send_scriptret(sub_proc,recv_msg,script_ret);	
+				if(ret<0)
+					return ret;
 				continue;	
 			}		
 			if(ret!=1)
@@ -273,6 +283,26 @@ int vtcm_auto_start(void * sub_proc,void * para)
 	return 0;
 };
 
+int proc_send_scriptret(void * sub_proc,void *recv_msg, struct vtcm_script_ret *script_ret)
+{
+	int ret;
+	struct tcm_utils_output * output_para;
+	void * send_msg;
+	ret=message_get_record(recv_msg,&output_para,0);
+	if(ret<0)
+		return -EINVAL;
+	script_ret->returnCode=Atoi(output_para->params,DIGEST_SIZE);
+	script_ret->param_num=0;
+	script_ret->params=NULL;
+	script_ret->cmd_no=cmd_no;	
+	send_msg=message_create(DTYPE_VTCM_SCRIPT,VTCM_SCRIPT_RET,recv_msg);
+	if(send_msg==NULL)
+		return -EINVAL;
+	message_add_record(send_msg,script_ret);
+	ex_module_sendmsg(sub_proc,send_msg);	
+	return 0;
+}
+	
 int proc_vtcm_sendonecmd(void * sub_proc,char * cmd)
 {
 

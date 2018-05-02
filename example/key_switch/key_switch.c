@@ -195,7 +195,6 @@ int proc_key_send(void * sub_proc,void * message)
 	return ret;
 }
 
-
 int proc_key_recover(void * sub_proc,void * message)
 {
 	int i;
