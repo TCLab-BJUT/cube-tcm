@@ -38,6 +38,7 @@ TCM_PUBKEY *pubEK;
 TCM_SECRET ownerAuth;
 TCM_SECRET smkAuth;
 Record_List entitys_list;
+void * curr_recv_msg=NULL;
 
 // Ex CA Module
 
@@ -377,6 +378,7 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
     print_cubeerr("wrong command format! should be %s [cmd] [para] ...\n","main_proc");
     return -EINVAL;
   }
+  curr_recv_msg=recv_msg;
   if(strcmp(input_para->params,"createek")==0)
   {
     ret=proc_vtcmutils_createEKPair(sub_proc,input_para);
@@ -597,6 +599,7 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   {
     printf("function error\n");
   }
+  curr_recv_msg=NULL;
   return ret;
 }
 /*int proc_vtcmutils_ChangeAuth(void * sub_proc, void * para){
@@ -862,7 +865,7 @@ if(vtcm_input->DecryptData==NULL)
 
     sprintf(Buf,"%d \n",vtcm_output->returnCode);
     printf("Output para: %s\n",Buf);
-    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
     if(send_msg==NULL)
       return -EINVAL;
     ex_module_sendmsg(sub_proc,send_msg);		
@@ -1011,7 +1014,7 @@ int proc_vtcmutils_NV_WriteValue(void * sub_proc, void * para){
   sprintf(Buf,"%d\n ",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;
@@ -1140,7 +1143,7 @@ int proc_vtcmutils_NV_ReadValue(void * sub_proc, void * para){
   sprintf(Buf,"%d %d %s\n ",vtcm_output->returnCode,vtcm_output->dataSize,vtcm_output->data);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -1435,7 +1438,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -1584,7 +1587,7 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
   	sprintf(Buf,"%d \n",vtcm_output->returnCode);
     }	
     printf("Output para: %s\n",Buf);
-    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
     if(send_msg==NULL)
     	return -EINVAL;
     ex_module_sendmsg(sub_proc,send_msg);		
@@ -1706,7 +1709,7 @@ int proc_vtcmutils_SM2Encrypt(void * sub_proc, void * para){
   sprintf(Buf,"%d \n",0);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;
@@ -1859,7 +1862,7 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
     }
 
     printf("Output para: %s\n",Buf);
-    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
     if(send_msg==NULL)
     	return -EINVAL;
     ex_module_sendmsg(sub_proc,send_msg);		
@@ -2025,7 +2028,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
   	sprintf(Buf,"%d \n",vtcm_output->returnCode);
     }//
     printf("Output para: %s\n",Buf);
-    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
     if(send_msg==NULL)
         return -EINVAL;
     ex_module_sendmsg(sub_proc,send_msg);
@@ -2186,7 +2189,7 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
 
    sprintf(Buf,"%d \n",vtcm_output->returnCode);
    printf("Output para: %s\n",Buf);
-   void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+   void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
    if(send_msg==NULL)
         return -EINVAL;
    ex_module_sendmsg(sub_proc,send_msg);		
@@ -2260,7 +2263,7 @@ int proc_vtcmutils_SM3CompleteExtend(void * sub_proc, void * para){
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -2755,7 +2758,7 @@ int proc_vtcmutils_OwnerClear(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL); 
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg); 
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg); 
@@ -3234,7 +3237,7 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -3407,7 +3410,7 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -3846,7 +3849,7 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -3995,7 +3998,7 @@ int proc_vtcmutils_LoadKey(void * sub_proc, void * para){
   sprintf(Buf,"%d %x\n",vtcm_output->returnCode,vtcm_output->inKeyHandle);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;
@@ -4135,7 +4138,7 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
   sprintf(Buf,"%d %x\n",vtcm_output->returnCode,vtcm_output->authHandle);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;
@@ -4249,7 +4252,7 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
   }
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -4344,7 +4347,7 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -4430,7 +4433,7 @@ int proc_vtcmutils_Extend(void * sub_proc, void * para){
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -4636,7 +4639,7 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
 
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
       return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -4964,7 +4967,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
 
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -5180,7 +5183,7 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
 	close(fd);
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
@@ -5376,7 +5379,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
     }
 
     printf("Output para: %s\n",Buf);
-    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
     if(send_msg==NULL)
     	return -EINVAL;
     ex_module_sendmsg(sub_proc,send_msg);		
