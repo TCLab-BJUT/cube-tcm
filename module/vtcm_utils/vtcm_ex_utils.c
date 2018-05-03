@@ -38,6 +38,7 @@ extern TCM_PUBKEY *pubEK;
 extern TCM_SECRET ownerAuth;
 extern TCM_SECRET smkAuth;
 extern Record_List entitys_list;
+extern void * curr_recv_msg;
 
 // Ex CA Module
 
@@ -135,7 +136,7 @@ int proc_vtcmutils_ExCreateSm2Key(void * sub_proc,void * para)
 	ret=0;
 	printf("proceed  create Sm2 key succeed!\n");
     	sprintf(Buf,"%d \n",ret);
-   	void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+   	void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
    	if(send_msg==NULL)
 		return -EINVAL;
    	ex_module_sendmsg(sub_proc,send_msg);		
@@ -239,7 +240,7 @@ int proc_vtcmutils_ExLoadCAKey(void * sub_proc,void * para)
 
 	ret=0;
     	sprintf(Buf,"%d \n",ret);
-   	void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+   	void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
    	if(send_msg==NULL)
 		return -EINVAL;
    	ex_module_sendmsg(sub_proc,send_msg);		
@@ -500,7 +501,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
     	close(fd);
 
     	sprintf(Buf,"%d \n",ret);
-   	void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+   	void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
    	if(send_msg==NULL)
 		return -EINVAL;
    	ex_module_sendmsg(sub_proc,send_msg);		
@@ -617,7 +618,7 @@ int proc_vtcmutils_ExDecryptPikCert(void * sub_proc, void * para){
     sprintf(Buf,"%d \n",returnCode);
     printf("Output para: %s\n",Buf);
 
-    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;
@@ -710,7 +711,7 @@ int proc_vtcmutils_ExCAVerify(void * sub_proc, void * para){
     sprintf(Buf,"%d \n",ret);
     printf("Output para: %s\n",Buf);
 
-    void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
     if(send_msg==NULL)
         return -EINVAL;
@@ -839,7 +840,7 @@ int proc_vtcmutils_ExVerify(void * sub_proc, void * para){
   sprintf(Buf,"%d \n",ret);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;
@@ -968,7 +969,7 @@ int proc_vtcmutils_ExVerifyQuote(void * sub_proc, void * para){
   sprintf(Buf,"%d \n",ret);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;
@@ -1072,7 +1073,7 @@ int proc_vtcmutils_ExCheckQuotePCR(void * sub_proc, void * para){
   sprintf(Buf,"%d \n",ret);
   printf("Output para: %s\n",Buf);
 
-  void * send_msg =vtcm_auto_build_outputmsg(Buf,NULL);
+  void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
 
   if(send_msg==NULL)
     return -EINVAL;

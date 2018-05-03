@@ -162,6 +162,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 	int running_state=0;  // 0: wait
                               // 1: cmd line type
 			      // 2: message type
+	void * call_msg=NULL;
 
 	printf("begin vtcm_auto start!\n");
 	
@@ -188,7 +189,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				return -EINVAL;	
 			}
 
-			proc_vtcm_sendonecmd(sub_proc,cmd_line);
+			proc_vtcm_sendonecmd(sub_proc,cmd_line,NULL);
 		}
 	}	
 
@@ -215,6 +216,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 			ret=message_get_record(recv_msg,&script_call,0);
 			if(script_call==NULL)
 				return -EINVAL;
+			call_msg=recv_msg;
 			file=fopen(script_call->name,"r");
 			if(file==NULL)
 			{
@@ -230,7 +232,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				return -EINVAL;	
 			}
 			cmd_no=0;
-			proc_vtcm_sendonecmd(sub_proc,cmd_line);
+			proc_vtcm_sendonecmd(sub_proc,cmd_line,NULL);
 		}
 		
 
@@ -265,9 +267,15 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				script_ret=Talloc0(sizeof(*script_ret));
 				if(script_ret==NULL)
 					return -ENOMEM;
-				ret=proc_send_scriptret(sub_proc,recv_msg,script_ret);	
+				ret=proc_get_scriptret(sub_proc,recv_msg,script_ret);	
 				if(ret<0)
 					return ret;
+				void * send_msg;
+				send_msg=message_create(DTYPE_VTCM_SCRIPT,VTCM_SCRIPT_RET,call_msg);
+				if(send_msg==NULL)
+					return -EINVAL;
+				message_add_record(send_msg,script_ret);
+				ex_module_sendmsg(sub_proc,send_msg);	
 				continue;	
 			}		
 			if(ret!=1)
@@ -275,7 +283,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				printf("not input command after outputcommand!\n");
 				return -EINVAL;	
 			}
-			ret=proc_vtcm_sendonecmd(sub_proc,cmd_line);
+			ret=proc_vtcm_sendonecmd(sub_proc,cmd_line,NULL);
 			if(ret<0)
 				return ret;
 		}
@@ -283,11 +291,10 @@ int vtcm_auto_start(void * sub_proc,void * para)
 	return 0;
 };
 
-int proc_send_scriptret(void * sub_proc,void *recv_msg, struct vtcm_script_ret *script_ret)
+int proc_get_scriptret(void * sub_proc,void *recv_msg, struct vtcm_script_ret *script_ret)
 {
 	int ret;
 	struct tcm_utils_output * output_para;
-	void * send_msg;
 	ret=message_get_record(recv_msg,&output_para,0);
 	if(ret<0)
 		return -EINVAL;
@@ -295,15 +302,10 @@ int proc_send_scriptret(void * sub_proc,void *recv_msg, struct vtcm_script_ret *
 	script_ret->param_num=0;
 	script_ret->params=NULL;
 	script_ret->cmd_no=cmd_no;	
-	send_msg=message_create(DTYPE_VTCM_SCRIPT,VTCM_SCRIPT_RET,recv_msg);
-	if(send_msg==NULL)
-		return -EINVAL;
-	message_add_record(send_msg,script_ret);
-	ex_module_sendmsg(sub_proc,send_msg);	
 	return 0;
 }
 	
-int proc_vtcm_sendonecmd(void * sub_proc,char * cmd)
+int proc_vtcm_sendonecmd(void * sub_proc,char * cmd,void * recv_msg)
 {
 
 	int ret;
@@ -350,7 +352,7 @@ int proc_vtcm_sendonecmd(void * sub_proc,char * cmd)
 		return -ENOMEM;
 	Memcpy(utils_input->params,output,DIGEST_SIZE*utils_input->param_num);
 
-	void * send_msg=message_create(DTYPE_VTCM_UTILS,SUBTYPE_TCM_UTILS_INPUT,NULL);
+	void * send_msg=message_create(DTYPE_VTCM_UTILS,SUBTYPE_TCM_UTILS_INPUT,recv_msg);
 	if(send_msg==NULL)
 		return -EINVAL;
 	message_add_record(send_msg,utils_input);	
