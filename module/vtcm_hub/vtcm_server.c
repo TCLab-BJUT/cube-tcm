@@ -123,6 +123,8 @@ int initUUIDIpMap(NodeList *list, const char *configfile)
         Node *p = (Node*)malloc(sizeof(Node));
         line[Strlen(line) - 1] = '\0';
         char *delim = strchr(line, '=');
+        if (delim == NULL)
+            continue;
         // UUID
         for (i = 0, j = 0; i < delim - line && j < DIGEST_SIZE; ++i) {
             if (line[i] != '-') {
