@@ -1,0 +1,113 @@
+{	
+	"head":
+	{
+		"name":"dtype_vtcm_script",
+		"type":"TYPELIST"
+	},
+	"record":
+	{
+		"elem_no":3,
+		"elemlist":
+		[
+			"VTCM_SCRIPT=0x2100",
+			"VTCM_SYS=0x2101",
+			"VTCM_FILETRANS=0x2102"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_script",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_SCRIPT",
+		"elem_no":2,
+		"elemlist":
+		[
+			"SCRIPT_CALL=0x01",
+			"SCRIPT_RET"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_sys",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_SYS",
+		"elem_no":4,
+		"elemlist":
+		[
+            		"CP",
+            		"MV",
+            		"RM",
+            		"RENAME"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_filetrans",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_FILETRANS",
+		"elem_no":2,
+		"elemlist":
+		[
+            		"SEND",
+            		"RECEIVE"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"vtcm_script_call",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_SCRIPT",
+		"subtype":"SCRIPT_CALL",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"name","type":"STRING","size":32},
+				{"name":"param_num","type":"INT"},
+				{"name":"params","type":"DEFSTRARRAY","size":32,"def":"param_num"}
+			]
+		}
+	}	
+}
+{
+	"head":
+	{
+		"name":"vtcm_script_ret",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_SCRIPT",
+		"subtype":"SCRIPT_RET",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"returnCode","type":"INT"},
+				{"name":"param_num","type":"INT"},
+				{"name":"params","type":"DEFSTRARRAY","size":64,"def":"param_num"},
+				{"name":"cmd_no","type":"INT"}
+			]
+		}
+	}	
+}
