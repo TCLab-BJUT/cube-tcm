@@ -61,6 +61,31 @@ struct cmd_var * _add_cmd_var(char * var_name,char * var_data)
     return new_var;	
 }
 
+struct cmd_var * _del_cmd_var(char * var_name)
+{
+    Record_List * record;
+    Record_List * head;
+    struct List_head * curr;
+    struct cmd_var  * old_var;
+
+    head=&(varList.list);
+    curr=head->list.next;
+
+    while(curr!=head)
+    {
+        record=List_entry(curr,Record_List,list);
+        old_var=record->record;
+	if(Strncmp(old_var->var_name,var_name,DIGEST_SIZE)==0)
+	{
+		List_del(&record->list);
+		Free(record);
+		return old_var;
+	}
+        curr=curr->next;
+    }
+    return NULL;
+}
+
 struct cmd_var * _find_cmd_var(char * var_name)
 {
     Record_List * record;
@@ -162,6 +187,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 	int running_state=0;  // 0: wait
                               // 1: cmd line type
 			      // 2: message type
+	int cmd_para_num=0;
 	void * call_msg=NULL;
 
 	printf("begin vtcm_auto start!\n");
@@ -181,6 +207,16 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				return -EIO;
 			}
 			running_state=1;
+			cmd_para_num=start_para->argc-2;
+			if(cmd_para_num>0)
+			{
+				for(i=1;i<=cmd_para_num;i++)	
+				{
+					Buf[0]='$';
+					Itoa(i,Buf+1);
+					_add_cmd_var(Buf,start_para->argv[i+1]);
+				}		
+			}
 			ret=_read_cmd_line(file,cmd_line);
 
 			if(ret!=1)
@@ -208,6 +244,7 @@ int vtcm_auto_start(void * sub_proc,void * para)
 
 		if((type==DTYPE_VTCM_SCRIPT) &&(subtype==VTCM_SCRIPT_CALL))
 		{
+			// get script call cmd
 			if(running_state!=0)
                         {
 				printf("last script do not finished!\n");
@@ -217,6 +254,8 @@ int vtcm_auto_start(void * sub_proc,void * para)
 			if(script_call==NULL)
 				return -EINVAL;
 			call_msg=recv_msg;
+
+			// check the script file
 			file=fopen(script_call->name,"r");
 			if(file==NULL)
 			{
@@ -224,6 +263,19 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				return -EIO;
 			}
 			running_state=2;
+			cmd_para_num=script_call->param_num-1;
+			// add the cmd parameter
+			if(cmd_para_num>0)
+			{
+				for(i=1;i<=cmd_para_num+1;i++)	
+				{
+					Buf[0]='$';
+					Itoa(i,Buf+1);
+					_add_cmd_var(Buf,script_call->params+i*DIGEST_SIZE);
+				}		
+			}	
+		
+
 			ret=_read_cmd_line(file,cmd_line);
 
 			if(ret!=1)
@@ -270,6 +322,21 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				ret=proc_get_scriptret(sub_proc,recv_msg,script_ret);	
 				if(ret<0)
 					return ret;
+
+				// remove all the  cmd parameters
+ 				 
+				for(i=1;i<=cmd_para_num;i++)	
+				{
+					Buf[0]='$';
+					Itoa(i,Buf+1);
+					struct cmd_var * old_var = _del_cmd_var(Buf);
+					if(old_var!=NULL)
+					{
+						Free(old_var);
+						old_var=NULL;
+					}
+
+				}		
 				void * send_msg;
 				send_msg=message_create(DTYPE_VTCM_SCRIPT,VTCM_SCRIPT_RET,call_msg);
 				if(send_msg==NULL)
