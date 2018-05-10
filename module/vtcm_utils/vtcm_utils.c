@@ -1308,19 +1308,22 @@ int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
   printf("Output from  UnSeal\n");
   print_bin_data(Buf,outlen,8);
 }
+
 int proc_vtcmutils_Seal(void * sub_proc, void * para){
   int i=1;
   int outlen;
   int ret=0;
+  char *readfile=NULL;
   char *writefile=NULL;
   void * vtcm_template;
-  char *seal="sealauthdatasize";
   unsigned char sealdata[TCM_HASH_SIZE];
   unsigned char hashout[TCM_HASH_SIZE];
   unsigned char hmacout[TCM_HASH_SIZE];
   struct tcm_in_Seal *vtcm_input;
   struct tcm_out_Seal *vtcm_output;
-  char *dataauth="aaa";
+   int fd;
+   char * dataauth="aaa";
+
   unsigned char auData[TCM_HASH_SIZE];
   TCM_SESSION_DATA * authdata;
   vtcm_input = Talloc0(sizeof(*vtcm_input));
@@ -1329,49 +1332,65 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
   vtcm_output = Talloc0(sizeof(*vtcm_output));
   if(vtcm_output==NULL)
     return -ENOMEM;
+  struct tcm_utils_input * input_para=para;
+  char * index_para;//zz
+  char * value_para;//zz
+
+  if((input_para->param_num>0) &&
+        (input_para->param_num%2==1))
+ {
+        for(i=1;i<input_para->param_num;i+=2)
+        {
+                index_para=input_para->params+i*DIGEST_SIZE;
+                value_para=index_para+DIGEST_SIZE;
+                if(!Strcmp("-ikh",index_para))
+                {
+                        sscanf(value_para,"%x",&vtcm_input->keyHandle);
+                }
+                else if(!Strcmp("-idh",index_para))
+                {
+                        sscanf(value_para,"%x",&vtcm_input->authHandle);
+                }
+                else if(!Strcmp("-rf",index_para))
+                {
+                        readfile=value_para;
+                }
+                else if(!Strcmp("-wf",index_para))
+                {
+                        writefile=value_para;
+                }
+                else
+                {
+                        printf("Error cmd format! should be %s -ik keyhandle -is sessionhandle -rf data_file -wf seal_file"
+                                ,input_para->params);
+                        return -EINVAL;
+                }
+      }
+  } 
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_SEAL_IN;
-  struct tcm_utils_input * input_para=para;
-  char *curr_para;
-  while (i<input_para->param_num) {
-    curr_para=input_para->params+i*DIGEST_SIZE;
-    if (!strcmp("-ikh",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i < input_para->param_num)
-      {
-        sscanf(curr_para,"%x",&vtcm_input->keyHandle); 
-      }else{
-        printf("Missing parameter for -ikh.\n");
-        return -1;
-      } 
-    }else if (!strcmp("-idh",curr_para)) {
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if (i < input_para->param_num)
-      {
-        sscanf(curr_para,"%x",&vtcm_input->authHandle); 
-      }else{
-        printf("Missing parameter for -idh.\n");
-        return -1;
-      }
-    }else if(!strcmp(curr_para,"-wf")){
-      i++;
-      curr_para=input_para->params+i*DIGEST_SIZE;
-      if(i<input_para->param_num){
-        writefile=curr_para;
-      }
-    }
-    i++;
-  }
-
   vtcm_input->pcrInfo=NULL;
   vtcm_input->pcrInfoSize=0;
-  vtcm_input->InDataSize = 0x10;
+
+  // read data from file
+  fd=open(readfile,O_RDONLY);//
+  if(fd<0)//
+    return -EIO;//
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);//
+  if(ret<0)//
+    return -EIO;//
+  if(ret>DIGEST_SIZE*32)//
+  {//
+    printf("crypt file too large!\n");//
+    return -EINVAL;//
+  }//
+ 
+  vtcm_input->InDataSize = ret;
   vtcm_input->InData = Talloc0(vtcm_input->InDataSize);
   if(vtcm_input->InData==NULL)
     return -EINVAL;
-  Memcpy(vtcm_input->InData,seal,16);
+  
+  Memcpy(vtcm_input->InData,Buf,vtcm_input->InDataSize);
   // compute authcode
   //  int ordinal = htonl(vtcm_input->ordinal);
   //  int pcrsize = htonl(vtcm_input->pcrInfoSize);
@@ -1422,7 +1441,6 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
   // write seal data to the file
   int length = outlen-42;
-  int fd;
   unsigned char sealData[length];
   for(i=0;i<length;i++){
     sealData[i]=Buf[10+i];
