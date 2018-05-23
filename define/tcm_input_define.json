@@ -1814,11 +1814,11 @@
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
 				{"name":"parentHandle","type":"TPM32"},
-                {"name":"dataUsageAuth","type":"BINDATA","size":"32"},
-                {"name":"dataMigrationAuth","type":"BINDATA","size":"32"},
-                {"name":"keyInfo","type":"SUBSTRUCT","ref_name":"tcm_key"},
-                {"name":"authHandle","type":"TPM32"},
-                {"name":"pubAuth","type":"BINDATA","size":"32"}
+                		{"name":"dataUsageAuth","type":"BINDATA","size":"32"},
+                		{"name":"dataMigrationAuth","type":"BINDATA","size":"32"},
+                		{"name":"keyInfo","type":"SUBSTRUCT","ref_name":"tcm_key"},
+                		{"name":"authHandle","type":"TPM32"},
+                		{"name":"pubAuth","type":"BINDATA","size":"32"}
 			]
 		}
 		"flag_no":2,
@@ -1852,8 +1852,8 @@
 				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"returnCode","type":"TPM32"},
-                {"name":"wrappedKey","type":"SUBSTRUCT","ref_name":"tcm_key"},
-                {"name":"resAuth","type":"BINDATA","size":"32"}
+                		{"name":"wrappedKey","type":"SUBSTRUCT","ref_name":"tcm_key"},
+                		{"name":"resAuth","type":"BINDATA","size":"32"}
 			]
 		}
 		"flag_no":2,
