@@ -6,7 +6,7 @@ info: read endorsement key's public key
 in:  apcreate -it 12
 out: 1:$ownerHandle
 
-in: takeownership
+in: takeownership -pwdo ooo -pwds sss
 
 in: apterminate -ih $ownerHandle
 

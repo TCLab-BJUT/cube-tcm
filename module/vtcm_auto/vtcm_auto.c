@@ -445,7 +445,7 @@ int proc_vtcm_receiveresponse(void * sub_proc,void * recv_msg,char * cmd)
 	i=0;
 	var_no=0;
 
-    	ret==message_get_record(recv_msg,&output_para,0);
+    	ret=message_get_record(recv_msg,&output_para,0);
 	if(ret<0)
 		return ret;
 	if(output_para==NULL)
