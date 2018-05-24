@@ -67,6 +67,10 @@ typedef struct tagtcm_key_certify_info   // KEY CERTIFO
 
 }__attribute((packed)) KEY_CERT;
 
+int get_radix_uuidstr(int len,BYTE * digest,char * uuidstr);
+int convert_uuidname(char * name,int len,BYTE * digest,char * newfilename);
+
+
 void * create_key_certify_struct(void * key_cert_file,char * keyuuid,char * pikuuid);
 int create_blobkey_struct(struct vTCM_wrappedkey * blobkey,char * wrapkey_uuid,char * vtcm_uuid,char * keypass,char * keyfile);
 int create_pubkey_struct(struct vTCM_publickey * pubkey,char * privatekey_uuid,char * vtcm_uuid,char * keyfile);

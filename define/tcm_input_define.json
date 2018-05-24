@@ -868,10 +868,10 @@
 				"flag":"KEY",
 				"elemlist":"tag,paramSize,ordinal,pubInfo,encAuth"
 			},
-        {
-          "flag":"INPUT",
-          "elemlist":"nonce"
-        }
+        		{
+          			"flag":"INPUT",
+          			"elemlist":"nonce"
+        		}
 		]
         }
 }

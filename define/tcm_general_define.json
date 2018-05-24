@@ -1020,6 +1020,14 @@
                 {"name":"encData","type":"DEFINE","def":"encDataSize"}
             ]
         }
+        "flag_no":1,
+	"index":
+	[
+		{
+			"flag":"KEY",
+			"elemlist":"tag,et,sealInfoSize,sealInfo"
+		}
+	]
     }
 }
 {
