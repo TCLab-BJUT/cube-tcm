@@ -3298,13 +3298,13 @@ int vtcm_SealedData_GenerateEncData(BYTE **encData,
     if (ret == TCM_SUCCESS) 
     { 
         ret = vtcm_Key_GetStoreSymkey(&tcm_store_symkey, tcm_key);
+//        if(ret == TCM_SUCCESS)
+//        {
+//            ret = KDFwithSm3(Key, tcm_store_symkey->data, TCM_NONCE_SIZE/2, tcm_store_symkey->size);
+//        }
         if(ret == TCM_SUCCESS)
         {
-            ret = KDFwithSm3(Key, tcm_store_symkey->data, TCM_NONCE_SIZE/2, tcm_store_symkey->size);
-        }
-        if(ret == TCM_SUCCESS)
-        {
-            sm4_setkey_enc(&ctx, Key);
+            sm4_setkey_enc(&ctx, tcm_store_symkey->data);
 
             int enc_len=0;
 	    sm4_cbc_data_prepare(sbuffer.size,sbuffer.buffer,&enc_len,Buf);
@@ -3546,6 +3546,7 @@ int vtcm_Data_Decrypt(TCM_SEALED_DATA *a1decrypt,
                       int encDataSize,
                       TCM_KEY *tcm_key)
 {
+    int dec_len=0;
     printf(" vtcm_Data_Decrypt : Start\n");
     int ret = TCM_SUCCESS;
     sm4_context ctx;
@@ -3557,24 +3558,23 @@ int vtcm_Data_Decrypt(TCM_SEALED_DATA *a1decrypt,
         ret = vtcm_Key_GetStoreSymkey(&tcm_store_symkey, tcm_key);
         if(ret == TCM_SUCCESS)
         {
-            ret = KDFwithSm3(SymKey, tcm_store_symkey->data, TCM_NONCE_SIZE/2, tcm_store_symkey->size);
-            if(ret != TCM_SUCCESS)
-            {
-                printf("Error, KDFwithSm3\n");
-            }
-            sm4_setkey_dec(&ctx, SymKey);
-            sm4_crypt_ecb(&ctx, 0, 32, encData, Str_sealed);
+//            ret = KDFwithSm3(SymKey, tcm_store_symkey->data, TCM_NONCE_SIZE/2, tcm_store_symkey->size);
+//            if(ret != TCM_SUCCESS)
+ //           {
+ //               printf("Error, KDFwithSm3\n");
+ //           }
+            sm4_setkey_dec(&ctx, tcm_store_symkey->data);
+            sm4_crypt_ecb(&ctx, 0, encDataSize, encData, Str_sealed);
+	    ret=sm4_cbc_data_recover(encDataSize,Str_sealed,&dec_len,Buf);
+		
         }
-        if(ret == TCM_SUCCESS)
-        {
-            void *template_sealed = memdb_get_template(DTYPE_VTCM_SEAL, SUBTYPE_TCM_SEALED_DATA);
-            if(template_sealed == NULL)
+        void *template_sealed = memdb_get_template(DTYPE_VTCM_SEAL, SUBTYPE_TCM_SEALED_DATA);
+        if(template_sealed == NULL)
                 return -EINVAL;
-            ret = blob_2_struct(Str_sealed, a1decrypt, template_sealed);
-            if(ret < 0)
-                return ret; 
-            else ret = 0;
-        }
+        ret = blob_2_struct(Buf, a1decrypt, template_sealed);
+        if(ret < 0)
+             return ret; 
+        else ret = 0;
     }
     return ret;
 }
