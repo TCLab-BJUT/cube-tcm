@@ -192,9 +192,6 @@ int vtcm_auto_start(void * sub_proc,void * para)
 
 	printf("begin vtcm_auto start!\n");
 	
-	sleep(1);
-
-	
 	if(para!=NULL)    // cmd line type
         {
 		if(start_para->argc >=2)
@@ -204,28 +201,30 @@ int vtcm_auto_start(void * sub_proc,void * para)
 			if(file==NULL)
 			{
 				printf("can't open cmd_list file %s!\n",start_para->argv[1]);
-				return -EIO;
 			}
-			running_state=1;
-			cmd_para_num=start_para->argc-2;
-			if(cmd_para_num>0)
+			else
 			{
-				for(i=1;i<=cmd_para_num;i++)	
+				running_state=1;
+				cmd_para_num=start_para->argc-2;
+				if(cmd_para_num>0)
 				{
-					Buf[0]='$';
-					Itoa(i,Buf+1);
-					_add_cmd_var(Buf,start_para->argv[i+1]);
-				}		
-			}
-			ret=_read_cmd_line(file,cmd_line);
+					for(i=1;i<=cmd_para_num;i++)	
+					{
+						Buf[0]='$';
+						Itoa(i,Buf+1);
+						_add_cmd_var(Buf,start_para->argv[i+1]);
+					}		
+				}
+				ret=_read_cmd_line(file,cmd_line);
 
-			if(ret!=1)
-			{
-				printf("first command is not an input command!\n");
-				return -EINVAL;	
-			}
+				if(ret!=1)
+				{
+					printf("first command is not an input command!\n");
+					return -EINVAL;	
+				}
 
-			proc_vtcm_sendonecmd(sub_proc,cmd_line,NULL);
+				proc_vtcm_sendonecmd(sub_proc,cmd_line,NULL);
+			}
 		}
 	}	
 
@@ -263,14 +262,14 @@ int vtcm_auto_start(void * sub_proc,void * para)
 				return -EIO;
 			}
 			running_state=2;
-			cmd_para_num=script_call->param_num-1;
+			cmd_para_num=script_call->param_num;
 			// add the cmd parameter
 			if(cmd_para_num>0)
 			{
-				for(i=1;i<=cmd_para_num+1;i++)	
+				for(i=0;i<cmd_para_num;i++)	
 				{
 					Buf[0]='$';
-					Itoa(i,Buf+1);
+					Itoa(i+1,Buf+1);
 					_add_cmd_var(Buf,script_call->params+i*DIGEST_SIZE);
 				}		
 			}	

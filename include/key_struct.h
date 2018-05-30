@@ -67,7 +67,7 @@ typedef struct tagtcm_key_certify_info   // KEY CERTIFO
 
 }__attribute((packed)) KEY_CERT;
 
-int get_radix_uuidstr(int len,BYTE * digest,char * uuidstr);
+int get_short_uuidstr(int len,BYTE * digest,char * uuidstr);
 int convert_uuidname(char * name,int len,BYTE * digest,char * newfilename);
 
 
