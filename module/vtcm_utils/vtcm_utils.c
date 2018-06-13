@@ -4313,11 +4313,8 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
     return -ENOMEM;
   vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
   vtcm_input->ordinal=SUBTYPE_CREATEEKPAIR_IN;
-  TSS_gennonce(nonce);
-  while(i<TCM_HASH_SIZE){
-    vtcm_input->antiReplay[i]=(BYTE)nonce[i];
-    i++;
-  }
+  TSS_gennonce(vtcm_input->antiReplay);
+ 
   vtcm_input->keyInfo.algorithmID=TCM_ALG_SM2;
   vtcm_input->keyInfo.encScheme=TCM_ES_SM2;
   vtcm_input->keyInfo.sigScheme=TCM_SS_SM2;
@@ -4335,12 +4332,14 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
   vtcm_template1=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_CREATEEKPAIR_IN);
   if(vtcm_template1==NULL)
     return -EINVAL;
-  vtcm_input->paramSize=sizeof(*vtcm_output)-sizeof(BYTE *)+vtcm_input->keyInfo.parmSize;
+
+  vtcm_input->paramSize=sizeof(*vtcm_input)-sizeof(BYTE *)+vtcm_input->keyInfo.parmSize;
   ret = 0;
   BYTE *BBuffer = (BYTE *)malloc(sizeof(BYTE) * 1000) ;
   ret = struct_2_blob(vtcm_input,BBuffer,vtcm_template1);
   if(ret<0)
     return ret;
+
   print_bin_data(BBuffer,ret,8);
   BYTE *BBuffer_1 = (BYTE *)malloc(sizeof(BYTE) * 1000) ;
   ret = vtcmutils_transmit(vtcm_input->paramSize,BBuffer,&outlen,BBuffer_1);
@@ -4927,7 +4926,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
   if(offset<0)
     return offset;
 
-  print_bin_data(Buf,offset,8);
+  print_bin_data(Buf,offset,16);
   ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
   if(ret<0)
     return ret;
@@ -4964,7 +4963,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
 
 
   printf("makeidentity:\n");
-  print_bin_data(Buf,outlen,8);
+  print_bin_data(Buf,outlen,16);
   // write keyfile	
 
   ret=struct_2_blob(&vtcm_output->pik,Buf,vtcm_template);
@@ -5323,7 +5322,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
   if(offset<0)
     return offset;
 
-  print_bin_data(Buf,offset,8);
+  print_bin_data(Buf,offset,16);
   ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
   if(ret<0)
     return ret;
@@ -5340,7 +5339,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
   if(return_head.returnCode!=0)
   {
 	// return Error	
-  	print_bin_data(Buf,ret,8);
+  	print_bin_data(Buf,ret,16);
   	sprintf(Buf,"%d \n",return_head.returnCode);
   }	
   else
@@ -5352,7 +5351,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
   	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   	if(ret<0)
     		return -EINVAL;
-  	print_bin_data(Buf,ret,8);
+  	print_bin_data(Buf,ret,16);
   	BYTE CheckData[TCM_HASH_SIZE];
   	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT,pikauthdata,CheckData);
   	if(ret<0)
