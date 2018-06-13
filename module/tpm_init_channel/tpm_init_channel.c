@@ -46,8 +46,8 @@ static void * extend_template;
 
 struct tpm_init_cmd
 {
-	int in_len;
-	BYTE in_cmd[64];
+	UINT16 tag;
+	unsigned int ordinal;
 	int out_len;
 	BYTE out_data[64];	
 };
@@ -55,14 +55,32 @@ struct tpm_init_cmd
 struct tpm_init_cmd init_cmd_seq[] =
 {
 	{
-		10,
-		{0x80,0x01,0x00,0x00,0x00,0x0A, 0x00, 0x00, 0x01,0x81}, 		
+		0x0180,
+		0x81010000,
 		10,
 		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x0A}
 	},
 	{
 		0,
-		NULL,
+		0xF1000000,
+		10,
+		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x26}
+	},
+	{
+		0,
+		0x99000000,
+		10,
+		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x00}
+	},
+	{
+		0,
+		0x50000000, 		
+		10,
+		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x00}
+	},
+	{
+		0,
+		0,
 		0,
 		NULL
 	}
@@ -116,35 +134,33 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 			continue;	
 	
 		i=0;
-		while(init_cmd_seq[i].in_len!=0)
+        	ret = blob_2_struct(ReadBuf, &output_data,extend_template) ;
+		if(ret<0)
+			return -EINVAL;
+		if(output_data.paramSize>readbuf_len)
+			continue;
+		while(init_cmd_seq[i].ordinal!=0)
 		{
-			if(Memcmp(init_cmd_seq[i].in_cmd,ReadBuf,init_cmd_seq[i].in_len)==0)
+			if(output_data.ordinal == init_cmd_seq[i].ordinal)
 			{
 			//Match a tpm init sequence
 				ret=channel_write(ex_channel,init_cmd_seq[i].out_data,init_cmd_seq[i].out_len);
 				if(ret<0)
 					return -EINVAL;
-				Memcpy(ReadBuf,ReadBuf+init_cmd_seq[i].in_len,readbuf_len-init_cmd_seq[i].in_len);
-				readbuf_len-=init_cmd_seq[i].in_len;
 				break;
 			}
 			i++;
 			
 		}		
-		if(init_cmd_seq[i].in_len==0)
+		if(init_cmd_seq[i].ordinal==0)
 		// if no tpm init sequence match
 		{
-        		ret = blob_2_struct(ReadBuf, &output_data,extend_template) ;
-			if(ret<0)
-				return -EINVAL;
-			if(output_data.paramSize>readbuf_len)
-				continue;
 			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize);
 			if(ret<output_data.paramSize)
 				return -EINVAL;
-			Memcpy(ReadBuf,ReadBuf+output_data.paramSize,readbuf_len-output_data.paramSize);
-			readbuf_len-=output_data.paramSize;
 		}
+		Memcpy(ReadBuf,ReadBuf+output_data.paramSize,readbuf_len-output_data.paramSize);
+		readbuf_len-=output_data.paramSize;
 	}
 	ret=channel_inner_read(in_channel,WriteBuf,1024);
 	if(ret<0)
