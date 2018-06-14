@@ -1500,6 +1500,49 @@ int vtcm_KeyHandleEntries_GetEntry(TCM_KEY_HANDLE_ENTRY **tcm_key_handle_entry,
     }    
     return ret;
 }
+
+/* vtcm_KeyHandleEntry_Init() removes an entry from the list.  It DOES NOT delete the
+   vtcm_KEY object. */
+
+void vtcm_KeyHandleEntry_Init(TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entry)
+{
+    tcm_key_handle_entry->handle = 0;
+    tcm_key_handle_entry->key = NULL;
+    tcm_key_handle_entry->parentPCRStatus = TRUE;
+    tcm_key_handle_entry->keyControl = 0;
+    return;
+}
+
+
+/* vtcm_KeyHandleEntry_Delete() deletes an entry from the list, deletes the TCM_KEY object, and
+   free's the TPM_KEY.
+*/
+
+void vtcm_KeyHandleEntry_Delete(TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entry)
+{
+    int ret;	
+    if (tcm_key_handle_entry != NULL) {
+        if (tcm_key_handle_entry->handle != 0) {
+            printf(" TPM_KeyHandleEntry_Delete: Deleting %08x\n", tcm_key_handle_entry->handle);
+    	    void * template_key = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_KEY);  //Get the TCM_KEY template
+    	    if(template_key == NULL)
+            {
+        	printf("can't get Key template!\n");
+		return;
+            }
+            ret=struct_free(tcm_key_handle_entry->key,template_key);
+	    if(ret<0)
+	    {
+		printf("return key failed!\n");
+		return;	  
+	    }	  	
+        }
+        vtcm_KeyHandleEntry_Init(tcm_key_handle_entry);
+    }
+    return;
+}
+
+
 /* vtcm_KeyHandleEntries_GetKey() gets the TCM_KEY associated with the handle.
  *
  * If the key has PCR usage (size is non-zero and one or more mask bits are set), PCR's have been
@@ -2133,7 +2176,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
     		if(offset<0)
     			return offset;
 	}
-	else if(type==DTYPE_VTCM_OUT)
+	else if(type==DTYPE_VTCM_OUT_AUTH1)
 	{
     		offset = struct_2_part_blob(vtcm_data,Buf+8,vtcm_template,CUBE_ELEM_FLAG_KEY);
 		*(int *)Buf=htonl(return_head->returnCode);

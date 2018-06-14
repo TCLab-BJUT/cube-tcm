@@ -38,6 +38,7 @@ enum tcm_in_subtype
     	SUBTYPE_SEAL_IN=0x17800000,
     	SUBTYPE_UNSEAL_IN=0x18800000,
         SUBTYPE_CREATEWRAPKEY_IN=0x1F800000,
+        SUBTYPE_EVICTKEY_IN=0x22800000,
         SUNTYPE_CERTIFYKEY_IN=0x32800000,
         SUBTYPE_SIGN_IN=0x3C800000,
         SUBTYPE_SETCAPABILITY_IN=0x3F800000,
@@ -89,6 +90,7 @@ enum tcm_out_subtype
 	    SUBTYPE_SEAL_OUT=0x17800000,
 	    SUBTYPE_UNSEAL_OUT=0x18800000,
         SUBTYPE_CREATEWRAPKEY_OUT=0x1F800000,
+        SUBTYPE_EVICTKEY_OUT=0x22800000,
         SUBTYPE_CERTIFYKEY_OUT=0x32800000,
         SUBTYPE_SIGN_OUT=0x3C800000,
         SUBTYPE_SETCAPABILITY_OUT=0x3F800000,
@@ -222,7 +224,6 @@ struct vtcm_external_output_command
     int paramSize;
     UINT32 returnCode;
 }__attribute__((packed));
-
 
 struct tcm_in_pcrread
 {
@@ -478,6 +479,21 @@ struct tcm_out_APTerminate
     int returnCode;
 }__attribute__((packed)) ;
 
+struct tcm_in_EvictKey
+{
+    UINT16 tag;
+    int paramSize;
+    int ordinal;
+    TCM_KEY_HANDLE evictHandle;
+} __attribute__((packed));
+
+
+struct tcm_out_EvictKey
+{
+    UINT16 tag ;
+    int paramSize ;
+    int returnCode ;
+}__attribute__((packed)) ;
 
 struct tcm_in_TakeOwnership
 {

@@ -2066,7 +2066,7 @@ int vtcm_ContextList_GetEntry(uint32_t *entry, const uint32_t *contextList, uint
     }
     return ret;
 }
-
+/*
 int vtcm_KeyHandleEntries_GetEntry(TCM_KEY_HANDLE_ENTRY ** tcm_key_handle_entry, TCM_KEY_HANDLE_ENTRY ** tcm_key_handle_entries, TCM_KEY_HANDLE tcm_key_handle)
 {
     int ret = 0;
@@ -2089,7 +2089,7 @@ int vtcm_KeyHandleEntries_GetEntry(TCM_KEY_HANDLE_ENTRY ** tcm_key_handle_entry,
     }
     return ret;
 }
-
+*/
 int vtcm_KeyHandleEntry_FlushSpecific(tcm_state_t *tcm_state, TCM_KEY_HANDLE_ENTRY * tcm_key_handle_entry)
 {
     int ret = 0;

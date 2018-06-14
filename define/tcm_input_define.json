@@ -47,7 +47,7 @@
 	"record":
 	{
 		"type":"VTCM_IN",
-		"elem_no":47,
+		"elem_no":46,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -59,7 +59,7 @@
             "QUOTE=0x16800000",
             "SEAL=0x17800000",
             "UNSEAL=0x18800000",
-            "CREATEWRAPKEY=0x1F800000",
+            "EVICTKEY=0x22800000",
             "CERTIFYKEY=0x32800000",
             "SIGN=0x3C800000",
             "SETCAPABILITY=0x3F800000",
@@ -83,7 +83,6 @@
 			"STARTUP=0x99800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
-			"APCREATE=0xBF800000",
             "APTERMINATE=0xC0800000",
             "SM4ENCRYPT=0xC5800000",
             "SM4DECRYPT=0xC6800000",
@@ -171,7 +170,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT",
-		"elem_no":47,
+		"elem_no":46,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -183,7 +182,7 @@
             "QUOTE=0x16800000",
             "SEAL=0x17800000",
             "UNSEAL=0x18800000",
-            "CREATEWRAPKEY=0x1F800000",
+            "EVICTKEY=0x22800000",
             "CERTIFYKEY=0x32800000",
             "SIGN=0x3C800000",
             "SETCAPABILITY=0x3F800000",
@@ -207,7 +206,67 @@
 			"STARTUP=0x99800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
-			"APCREATE=0xBF800000",
+            "APTERMINATE=0xC0800000",
+            "SM4ENCRYPT=0xC5800000",
+            "SM4DECRYPT=0xC6800000",
+            "PCRRESET=0xC8800000",
+            "NV_DEFINESPACE=0xCC800000",
+            "NV_WRITEVALUE=0xCD800000",
+            "NV_READVALUE=0xCF800000",
+            "SM3START=0xEA800000",
+            "SM3UPDATE=0xEB800000",
+            "SM3COMPLETE=0xEC800000",
+            "SM3COMPLETEEXTEND=0xED800000",
+            "SM2DECRYPT=0xEE800000",
+            "LOADKEY=0xEF800000"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_out_auth1",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_OUT_AUTH1",
+		"elem_no":46,
+		"elemlist":
+		[
+            "TAKEOWNERSHIP=0x0D800000",
+            "CHANGEAUTHOWNER=0x10800000",
+			"EXTEND=0x14800000",
+			"PCRREAD=0x15800000",
+            "QUOTE=0x16800000",
+            "SEAL=0x17800000",
+            "UNSEAL=0x18800000",
+            "CREATEWRAPKEY=0x1F800000",
+            "EVICTKEY=0x22800000",
+            "CERTIFYKEY=0x32800000",
+            "SIGN=0x3C800000",
+            "SETCAPABILITY=0x3F800000",
+            "GETRANDOM=0x46800000",
+			"SELFTESTFULL=0x50800000",
+            "CONTINUESELFTEST=0x53800000",
+            "GETTESTRESULT=0x54800000",
+            "OWNERCLEAR=0x5B800000",
+            "DISABLEOWNERCLEAR=0x5C800000",
+			"FORCECLEAR=0x5D800000",
+            "DISABLEFORCECLEAR=0x5E800000",
+			"GETCAPABILITY=0x65800000",
+            "PHYSICALENABLE=0x6F800000",
+            "PHYSICALDISABLE=0x70800000",
+            "PHYSICALSETDEACTIVATED=0x72800000",
+			"CREATEEKPAIR=0x78800000",
+            "MAKEIDENTITY=0x79800000",
+            "ACTIVATEIDENTITY=0x7A800000",
+           	"READPUBEK=0x7C800000",
+            "OWNERREADINTERNALPUB=0x81800000",
+			"STARTUP=0x99800000",
+            "FLUSHSPECIFIC=0xBA800000",
+            "WRAPKEY=0xBD800000",
+	    "APCREATE=0xBF800000",
             "APTERMINATE=0xC0800000",
             "SM4ENCRYPT=0xC5800000",
             "SM4DECRYPT=0xC6800000",
@@ -1250,7 +1309,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"APCREATE",
 		"struct_desc":
 		{
@@ -1287,7 +1346,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"APCREATE",
 		"struct_desc":
 		{
@@ -1425,6 +1484,49 @@
 	{
 		"type":"VTCM_OUT",
 		"subtype":"APTERMINATE",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
+				{"name":"paramSize","type":"TPM32"},
+				{"name":"returnCode","type":"TPM32"}
+			]
+		}
+	}	
+}
+{
+	"head":
+	{
+		"name":"tcm_in_EvictKey",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_IN",
+		"subtype":"EVICTKEY",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
+				{"name":"paramSize","type":"TPM32"},
+				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
+				{"name":"evictHandle","type":"TPM32"}
+			]
+		}
+	}	
+}
+{
+	"head":
+	{
+		"name":"tcm_out_EvictKey",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_OUT",
+		"subtype":"EVICTKEY",
 		"struct_desc":
 		{
 			"elem_desc":
@@ -1804,7 +1906,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"CREATEWRAPKEY",
 		"struct_desc":
 		{
@@ -1843,7 +1945,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"CREATEWRAPKEY",
 		"struct_desc":
 		{

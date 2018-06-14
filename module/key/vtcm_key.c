@@ -89,10 +89,10 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_READPUBEK_IN)) {
             proc_vtcm_ReadPubek(sub_proc, recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_APCREATE_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_APCREATE_IN)) {
              proc_vtcm_APCreate(sub_proc,recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_CREATEWRAPKEY_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_CREATEWRAPKEY_IN)) {
              proc_vtcm_CreateWrapKey(sub_proc,recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_LOADKEY_IN)) {
@@ -871,7 +871,7 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_APCREATE_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_APCREATE_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
         printf("can't solve this command!\n");
@@ -1000,7 +1000,7 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
 	// compute checkcode
 	    BYTE CheckData[TCM_HASH_SIZE];	
 	    Memcpy(CheckData,authData,TCM_HASH_SIZE);
-    	ret=vtcm_Compute_AuthCode(vtcm_in,DTYPE_VTCM_IN,SUBTYPE_APCREATE_IN,NULL,CheckData);
+    	ret=vtcm_Compute_AuthCode(vtcm_in,DTYPE_VTCM_IN_AUTH1,SUBTYPE_APCREATE_IN,NULL,CheckData);
         if(ret != TCM_SUCCESS)
         {
           printf("\n\n          APCreate in AuthCode Error\n");
@@ -1060,7 +1060,7 @@ apcreate_out:
     Memcpy(vtcm_out->nonceEven, authSession->nonceEven, TCM_NONCE_SIZE);
     
     ret = vtcm_Compute_AuthCode(vtcm_out,
-                                DTYPE_VTCM_OUT,
+                                DTYPE_VTCM_OUT_AUTH1,
                                 SUBTYPE_APCREATE_OUT,
                                 authSession,
                                 vtcm_out->authCode);
@@ -1073,7 +1073,7 @@ apcreate_out:
     responseSize = struct_2_blob(vtcm_out, Buf, template_out);
 
     vtcm_out->paramSize = responseSize;
-    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_APCREATE_OUT ,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH1 ,SUBTYPE_APCREATE_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");
@@ -1281,6 +1281,7 @@ int proc_vtcm_APTerminate(void *sub_proc, void* recv_msg)
     //Check authCode
     if(ret == TCM_SUCCESS)
     {
+
         ret = vtcm_AuthCode_Check_APTerminate(vtcm_input->ordinal,
                                               authSession,
                                               vtcm_input->authCode);
@@ -1745,7 +1746,7 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     tcm_state_t* curr_tcm = ex_module_getpointer(sub_proc);
 
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_CREATEWRAPKEY_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_CREATEWRAPKEY_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
         printf("can't solve this command!\n");
@@ -1763,7 +1764,7 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     //Verification authCode
     if(ret == TCM_SUCCESS)
     {
-      ret = vtcm_Compute_AuthCode(vtcm_in, DTYPE_VTCM_IN,SUBTYPE_CREATEWRAPKEY_IN, auth_session_data, CheckData);
+      ret = vtcm_Compute_AuthCode(vtcm_in, DTYPE_VTCM_IN_AUTH1,SUBTYPE_CREATEWRAPKEY_IN, auth_session_data, CheckData);
       if(ret == TCM_SUCCESS)
       {
         if(Memcmp(CheckData,vtcm_in->pubAuth,TCM_HASH_SIZE) != 0)
@@ -1915,7 +1916,7 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     if(ret == TCM_SUCCESS)
     {    
         ret = vtcm_Compute_AuthCode(vtcm_out, 
-                                    DTYPE_VTCM_OUT,
+                                    DTYPE_VTCM_OUT_AUTH1,
                                     SUBTYPE_CREATEWRAPKEY_OUT, 
                                     auth_session_data, 
                                     vtcm_out->resAuth);
@@ -1926,7 +1927,7 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     }
 
 
-    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_CREATEWRAPKEY_OUT ,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_CREATEWRAPKEY_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");

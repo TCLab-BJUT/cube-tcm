@@ -31,7 +31,7 @@
 	},
 	"record":
 	{
-		"elem_no":47,
+		"elem_no":48,
 		"elemlist":
 		[
 		
@@ -45,6 +45,7 @@
                 "SEAL=0x17800000",
                 "UNSEAL=0x18800000",
                 "CREATEWRAPKEY=0x1F800000",
+                "EVICTKEY=0x22800000",
                 "CERTIFYKEY=0x32800000",
                 "SIGN=0x3C800000",
                 "SETCAPABILITY=0x3F800000",

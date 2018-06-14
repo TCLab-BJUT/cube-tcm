@@ -108,6 +108,15 @@ int vtcm_AuthSessions_GetNewHandle(
     TCM_SESSION_DATA** tcm_session_data, TCM_AUTHHANDLE* authHandle,
     TCM_SESSION_DATA* authSessions);
 void vtcm_Generate_Random(int *dest, int num);
+
+void vtcm_KeyHandleEntry_Init(TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entry);
+int vtcm_KeyHandleEntries_GetEntry(TCM_KEY_HANDLE_ENTRY **tcm_key_handle_entry,
+                                   TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entries,
+                                   TCM_KEY_HANDLE tcm_key_handle);
+void vtcm_KeyHandleEntry_Delete(TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entry);
+int vtcm_KeyHandleEntries_AddKeyEntry(TCM_KEY_HANDLE *tcm_key_handle,
+                                      TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entries,
+                                      TCM_KEY *tcm_key);
 /* TPM_NVIndexEntries_GetEntry() gets the TPM_NV_DATA_SENSITIVE entry corresponding to nvIndex.
  *  Returns TPM_BADINDEX on non-existent nvIndex
  **/

@@ -95,7 +95,19 @@ int vtcm_channel_start(void * sub_proc,void * para)
 			case 0xC200:
 			case 0xC300:
 			{ 
-				type=DTYPE_VTCM_IN;
+				if(output_data->tag==0xC100)
+				{
+					type=DTYPE_VTCM_IN;
+				}
+				else if(output_data->tag==0xC200)
+				{
+					type=DTYPE_VTCM_IN_AUTH1;
+				}
+				else if(output_data->tag==0xC300)
+				{
+					type=DTYPE_VTCM_IN_AUTH2;
+				}		
+
 				subtype=output_data->ordinal;
 
                			void * command_template = memdb_get_template(type,subtype) ;
@@ -135,7 +147,7 @@ int vtcm_channel_start(void * sub_proc,void * para)
 				offset=ret;
                			output_data = (struct vtcm_external_input_command *)Talloc0(extend_size) ;
           	     		ret = blob_2_struct(ReadBuf+offset, output_data,extend_template) ;
-				type=DTYPE_VTCM_IN;
+				type=output_data->tag;
 				subtype=output_data->ordinal;
 
                			command_template = memdb_get_template(type,subtype) ;

@@ -15,3 +15,7 @@ out: 1:$keyAuthHandle
 
 in: sm2decrypt -ik $keyHandle -is $keyAuthHandle -rf sm2crypt.dat  -wf sm2decrypt.dat
 
+in: apterminate -ih $keyAuthHandle
+
+in: evictkey -ikh $keyHandle
+
