@@ -76,7 +76,7 @@ int vtcm_auth_start(void* sub_proc, void* para)
         if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_TAKEOWNERSHIP_IN)) {
             proc_vtcm_TakeOwnership(sub_proc,recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_MAKEIDENTITY_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH2) && (subtype == SUBTYPE_MAKEIDENTITY_IN)) {
             proc_vtcm_MakeIdentity(sub_proc,recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_ACTIVATEIDENTITY_IN)) {
@@ -351,7 +351,7 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
 
    
     // generate command's bin blob
-    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_MAKEIDENTITY_IN);
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_MAKEIDENTITY_IN);
     	if(vtcm_template==NULL)
     		return -EINVAL;
     	offset = struct_2_blob(vtcm_in,Buf,vtcm_template);
@@ -361,7 +361,7 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
         if(ret == TCM_SUCCESS)
         {
           ret = vtcm_Compute_AuthCode(vtcm_in,
-                                      DTYPE_VTCM_IN,
+                                      DTYPE_VTCM_IN_AUTH2,
                                       SUBTYPE_MAKEIDENTITY_IN,
                                       smkauthSession,
                                       CheckData);
@@ -374,8 +374,8 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
     }
         if(ret == TCM_SUCCESS)
         {
-          ret = vtcm_Compute_AuthCode(vtcm_in,
-                                      DTYPE_VTCM_IN,
+          ret = vtcm_Compute_AuthCode2(vtcm_in,
+                                      DTYPE_VTCM_IN_AUTH2,
                                       SUBTYPE_MAKEIDENTITY_IN,
                                       ownerauthSession,
                                       CheckData2);
@@ -541,7 +541,7 @@ makeidentity_out:
     if(ret == TCM_SUCCESS)
     {
         ret = vtcm_Compute_AuthCode(vtcm_out,
-                                    DTYPE_VTCM_OUT,
+                                    DTYPE_VTCM_OUT_AUTH2,
                                     SUBTYPE_MAKEIDENTITY_OUT,
                                     smkauthSession,
                                     vtcm_out->smkAuth);
@@ -549,19 +549,19 @@ makeidentity_out:
     if(ret == TCM_SUCCESS)
     {
         ret = vtcm_Compute_AuthCode2(vtcm_out,
-                                    DTYPE_VTCM_OUT,
+                                    DTYPE_VTCM_OUT_AUTH2,
                                     SUBTYPE_MAKEIDENTITY_OUT,
                                     ownerauthSession,
                                     vtcm_out->ownerAuth);
     }
-    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_MAKEIDENTITY_OUT ,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");
         return -EINVAL;      
     }
     int responseSize = 0;
-    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_MAKEIDENTITY_OUT);
+    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT);
     responseSize = struct_2_blob(vtcm_out, Buf, vtcm_template);
     if(responseSize<0)
 	return responseSize;

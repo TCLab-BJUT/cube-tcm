@@ -4974,7 +4974,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
 
   // output command's bin value 
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_MAKEIDENTITY_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_MAKEIDENTITY_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -4994,7 +4994,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
   //sm3_hmac(smkauthdata->sharedSecret,TCM_HASH_SIZE,
     //       Buf,DIGEST_SIZE+sizeof(uint32_t),
     //       vtcm_input->smkAuth);
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_MAKEIDENTITY_IN,smkauthdata,vtcm_input->smkAuth);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_MAKEIDENTITY_IN,smkauthdata,vtcm_input->smkAuth);
   // compute ownerauthCode
   //Memcpy(Buf,smkauth,DIGEST_SIZE);
   //temp_int=htonl(vtcm_input->ownerHandle);
@@ -5003,7 +5003,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
   //sm3_hmac(ownerauthdata->sharedSecret,TCM_HASH_SIZE,
     //       Buf,DIGEST_SIZE+sizeof(uint32_t),
     //       vtcm_input->ownerAuth);
-   ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_MAKEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
+   ret=vtcm_Compute_AuthCode2(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_MAKEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
 
   printf("Begin input for makeidentity:\n");
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -5017,7 +5017,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
   //printf("makeidentity:\n");
   //print_bin_data(Buf,outlen,8);
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_MAKEIDENTITY_OUT);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
 
@@ -5026,7 +5026,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
     return -EINVAL;
   //check output
   BYTE CheckData[TCM_HASH_SIZE];
-  ret = vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_MAKEIDENTITY_OUT,smkauthdata,CheckData);
+  ret = vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT,smkauthdata,CheckData);
   if(ret<0)
     return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->smkAuth,DIGEST_SIZE)!=0){
@@ -5034,7 +5034,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
     return -EINVAL;
   }
 
-  ret = vtcm_Compute_AuthCode2(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_MAKEIDENTITY_OUT,ownerauthdata,CheckData);
+  ret = vtcm_Compute_AuthCode2(vtcm_output,DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT,ownerauthdata,CheckData);
   if(ret<0)
     return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->ownerAuth,DIGEST_SIZE)!=0){
@@ -5072,7 +5072,6 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
   if(send_msg==NULL)
     return -EINVAL;
   ex_module_sendmsg(sub_proc,send_msg);		
-
 
   return ret;
 }

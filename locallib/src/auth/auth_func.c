@@ -2169,14 +2169,14 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	if(vtcm_template==NULL)
 		return -EINVAL;
 
-	if((type==DTYPE_VTCM_IN) ||(type==DTYPE_VTCM_IN_AUTH1))
+	if((type==DTYPE_VTCM_IN_AUTH1) ||(type==DTYPE_VTCM_IN_AUTH2))
 	{
 		// input command hash value compute	
     		offset = struct_2_part_blob(vtcm_data,Buf,vtcm_template,CUBE_ELEM_FLAG_KEY);
     		if(offset<0)
     			return offset;
 	}
-	else if(type==DTYPE_VTCM_OUT_AUTH1)
+	else if((type==DTYPE_VTCM_OUT_AUTH1)||(type==DTYPE_VTCM_OUT_AUTH2))
 	{
     		offset = struct_2_part_blob(vtcm_data,Buf+8,vtcm_template,CUBE_ELEM_FLAG_KEY);
 		*(int *)Buf=htonl(return_head->returnCode);
@@ -2330,14 +2330,14 @@ int vtcm_Compute_AuthCode2(void * vtcm_data,
 	if(vtcm_template==NULL)
 		return -EINVAL;
 
-	if(type==DTYPE_VTCM_IN)
+	if(type==DTYPE_VTCM_IN_AUTH2)
 	{
 		// input command hash value compute	
     		offset = struct_2_part_blob(vtcm_data,Buf,vtcm_template,CUBE_ELEM_FLAG_KEY);
     		if(offset<0)
     			return offset;
 	}
-	else if(type==DTYPE_VTCM_OUT)
+	else if(type==DTYPE_VTCM_OUT_AUTH2)
 	{
     		offset = struct_2_part_blob(vtcm_data,Buf+8,vtcm_template,CUBE_ELEM_FLAG_KEY);
 		*(int *)Buf=htonl(return_head->returnCode);

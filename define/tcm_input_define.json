@@ -47,6 +47,140 @@
 	"record":
 	{
 		"type":"VTCM_IN",
+		"elem_no":42,
+		"elemlist":
+		[
+            "PHYSICALPRESENCE=0x0A000040",
+            "CHANGEAUTH=0x0C800000",
+            "TAKEOWNERSHIP=0x0D800000",
+            "CHANGEAUTHOWNER=0x10800000",
+			"EXTEND=0x14800000",
+			"PCRREAD=0x15800000",
+            "QUOTE=0x16800000",
+            "SEAL=0x17800000",
+            "UNSEAL=0x18800000",
+            "EVICTKEY=0x22800000",
+            "CERTIFYKEY=0x32800000",
+            "SIGN=0x3C800000",
+            "SETCAPABILITY=0x3F800000",
+            "GETRANDOM=0x46800000",
+			"SELFTESTFULL=0x50800000",
+            "CONTINUESELFTEST=0x53800000",
+            "GETTESTRESULT=0x54800000",
+            "OWNERCLEAR=0x5B800000",
+            "DISABLEOWNERCLEAR=0x5C800000",
+			"FORCECLEAR=0x5D800000",
+            "DISABLEFORCECLEAR=0x5E800000",
+			"GETCAPABILITY=0x65800000",
+            "PHYSICALENABLE=0x6F800000",
+            "PHYSICALDISABLE=0x70800000",
+            "PHYSICALSETDEACTIVATED=0x72800000",
+			"CREATEEKPAIR=0x78800000",
+            "ACTIVATEIDENTITY=0x7A800000",
+           	"READPUBEK=0x7C800000",
+            "OWNERREADINTERNALPUB=0x81800000",
+			"STARTUP=0x99800000",
+            "FLUSHSPECIFIC=0xBA800000",
+            "WRAPKEY=0xBD800000",
+            "SM4ENCRYPT=0xC5800000",
+            "SM4DECRYPT=0xC6800000",
+            "PCRRESET=0xC8800000",
+			"NV_DEFINESPACE=0xCC800000",
+            "NV_WRITEVALUE=0xCD800000",
+            "NV_READVALUE=0xCF800000",
+            "SM3START=0xEA800000",
+            "SM3UPDATE=0xEB800000",
+            "SM3COMPLETE=0xEC800000",
+            "SM3COMPLETEEXTEND=0xED800000"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_auth1_in",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_IN_AUTH1",
+		"elem_no":43,
+		"elemlist":
+		[
+            "PHYSICALPRESENCE=0x0A000040",
+            "CHANGEAUTH=0x0C800000",
+            "TAKEOWNERSHIP=0x0D800000",
+            "CHANGEAUTHOWNER=0x10800000",
+            "QUOTE=0x16800000",
+            "SEAL=0x17800000",
+            "UNSEAL=0x18800000",
+            "CREATEWRAPKEY=0x1F800000",
+            "CERTIFYKEY=0x32800000",
+            "SIGN=0x3C800000",
+            "SETCAPABILITY=0x3F800000",
+			"SELFTESTFULL=0x50800000",
+            "CONTINUESELFTEST=0x53800000",
+            "GETTESTRESULT=0x54800000",
+            "OWNERCLEAR=0x5B800000",
+            "DISABLEOWNERCLEAR=0x5C800000",
+			"FORCECLEAR=0x5D800000",
+            "DISABLEFORCECLEAR=0x5E800000",
+			"GETCAPABILITY=0x65800000",
+            "PHYSICALENABLE=0x6F800000",
+            "PHYSICALDISABLE=0x70800000",
+            "PHYSICALSETDEACTIVATED=0x72800000",
+			"CREATEEKPAIR=0x78800000",
+            "ACTIVATEIDENTITY=0x7A800000",
+           	"READPUBEK=0x7C800000",
+            "OWNERREADINTERNALPUB=0x81800000",
+			"STARTUP=0x99800000",
+            "FLUSHSPECIFIC=0xBA800000",
+            "WRAPKEY=0xBD800000",
+			"APCREATE=0xBF800000",
+            "APTERMINATE=0xC0800000",
+            "SM4ENCRYPT=0xC5800000",
+            "SM4DECRYPT=0xC6800000",
+            "PCRRESET=0xC8800000",
+			"NV_DEFINESPACE=0xCC800000",
+            "NV_WRITEVALUE=0xCD800000",
+            "NV_READVALUE=0xCF800000",
+            "SM3START=0xEA800000",
+            "SM3UPDATE=0xEB800000",
+            "SM3COMPLETE=0xEC800000",
+            "SM3COMPLETEEXTEND=0xED800000",
+            "SM2DECRYPT=0xEE800000",
+            "LOADKEY=0xEF800000"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_auth2_in",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_IN_AUTH2",
+		"elem_no":4,
+		"elemlist":
+		[
+    		        "UNSEAL=0x18800000",
+     		        "CERTIFYKEY=0x32800000",
+    		        "MAKEIDENTITY=0x79800000",
+   		        "ACTIVATEIDENTITY=0x7A800000"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_out",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_OUT",
 		"elem_no":43,
 		"elemlist":
 		[
@@ -76,124 +210,6 @@
             "PHYSICALDISABLE=0x70800000",
             "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-            "MAKEIDENTITY=0x79800000",
-            "ACTIVATEIDENTITY=0x7A800000",
-           	"READPUBEK=0x7C800000",
-            "OWNERREADINTERNALPUB=0x81800000",
-			"STARTUP=0x99800000",
-            "FLUSHSPECIFIC=0xBA800000",
-            "WRAPKEY=0xBD800000",
-            "SM4ENCRYPT=0xC5800000",
-            "SM4DECRYPT=0xC6800000",
-            "PCRRESET=0xC8800000",
-			"NV_DEFINESPACE=0xCC800000",
-            "NV_WRITEVALUE=0xCD800000",
-            "NV_READVALUE=0xCF800000",
-            "SM3START=0xEA800000",
-            "SM3UPDATE=0xEB800000",
-            "SM3COMPLETE=0xEC800000",
-            "SM3COMPLETEEXTEND=0xED800000",
-		]
-	}
-}
-{
-	"head":
-	{
-		"name":"subtype_vtcm_auth1_in",
-		"type":"SUBTYPELIST"
-	},
-	"record":
-	{
-		"type":"VTCM_IN_AUTH1",
-		"elem_no":44,
-		"elemlist":
-		[
-            "PHYSICALPRESENCE=0x0A000040",
-            "CHANGEAUTH=0x0C800000",
-            "TAKEOWNERSHIP=0x0D800000",
-            "CHANGEAUTHOWNER=0x10800000",
-            "QUOTE=0x16800000",
-            "SEAL=0x17800000",
-            "UNSEAL=0x18800000",
-            "CREATEWRAPKEY=0x1F800000",
-            "CERTIFYKEY=0x32800000",
-            "SIGN=0x3C800000",
-            "SETCAPABILITY=0x3F800000",
-			"SELFTESTFULL=0x50800000",
-            "CONTINUESELFTEST=0x53800000",
-            "GETTESTRESULT=0x54800000",
-            "OWNERCLEAR=0x5B800000",
-            "DISABLEOWNERCLEAR=0x5C800000",
-			"FORCECLEAR=0x5D800000",
-            "DISABLEFORCECLEAR=0x5E800000",
-			"GETCAPABILITY=0x65800000",
-            "PHYSICALENABLE=0x6F800000",
-            "PHYSICALDISABLE=0x70800000",
-            "PHYSICALSETDEACTIVATED=0x72800000",
-			"CREATEEKPAIR=0x78800000",
-            "MAKEIDENTITY=0x79800000",
-            "ACTIVATEIDENTITY=0x7A800000",
-           	"READPUBEK=0x7C800000",
-            "OWNERREADINTERNALPUB=0x81800000",
-			"STARTUP=0x99800000",
-            "FLUSHSPECIFIC=0xBA800000",
-            "WRAPKEY=0xBD800000",
-			"APCREATE=0xBF800000",
-            "APTERMINATE=0xC0800000",
-            "SM4ENCRYPT=0xC5800000",
-            "SM4DECRYPT=0xC6800000",
-            "PCRRESET=0xC8800000",
-			"NV_DEFINESPACE=0xCC800000",
-            "NV_WRITEVALUE=0xCD800000",
-            "NV_READVALUE=0xCF800000",
-            "SM3START=0xEA800000",
-            "SM3UPDATE=0xEB800000",
-            "SM3COMPLETE=0xEC800000",
-            "SM3COMPLETEEXTEND=0xED800000",
-            "SM2DECRYPT=0xEE800000",
-            "LOADKEY=0xEF800000"
-		]
-	}
-}
-{
-	"head":
-	{
-		"name":"subtype_vtcm_out",
-		"type":"SUBTYPELIST"
-	},
-	"record":
-	{
-		"type":"VTCM_OUT",
-		"elem_no":44,
-		"elemlist":
-		[
-            "PHYSICALPRESENCE=0x0A000040",
-            "CHANGEAUTH=0x0C800000",
-            "TAKEOWNERSHIP=0x0D800000",
-            "CHANGEAUTHOWNER=0x10800000",
-			"EXTEND=0x14800000",
-			"PCRREAD=0x15800000",
-            "QUOTE=0x16800000",
-            "SEAL=0x17800000",
-            "UNSEAL=0x18800000",
-            "EVICTKEY=0x22800000",
-            "CERTIFYKEY=0x32800000",
-            "SIGN=0x3C800000",
-            "SETCAPABILITY=0x3F800000",
-            "GETRANDOM=0x46800000",
-			"SELFTESTFULL=0x50800000",
-            "CONTINUESELFTEST=0x53800000",
-            "GETTESTRESULT=0x54800000",
-            "OWNERCLEAR=0x5B800000",
-            "DISABLEOWNERCLEAR=0x5C800000",
-			"FORCECLEAR=0x5D800000",
-            "DISABLEFORCECLEAR=0x5E800000",
-			"GETCAPABILITY=0x65800000",
-            "PHYSICALENABLE=0x6F800000",
-            "PHYSICALDISABLE=0x70800000",
-            "PHYSICALSETDEACTIVATED=0x72800000",
-			"CREATEEKPAIR=0x78800000",
-            "MAKEIDENTITY=0x79800000",
             "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
@@ -223,7 +239,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT_AUTH1",
-		"elem_no":41,
+		"elem_no":40,
 		"elemlist":
 		[
             "TAKEOWNERSHIP=0x0D800000",
@@ -247,7 +263,6 @@
             "PHYSICALDISABLE=0x70800000",
             "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-            "MAKEIDENTITY=0x79800000",
             "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
@@ -267,6 +282,24 @@
             "SM3COMPLETEEXTEND=0xED800000",
             "SM2DECRYPT=0xEE800000",
             "LOADKEY=0xEF800000"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_vtcm_auth2_out",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"VTCM_OUT_AUTH2",
+		"elem_no":3,
+		"elemlist":
+		[
+     		        "CERTIFYKEY=0x32800000",
+    		        "MAKEIDENTITY=0x79800000",
+   		        "ACTIVATEIDENTITY=0x7A800000"
 		]
 	}
 }
@@ -2463,7 +2496,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH2",
 		"subtype":"MAKEIDENTITY",
 		"struct_desc":
 		{
@@ -2503,7 +2536,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH2",
 		"subtype":"MAKEIDENTITY",
 		"struct_desc":
 		{
