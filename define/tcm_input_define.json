@@ -47,7 +47,7 @@
 	"record":
 	{
 		"type":"VTCM_IN",
-		"elem_no":46,
+		"elem_no":43,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -83,7 +83,6 @@
 			"STARTUP=0x99800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
-            "APTERMINATE=0xC0800000",
             "SM4ENCRYPT=0xC5800000",
             "SM4DECRYPT=0xC6800000",
             "PCRRESET=0xC8800000",
@@ -94,8 +93,6 @@
             "SM3UPDATE=0xEB800000",
             "SM3COMPLETE=0xEC800000",
             "SM3COMPLETEEXTEND=0xED800000",
-            "SM2DECRYPT=0xEE800000",
-            "LOADKEY=0xEF800000"
 		]
 	}
 }
@@ -108,15 +105,13 @@
 	"record":
 	{
 		"type":"VTCM_IN_AUTH1",
-		"elem_no":47,
+		"elem_no":44,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
             "CHANGEAUTH=0x0C800000",
             "TAKEOWNERSHIP=0x0D800000",
             "CHANGEAUTHOWNER=0x10800000",
-			"EXTEND=0x14800000",
-			"PCRREAD=0x15800000",
             "QUOTE=0x16800000",
             "SEAL=0x17800000",
             "UNSEAL=0x18800000",
@@ -124,7 +119,6 @@
             "CERTIFYKEY=0x32800000",
             "SIGN=0x3C800000",
             "SETCAPABILITY=0x3F800000",
-            "GETRANDOM=0x46800000",
 			"SELFTESTFULL=0x50800000",
             "CONTINUESELFTEST=0x53800000",
             "GETTESTRESULT=0x54800000",
@@ -170,7 +164,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT",
-		"elem_no":46,
+		"elem_no":44,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -217,8 +211,6 @@
             "SM3UPDATE=0xEB800000",
             "SM3COMPLETE=0xEC800000",
             "SM3COMPLETEEXTEND=0xED800000",
-            "SM2DECRYPT=0xEE800000",
-            "LOADKEY=0xEF800000"
 		]
 	}
 }
@@ -231,23 +223,19 @@
 	"record":
 	{
 		"type":"VTCM_OUT_AUTH1",
-		"elem_no":46,
+		"elem_no":41,
 		"elemlist":
 		[
             "TAKEOWNERSHIP=0x0D800000",
             "CHANGEAUTHOWNER=0x10800000",
-			"EXTEND=0x14800000",
-			"PCRREAD=0x15800000",
             "QUOTE=0x16800000",
             "SEAL=0x17800000",
             "UNSEAL=0x18800000",
             "CREATEWRAPKEY=0x1F800000",
-            "EVICTKEY=0x22800000",
             "CERTIFYKEY=0x32800000",
             "SIGN=0x3C800000",
             "SETCAPABILITY=0x3F800000",
-            "GETRANDOM=0x46800000",
-			"SELFTESTFULL=0x50800000",
+            "SELFTESTFULL=0x50800000",
             "CONTINUESELFTEST=0x53800000",
             "GETTESTRESULT=0x54800000",
             "OWNERCLEAR=0x5B800000",
@@ -267,7 +255,6 @@
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
 	    "APCREATE=0xBF800000",
-            "APTERMINATE=0xC0800000",
             "SM4ENCRYPT=0xC5800000",
             "SM4DECRYPT=0xC6800000",
             "PCRRESET=0xC8800000",
@@ -1459,7 +1446,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"APTERMINATE",
 		"struct_desc":
 		{
@@ -1980,7 +1967,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"LOADKEY",
 		"struct_desc":
 		{
@@ -2017,7 +2004,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"LOADKEY",
 		"struct_desc":
 		{
@@ -2215,7 +2202,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"SM2DECRYPT",
 		"struct_desc":
 		{

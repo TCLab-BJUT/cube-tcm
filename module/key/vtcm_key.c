@@ -95,10 +95,13 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_CREATEWRAPKEY_IN)) {
              proc_vtcm_CreateWrapKey(sub_proc,recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_LOADKEY_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_LOADKEY_IN)) {
              proc_vtcm_LoadKey(sub_proc,recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_APTERMINATE_IN)) {
+        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_EVICTKEY_IN)) {
+             proc_vtcm_EvictKey(sub_proc,recv_msg);
+        }
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_APTERMINATE_IN)) {
              proc_vtcm_APTerminate(sub_proc,recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_TAKEOWNERSHIP_IN)) {
@@ -2017,7 +2020,7 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
         return -EINVAL;
 
     //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_LOADKEY_OUT);//Get the entire command template
+    void * command_template = memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_LOADKEY_OUT);//Get the entire command template
     if(command_template == NULL)
     {
         printf("can't solve this command!\n");
@@ -2026,7 +2029,7 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
 
     tcm_state_t * curr_tcm = ex_module_getpointer(sub_proc);
     
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_LOADKEY_OUT);
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_LOADKEY_OUT);
     //Processing
     if(ret == TCM_SUCCESS) {
         vtcm_AuthSessions_GetEntry(&auth_session_data,
@@ -2036,7 +2039,7 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
     }
     if(ret == TCM_SUCCESS) {
       ret = vtcm_Compute_AuthCode(vtcm_in,
-                                  DTYPE_VTCM_IN,
+                                  DTYPE_VTCM_IN_AUTH1,
                                   SUBTYPE_LOADKEY_IN,
                                   auth_session_data,
                                   CheckData);
@@ -2095,13 +2098,13 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_out,
-                                  DTYPE_VTCM_OUT,
+                                  DTYPE_VTCM_OUT_AUTH1,
                                   SUBTYPE_LOADKEY_OUT,
                                   auth_session_data,
                                   vtcm_out->resAuth);
     }
 
-    void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_LOADKEY_OUT,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_LOADKEY_OUT,recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
     message_add_record(send_msg ,vtcm_out);
@@ -2114,6 +2117,72 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
 
     ret = ex_module_sendmsg(sub_proc ,send_msg);
 
+    return ret;
+}
+
+int proc_vtcm_EvictKey(void *sub_proc, void* recv_msg)
+{
+    printf("proc_vtcm_EvictKey : Start\n");
+    int ret = TCM_SUCCESS;
+    int   returnCode=0;
+
+    //input process
+    struct tcm_in_EvictKey *vtcm_in;
+    
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0); // get structure 
+    if(ret < 0) 
+        return ret;
+    if(vtcm_in == NULL)
+        return -EINVAL;
+    
+    tcm_state_t* curr_tcm = ex_module_getpointer(sub_proc);
+    
+    TCM_KEY_HANDLE_ENTRY * remove_keyentry;
+
+    returnCode=vtcm_KeyHandleEntries_GetEntry(&remove_keyentry,
+					curr_tcm->tcm_key_handle_entries,	
+				        vtcm_in->evictHandle);
+    if(returnCode==TCM_SUCCESS)
+    {
+	vtcm_KeyHandleEntry_Delete(remove_keyentry);	
+    }		
+   	
+	
+    //output process
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_EVICTKEY_OUT);//Get the entire command template
+    if(template_out == NULL)
+    {    
+        printf("can't solve this command!\n");
+    }    
+    
+    struct tcm_out_EvictKey * vtcm_output = malloc(struct_size(template_out));
+
+    //Processing
+
+    //Response
+    printf("proc_vtcm_EvictKey : Response \n");
+    vtcm_output->tag = 0xC400;
+    vtcm_output->returnCode = returnCode;
+
+    BYTE* response = (BYTE*)malloc(sizeof(BYTE) * 15);
+    int responseSize = struct_2_blob(vtcm_output, response, template_out);
+    vtcm_output->paramSize = responseSize;
+    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_EVICTKEY_OUT ,recv_msg);
+    if(send_msg == NULL)
+    {
+        printf("send_msg == NULL\n");
+        return -EINVAL;      
+    }
+    message_add_record(send_msg, vtcm_output);
+
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
+
+    ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
 
@@ -2252,10 +2321,10 @@ int proc_vtcm_SM2Decrypt(void *sub_proc, void* recv_msg)
     }
 
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM2DECRYPT_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_SM2DECRYPT_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT);
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM2DECRYPT_OUT);
 	return -EINVAL;
     }    
     vtcm_out = Talloc(struct_size(template_out));
@@ -2325,7 +2394,7 @@ sm2decrypt_out:
     	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, template_out);
 
         ret = vtcm_Compute_AuthCode(vtcm_out,
-                 DTYPE_VTCM_OUT,
+                 DTYPE_VTCM_OUT_AUTH1,
                  SUBTYPE_SM2DECRYPT_OUT,
                  authSession,
                  vtcm_out->DecryptedAuthVerfication);
@@ -2336,7 +2405,7 @@ sm2decrypt_out:
 	}
 	
 
-    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SM2DECRYPT_OUT ,recv_msg);
+    	send_msg = message_create(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM2DECRYPT_OUT ,recv_msg);
     	if(send_msg == NULL)
     	{
         	printf("send_msg == NULL\n");

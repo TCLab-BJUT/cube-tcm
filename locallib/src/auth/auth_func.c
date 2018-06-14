@@ -1530,12 +1530,12 @@ void vtcm_KeyHandleEntry_Delete(TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entry)
         	printf("can't get Key template!\n");
 		return;
             }
-            ret=struct_free(tcm_key_handle_entry->key,template_key);
-	    if(ret<0)
-	    {
-		printf("return key failed!\n");
-		return;	  
-	    }	  	
+      //      ret=struct_free(tcm_key_handle_entry->key,template_key);
+	//    if(ret<0)
+	//    {
+	//	printf("return key failed!\n");
+//		return;	  
+//	    }	  	
         }
         vtcm_KeyHandleEntry_Init(tcm_key_handle_entry);
     }

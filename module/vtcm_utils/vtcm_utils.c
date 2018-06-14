@@ -1857,7 +1857,7 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
   else
   {
   	// Check authdata
-  	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT);
+  	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM2DECRYPT_OUT);
   	if(vtcm_template==NULL)
     		return -EINVAL;
   	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
@@ -1865,7 +1865,7 @@ int proc_vtcmutils_SM2Decrypt(void * sub_proc, void * para){
     		return ret;
   	print_bin_data(Buf,ret,8);
   	BYTE CheckData[TCM_HASH_SIZE];
-  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SM2DECRYPT_OUT,authdata,CheckData);
+  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM2DECRYPT_OUT,authdata,CheckData);
   	if(ret<0)
 	{
     		return -EINVAL;
@@ -3416,7 +3416,7 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
   int serial = htonl(authdata->SERIAL);
   vtcm_SM3_hmac(hashout,authdata->sharedSecret,32,checknum,32,&serial,4);
   memcpy(vtcm_input->authCode,hashout,TCM_HASH_SIZE);
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_APTERMINATE_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_APTERMINATE_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   vtcm_input->paramSize=sizeof(*vtcm_input);
@@ -3454,7 +3454,7 @@ int proc_vtcmutils_EvictKey(void * sub_proc, void * para)
   char * curr_para;
 
   unsigned char digest[TCM_HASH_SIZE];
-  printf("begin proc pcrread \n");
+  printf("begin proc EvictKey \n");
 
   vtcm_input=Talloc0(sizeof(*vtcm_input));
   if(vtcm_input==NULL)
@@ -4052,9 +4052,9 @@ int proc_vtcmutils_LoadKey(void * sub_proc, void * para){
   //Memcpy(vtcm_input->parentAuth,hmacout,TCM_HASH_SIZE); 
  
   // compute authCode 
-  ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_LOADKEY_IN,authdata,vtcm_input->parentAuth);
+  ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_LOADKEY_IN,authdata,vtcm_input->parentAuth);
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_LOADKEY_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_LOADKEY_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -4071,14 +4071,14 @@ int proc_vtcmutils_LoadKey(void * sub_proc, void * para){
     return ret;
   }
   // Check authdata
-  vtcm_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_LOADKEY_OUT);
+  vtcm_template = memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_LOADKEY_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   if(ret<0)
     return ret;
   BYTE CheckData[TCM_HASH_SIZE];
-  ret = vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_LOADKEY_OUT,authdata,CheckData);
+  ret = vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_LOADKEY_OUT,authdata,CheckData);
   if(ret<0)
     return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0){
@@ -4087,7 +4087,7 @@ int proc_vtcmutils_LoadKey(void * sub_proc, void * para){
   }
   print_bin_data(Buf,outlen,8);
   printf("%d\n",outlen);
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_LOADKEY_OUT);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_LOADKEY_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
