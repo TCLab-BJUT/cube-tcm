@@ -23,6 +23,7 @@
 #include "memdb.h"
 #include "message.h"
 #include "ex_module.h"
+#include "channel.h"
 #include "sys_func.h"
 #include "tcm_constants.h"
 #include "vtcm_utils.h"
@@ -33,12 +34,14 @@
 
 static  BYTE Buf[DIGEST_SIZE*32];
 static  BYTE Output[DIGEST_SIZE*32];
-Record_List sessions_list; // tcm caller's tcm session list
+Record_List sessions_list;
 TCM_PUBKEY *pubEK;
 TCM_SECRET ownerAuth;
 TCM_SECRET smkAuth;
 Record_List entitys_list;
 void * curr_recv_msg=NULL;
+
+static CHANNEL * vtcm_caller;
 
 // Ex CA Module
 
@@ -89,8 +92,8 @@ void * vtcm_auto_build_outputmsg(char * out_line, void * active_msg)
 
 TCM_KEY *global_tcm_key;
 BYTE *global_DecryptData=NULL;
-int keyLength=32;
-int sm2Length=32;
+int keyLength=0;
+int sm2Length=0;
 struct tcm_entity_appinfo
 {
   BYTE uuid[DIGEST_SIZE];
@@ -142,6 +145,7 @@ TCM_AUTHHANDLE Build_AuthSession(TCM_SESSION_DATA * authdata,void * tcm_out_data
   List_add_tail(&record->list,&sessions_list.list);
   return authdata->handle;	
 }
+
 
 TCM_SESSION_DATA * Find_AuthSession(TCM_ENT_TYPE type, TCM_AUTHHANDLE authhandle)
 {
@@ -316,9 +320,18 @@ int vtcm_SM3_hmac(BYTE* checksum , unsigned char* key,int klen,unsigned char* hm
 
 int vtcm_utils_init(void * sub_proc,void * para)
 {
+    int ret;
+    struct vtcm_utils_init_para * init_para=para;
+    if(para==NULL)
+	return -EINVAL;
+    vtcm_caller=channel_find(init_para->channel_name);
+
+    if(vtcm_caller==NULL)
+	return -EINVAL;	
 
   INIT_LIST_HEAD(&sessions_list.list);
   sessions_list.record=NULL;
+  
   return 0;
 }
 int TSS_gennonce(unsigned char *nonce){
@@ -4758,43 +4771,22 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
 int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
 {
   	int ret;
-  	int sockfd,sock_dt;
-  	struct sockaddr_in my_addr;//local ip info
-  	struct sockaddr_in dest_addr; //destnation ip info
-
-  	char * tcm_socket_name;
-  	int tcm_port;
-  	char * temp_str;
-  	tcm_socket_name=getenv("TCM_SERVER_NAME");
-  	if(tcm_socket_name==NULL)
-    		return -EINVAL;
-  	temp_str=getenv("TCM_SERVER_PORT");
-  	if(temp_str==NULL)
-    		return -EINVAL;
-  	tcm_port=Atoi(temp_str,DIGEST_SIZE);	
-
-  	if(-1 == (sockfd = socket(AF_INET,SOCK_STREAM,0)) )
-  	{
-    		print_cubeerr("error in create socket\n");
-    		return -1;
-  	}
-  	dest_addr.sin_family = AF_INET;
-  	dest_addr.sin_port = htons(tcm_port);
-  	dest_addr.sin_addr.s_addr = inet_addr(tcm_socket_name);
-  	memset(&dest_addr.sin_zero,0,8);
-  	if(-1 == connect(sockfd,(struct sockaddr*)&dest_addr,sizeof(struct sockaddr)))
-  	{
-    		print_cubeerr("connect error\n");
-    		return -EINVAL;
-  	}
-  	ret = send(sockfd,in,in_len,0);
-  	if(ret!=in_len)
-    		return -EINVAL;
-  	print_cubeaudit("write %d data!\n",ret);
-  	ret=recv(sockfd,out,1024,0);
-  	print_cubeaudit("read %d data!\n",ret);
-  	close(sockfd);
-  	*out_len=ret;
+        ret=channel_write(vtcm_caller,in,in_len);
+	if(ret!=in_len)
+		return -EINVAL;
+	for(;;)
+	{
+        	usleep(time_val.tv_usec);
+		ret=channel_read(vtcm_caller,out,DIGEST_SIZE*32);
+		if(ret<0)
+			return ret;
+		if(ret>0)
+		{
+			*out_len=ret;
+			break;
+		}	
+	}	
+	
   	return ret;
 }
 
@@ -5230,20 +5222,16 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
 	return -EINVAL;
   /*	
   sm3(Buf+6,offset-6-36*2,pikauth);
-
   Memcpy(Buf,pikauth,DIGEST_SIZE);
   temp_int=htonl(vtcm_input->pikAuthHandle);
   Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-
   sm3_hmac(pikauthdata->sharedSecret,TCM_HASH_SIZE,
            Buf,DIGEST_SIZE+sizeof(uint32_t),
            vtcm_input->pikAuth);
-
   // compute ownerauthCode
   Memcpy(Buf,pikauth,DIGEST_SIZE);
   temp_int=htonl(vtcm_input->ownerAuthHandle);
   Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-
   sm3_hmac(ownerauthdata->sharedSecret,TCM_HASH_SIZE,
            Buf,DIGEST_SIZE+sizeof(uint32_t),
            vtcm_input->ownerAuth);
