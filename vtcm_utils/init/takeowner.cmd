@@ -10,5 +10,7 @@ in: takeownership -pwdo ooo -pwds sss
 
 in: apterminate -ih $ownerHandle
 
-in:  apcreate -it 04
+in:  apcreate -it 04 -pwd sss
 out: 1:$smkHandle
+
+in: apterminate -ih $smkHandle

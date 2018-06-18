@@ -47,7 +47,7 @@
 	"record":
 	{
 		"type":"VTCM_IN",
-		"elem_no":41,
+		"elem_no":39,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -81,8 +81,6 @@
 			"STARTUP=0x99800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
-            "SM4ENCRYPT=0xC5800000",
-            "SM4DECRYPT=0xC6800000",
             "PCRRESET=0xC8800000",
 			"NV_DEFINESPACE=0xCC800000",
             "NV_WRITEVALUE=0xCD800000",
@@ -103,7 +101,7 @@
 	"record":
 	{
 		"type":"VTCM_IN_AUTH1",
-		"elem_no":43,
+		"elem_no":38,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -132,7 +130,6 @@
             "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
-			"STARTUP=0x99800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
 			"APCREATE=0xBF800000",
@@ -143,10 +140,6 @@
 			"NV_DEFINESPACE=0xCC800000",
             "NV_WRITEVALUE=0xCD800000",
             "NV_READVALUE=0xCF800000",
-            "SM3START=0xEA800000",
-            "SM3UPDATE=0xEB800000",
-            "SM3COMPLETE=0xEC800000",
-            "SM3COMPLETEEXTEND=0xED800000",
             "SM2DECRYPT=0xEE800000",
             "LOADKEY=0xEF800000"
 		]
@@ -224,7 +217,7 @@
             "SM3START=0xEA800000",
             "SM3UPDATE=0xEB800000",
             "SM3COMPLETE=0xEC800000",
-            "SM3COMPLETEEXTEND=0xED800000",
+            "SM3COMPLETEEXTEND=0xED800000"
 		]
 	}
 }
@@ -237,7 +230,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT_AUTH1",
-		"elem_no":40,
+		"elem_no":35,
 		"elemlist":
 		[
             "TAKEOWNERSHIP=0x0D800000",
@@ -264,7 +257,6 @@
             "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
-			"STARTUP=0x99800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
 	    "APCREATE=0xBF800000",
@@ -274,10 +266,6 @@
             "NV_DEFINESPACE=0xCC800000",
             "NV_WRITEVALUE=0xCD800000",
             "NV_READVALUE=0xCF800000",
-            "SM3START=0xEA800000",
-            "SM3UPDATE=0xEB800000",
-            "SM3COMPLETE=0xEC800000",
-            "SM3COMPLETEEXTEND=0xED800000",
             "SM2DECRYPT=0xEE800000",
             "LOADKEY=0xEF800000"
 		]
@@ -2269,7 +2257,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"SM4ENCRYPT",
 		"struct_desc":
 		{
@@ -2308,7 +2296,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"SM4ENCRYPT",
 		"struct_desc":
 		{
@@ -2344,7 +2332,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"SM4DECRYPT",
 		"struct_desc":
 		{
@@ -2383,7 +2371,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"SM4DECRYPT",
 		"struct_desc":
 		{

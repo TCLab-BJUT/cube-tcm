@@ -1997,7 +1997,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
 
   Memcpy(vtcm_input->EncryptData,Buf,vtcm_input->EncryptDataSize);
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM4ENCRYPT_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM4ENCRYPT_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   int offset=0;
@@ -2007,7 +2007,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
   vtcm_input->paramSize=offset;
 
   // compute authcode
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_SM4ENCRYPT_IN,authdata,vtcm_input->EncryptAuthVerfication);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM4ENCRYPT_IN,authdata,vtcm_input->EncryptAuthVerfication);
 
   ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(ret<0)
@@ -2034,7 +2034,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
    else
    {//
      // check authdata
- 	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM4ENCRYPT_OUT);
+ 	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM4ENCRYPT_OUT);
  	if(ret<0)
  		return -EINVAL;
  	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);//
@@ -2043,7 +2043,7 @@ int proc_vtcmutils_SM4Encrypt(void * sub_proc, void * para){
  	print_bin_data(Buf,ret,8);//
  	
  	BYTE CheckData[TCM_HASH_SIZE];
- 	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SM4ENCRYPT_OUT,authdata,CheckData);
+ 	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM4ENCRYPT_OUT,authdata,CheckData);
  	if(ret<0)
         {
                  return -EINVAL;
@@ -2162,12 +2162,12 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
   print_bin_data(Buf,datasize,8);
   Memcpy(vtcm_input->DecryptData,Buf,vtcm_input->DecryptDataSize);
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM4DECRYPT_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM4DECRYPT_IN);
   if(vtcm_template==NULL)
        return -EINVAL;
 
   // compute authcode
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_SM4DECRYPT_IN,authdata,vtcm_input->DecryptAuthVerfication);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM4DECRYPT_IN,authdata,vtcm_input->DecryptAuthVerfication);
 
   ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(ret<0)
@@ -2195,7 +2195,7 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
    else
    {
   // check authdata
- 	 vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT);
+ 	 vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM4DECRYPT_OUT);
   	if(vtcm_template==NULL)
     		return -EINVAL;
   	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
@@ -2204,7 +2204,7 @@ int proc_vtcmutils_SM4Decrypt(void * sub_proc, void * para){
  	print_bin_data(Buf,ret,8);//
  	
   	BYTE CheckData[TCM_HASH_SIZE];
-  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT,authdata,CheckData);
+  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM4DECRYPT_OUT,authdata,CheckData);
   	if(ret<0)
     		return -EINVAL;
   	if(Memcmp(CheckData,vtcm_output->DecryptedAuthVerfication,DIGEST_SIZE)!=0)

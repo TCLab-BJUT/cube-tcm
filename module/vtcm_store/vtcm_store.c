@@ -145,7 +145,8 @@ int vtcm_store_start(void * sub_proc,void * para)
 	filename[ret+2]=0;
 	
     	fd=open(filename,O_RDONLY);
-        if(type==DTYPE_VTCM_OUT)
+        if((type==DTYPE_VTCM_OUT)
+        	|| (type==DTYPE_VTCM_OUT_AUTH1))
         {
             // host's change-permanent command
             ret=vtcm_instance_export(&tcm_instances[vtcm_no],buffer,VTCM_IO_STATIC);

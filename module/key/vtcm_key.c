@@ -116,10 +116,10 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SM3COMPLETE_IN)) {
             proc_vtcm_Sm3Complete(sub_proc, recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SM4ENCRYPT_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SM4ENCRYPT_IN)) {
             proc_vtcm_Sm4Encrypt(sub_proc, recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SM4DECRYPT_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SM4DECRYPT_IN)) {
             proc_vtcm_Sm4Decrypt(sub_proc, recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SM2DECRYPT_IN)) {
@@ -2645,7 +2645,7 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_in, 
-                                  DTYPE_VTCM_IN,
+                                  DTYPE_VTCM_IN_AUTH1,
                                   SUBTYPE_SM4ENCRYPT_IN, 
                                   authSession, 
                                   CheckData);
@@ -2663,10 +2663,10 @@ int proc_vtcm_Sm4Encrypt(void * sub_proc,void * recv_msg)
     }
 
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM4ENCRYPT_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_SM4ENCRYPT_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SM4ENCRYPT_OUT);
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM4ENCRYPT_OUT);
 	return -EINVAL;
     }    
     vtcm_out = Talloc(struct_size(template_out));
@@ -2735,7 +2735,7 @@ sm4encrypt_out:
     	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, template_out);
 
         ret = vtcm_Compute_AuthCode(vtcm_out,
-                 DTYPE_VTCM_OUT,
+                 DTYPE_VTCM_OUT_AUTH1,
                  SUBTYPE_SM4ENCRYPT_OUT,
                  authSession,
                  vtcm_out->EncryptedAuthVerfication);
@@ -2746,7 +2746,7 @@ sm4encrypt_out:
 	}
 	
 
-    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SM4ENCRYPT_OUT ,recv_msg);
+    	send_msg = message_create(DTYPE_VTCM_OUT_AUTH1 ,SUBTYPE_SM4ENCRYPT_OUT ,recv_msg);
     	if(send_msg == NULL)
     	{
         	printf("send_msg == NULL\n");
@@ -2806,7 +2806,7 @@ int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
     }
     if(ret == TCM_SUCCESS) {
       ret = vtcm_Compute_AuthCode(vtcm_in,
-                                  DTYPE_VTCM_IN,
+                                  DTYPE_VTCM_IN_AUTH1,
                                   SUBTYPE_SM4DECRYPT_IN,
                                   authSession,
                                   CheckData);
@@ -2821,10 +2821,10 @@ int proc_vtcm_Sm4Decrypt(void * sub_proc,void * recv_msg)
       }
     }
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM4DECRYPT_OUT);//Get the entire command template
     if(template_out == NULL)
     {
-        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SM4DECRYPT_OUT);
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM4DECRYPT_OUT);
 	return -EINVAL;
     }
     vtcm_out = Talloc(struct_size(template_out));
@@ -2891,7 +2891,7 @@ sm4decrypt_out:
     	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, template_out);
 
         ret = vtcm_Compute_AuthCode(vtcm_out,
-                 DTYPE_VTCM_OUT,
+                 DTYPE_VTCM_OUT_AUTH1,
                  SUBTYPE_SM4DECRYPT_OUT,
                  authSession,
                  vtcm_out->DecryptedAuthVerfication);
@@ -2902,7 +2902,7 @@ sm4decrypt_out:
 	}
 	
 
-    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SM4DECRYPT_OUT ,recv_msg);
+    	send_msg = message_create(DTYPE_VTCM_OUT_AUTH1 ,SUBTYPE_SM4DECRYPT_OUT ,recv_msg);
     	if(send_msg == NULL)
     	{
         	printf("send_msg == NULL\n");
