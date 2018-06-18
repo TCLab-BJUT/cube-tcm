@@ -47,12 +47,11 @@
 	"record":
 	{
 		"type":"VTCM_IN",
-		"elem_no":42,
+		"elem_no":41,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
             "CHANGEAUTH=0x0C800000",
-            "TAKEOWNERSHIP=0x0D800000",
             "CHANGEAUTHOWNER=0x10800000",
 			"EXTEND=0x14800000",
 			"PCRREAD=0x15800000",
@@ -181,12 +180,11 @@
 	"record":
 	{
 		"type":"VTCM_OUT",
-		"elem_no":43,
+		"elem_no":42,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
             "CHANGEAUTH=0x0C800000",
-            "TAKEOWNERSHIP=0x0D800000",
             "CHANGEAUTHOWNER=0x10800000",
 			"EXTEND=0x14800000",
 			"PCRREAD=0x15800000",
@@ -1403,7 +1401,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"TAKEOWNERSHIP",
 		"struct_desc":
 		{
@@ -1444,7 +1442,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"TAKEOWNERSHIP",
 		"struct_desc":
 		{

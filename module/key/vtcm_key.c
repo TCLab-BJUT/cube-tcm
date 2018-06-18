@@ -104,9 +104,6 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_APTERMINATE_IN)) {
              proc_vtcm_APTerminate(sub_proc,recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_TAKEOWNERSHIP_IN)) {
-            // proc_vtcm_TakeOwnership(sub_proc,recv_msg);
-        }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SM3START_IN)) {
             proc_vtcm_Sm3Start(sub_proc, recv_msg);
         }

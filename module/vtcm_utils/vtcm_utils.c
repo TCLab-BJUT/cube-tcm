@@ -3214,32 +3214,19 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
     return -ENOMEM;
   Memcpy(vtcm_input->smkParams.algorithmParms.parms,Buf,ret);
 
-
-
-
-
   // add authHandle
   vtcm_input->authHandle=authdata->handle;			
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_TAKEOWNERSHIP_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_TAKEOWNERSHIP_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(offset<0)
     return offset;
 
-  //sm3(Buf+6,offset-6-36,vtcm_input->authCode);
-
-  //Memcpy(Buf,vtcm_input->authCode,TCM_HASH_SIZE);
-
-  //uint32_t temp_int=htonl(vtcm_input->authHandle);
-
-  //Memcpy(Buf+TCM_HASH_SIZE,&temp_int,sizeof(temp_int));
-
- // sm3_hmac(ownerauth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE+sizeof(uint32_t),vtcm_input->authCode);
   // compute authcode
   memcpy(vtcm_input->authCode, ownerauth, TCM_HASH_SIZE);
-    ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_TAKEOWNERSHIP_IN,NULL,vtcm_input->authCode);
+    ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_TAKEOWNERSHIP_IN,NULL,vtcm_input->authCode);
 
   vtcm_input->paramSize=offset;
   printf("Begin input for takeownership:\n");
@@ -3252,7 +3239,7 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
   if(ret<0)
     return ret;
   //check authcode
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_TAKEOWNERSHIP_OUT);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_TAKEOWNERSHIP_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
   ret = blob_2_struct(Buf,vtcm_output,vtcm_template);
@@ -3260,7 +3247,7 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
     return ret;
   BYTE CheckData[TCM_HASH_SIZE];
   memcpy(CheckData, ownerauth, TCM_HASH_SIZE);
-  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_TAKEOWNERSHIP_OUT,NULL,CheckData);
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_TAKEOWNERSHIP_OUT,NULL,CheckData);
    if(Memcmp(CheckData,vtcm_output->resAuth,TCM_HASH_SIZE)!=0)
    {
       printf("Takeownership check output authcode is failed!\n");

@@ -73,7 +73,7 @@ int vtcm_auth_start(void* sub_proc, void* para)
  		printf("Non_exist vtcm copy!\n");
      	}
 
-        if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_TAKEOWNERSHIP_IN)) {
+        if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_TAKEOWNERSHIP_IN)) {
             proc_vtcm_TakeOwnership(sub_proc,recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN_AUTH2) && (subtype == SUBTYPE_MAKEIDENTITY_IN)) {
@@ -156,7 +156,7 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
 	Memset(ownerauth,0,TCM_HASH_SIZE);
 	Memcpy(ownerauth,Buf,datalen);
     	// Check command's auth code
-    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_TAKEOWNERSHIP_IN);
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_TAKEOWNERSHIP_IN);
     	if(vtcm_template==NULL)
     		return -EINVAL;
     	offset = struct_2_blob(vtcm_in,Buf,vtcm_template);
@@ -167,7 +167,7 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
         memcpy(CheckData, ownerauth, TCM_HASH_SIZE);
         if(ret == TCM_SUCCESS) {
           ret = vtcm_Compute_AuthCode(vtcm_in,
-                                      DTYPE_VTCM_IN,
+                                      DTYPE_VTCM_IN_AUTH1,
                                       SUBTYPE_TAKEOWNERSHIP_IN,
                                       NULL,
                                       CheckData);
@@ -245,7 +245,7 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
     if(ret == TCM_SUCCESS) 
     {
      ret = vtcm_Compute_AuthCode(vtcm_out,
-                                 DTYPE_VTCM_OUT,
+                                 DTYPE_VTCM_OUT_AUTH1,
                                  SUBTYPE_TAKEOWNERSHIP_OUT,
                                  NULL,
                                  vtcm_out->resAuth);
@@ -254,14 +254,14 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
     if(vtcm_template==NULL)
 	return -EINVAL;
 			
-    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_TAKEOWNERSHIP_OUT ,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH1 ,SUBTYPE_TAKEOWNERSHIP_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");
         return -EINVAL;      
     }
     int responseSize = 0;
-    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_TAKEOWNERSHIP_OUT);
+    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_TAKEOWNERSHIP_OUT);
     responseSize = struct_2_blob(vtcm_out, Buf, vtcm_template);
     if(responseSize<0)
 	return responseSize;
