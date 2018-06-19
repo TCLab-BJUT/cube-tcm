@@ -5189,7 +5189,7 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
 
   // output command's bin value 
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_ACTIVATEIDENTITY_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -5200,28 +5200,14 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
 
   uint32_t temp_int;
   // compute pikauthCode
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_ACTIVATEIDENTITY_IN,pikauthdata,vtcm_input->pikAuth);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN,pikauthdata,vtcm_input->pikAuth);
   if(ret==0)
   {
-      ret=vtcm_Compute_AuthCode2(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_ACTIVATEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
+      ret=vtcm_Compute_AuthCode2(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
   }
   else
 	return -EINVAL;
   /*	
-  sm3(Buf+6,offset-6-36*2,pikauth);
-  Memcpy(Buf,pikauth,DIGEST_SIZE);
-  temp_int=htonl(vtcm_input->pikAuthHandle);
-  Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-  sm3_hmac(pikauthdata->sharedSecret,TCM_HASH_SIZE,
-           Buf,DIGEST_SIZE+sizeof(uint32_t),
-           vtcm_input->pikAuth);
-  // compute ownerauthCode
-  Memcpy(Buf,pikauth,DIGEST_SIZE);
-  temp_int=htonl(vtcm_input->ownerAuthHandle);
-  Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-  sm3_hmac(ownerauthdata->sharedSecret,TCM_HASH_SIZE,
-           Buf,DIGEST_SIZE+sizeof(uint32_t),
-           vtcm_input->ownerAuth);
  */
   printf("Begin input for activeidentity:\n");
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -5235,7 +5221,7 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
   printf("activateidentity:\n");
   print_bin_data(Buf,outlen,8);
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_ACTIVATEIDENTITY_OUT);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_ACTIVATEIDENTITY_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
 

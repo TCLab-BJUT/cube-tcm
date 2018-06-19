@@ -1,4 +1,4 @@
-/* Software-based Trusted Platform Module (TPM) Emulator
+/* Software-based Trusted Platform Module (TCM) Emulator
  * Copyright (C) 2004-2010 Mario Strasser <mast@gmx.net>
  *
  * This module is free software; you can redistribute it and/or modify
@@ -23,12 +23,12 @@
 #define VERSION_BUILD 461
 
 /* TDDL and LKM configuration */
-#define TPM_SOCKET_NAME  "127.0.0.1"
-#define TPM_SOCKET_PORT  6543
-#define TPM_STORAGE_NAME "/var/lib/tpm/tpm_emulator-1_2_0_7"
-#define TPM_DEVICE_NAME  "/dev/tpm"
-#define TPM_LOG_FILE     "/var/log/tpmd.log"
-#define TPM_CMD_BUF_SIZE 4096
+#define TCM_SOCKET_NAME  "127.0.0.1"
+#define TCM_SOCKET_PORT  6543
+#define TCM_STORAGE_NAME "/var/lib/tcm/tcm_emulator-1_2_0_7"
+#define TCM_DEVICE_NAME  "/dev/tcm"
+#define TCM_LOG_FILE     "/var/log/tcmd.log"
+#define TCM_CMD_BUF_SIZE 4096
 
 #endif /* _CONFIG_H_ */
 

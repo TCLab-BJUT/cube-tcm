@@ -79,7 +79,7 @@ int vtcm_auth_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN_AUTH2) && (subtype == SUBTYPE_MAKEIDENTITY_IN)) {
             proc_vtcm_MakeIdentity(sub_proc,recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_ACTIVATEIDENTITY_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH2) && (subtype == SUBTYPE_ACTIVATEIDENTITY_IN)) {
             proc_vtcm_ActivateIdentity(sub_proc,recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_QUOTE_IN)) {
@@ -661,7 +661,7 @@ static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
    
         // check authcode
       
-   	vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_ACTIVATEIDENTITY_IN);
+   	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN);
     	if(vtcm_template==NULL)
     		return -EINVAL;
     	offset = struct_2_blob(vtcm_in,Buf,vtcm_template);
@@ -671,7 +671,7 @@ static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
         if(ret == TCM_SUCCESS)
         {
           ret = vtcm_Compute_AuthCode(vtcm_in,
-                                      DTYPE_VTCM_IN,
+                                      DTYPE_VTCM_IN_AUTH2,
                                       SUBTYPE_ACTIVATEIDENTITY_IN,
                                       pikauthSession,
                                       CheckData);
@@ -685,7 +685,7 @@ static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
         if(ret == TCM_SUCCESS)
         {
           	ret = vtcm_Compute_AuthCode2(vtcm_in,
-                                      	DTYPE_VTCM_IN,
+                                      	DTYPE_VTCM_IN_AUTH2,
                                      	SUBTYPE_ACTIVATEIDENTITY_IN,
                                       	ownerauthSession,
                                       	CheckData2);
@@ -696,42 +696,6 @@ static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
     		printf("\nownerauth compare in failed\n");
 		goto activateidentity_out;
     	}	
-/*
-    // check pikkAuth
-    uint32_t temp_int;
-    // compute smkauthCode
-    sm3(Buf+6,offset-6-36*2,cmdHash);
-
-    Memcpy(Buf,cmdHash,DIGEST_SIZE);
-    temp_int=htonl(vtcm_in->pikAuthHandle);
-    Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    
-    sm3_hmac(pikauthSession->sharedSecret,TCM_HASH_SIZE,
-	Buf,DIGEST_SIZE+sizeof(uint32_t),
-	pikauth);
-
-    if(Memcmp(pikauth,vtcm_in->pikAuth,TCM_HASH_SIZE)!=0)
-    {
-	returnCode=TCM_AUTHFAIL;
-	goto activateidentity_out;
-    }	
-
-    // compute ownerauthCode
-
-    Memcpy(Buf,cmdHash,DIGEST_SIZE);
-    temp_int=htonl(vtcm_in->ownerAuthHandle);
-    Memcpy(Buf+DIGEST_SIZE,&temp_int,sizeof(uint32_t));
-    
-    sm3_hmac(ownerauthSession->sharedSecret,TCM_HASH_SIZE,
-	Buf,DIGEST_SIZE+sizeof(uint32_t),
-	ownerauth);
-
-    if(Memcmp(ownerauth,vtcm_in->ownerAuth,TCM_HASH_SIZE)!=0)
-    {
-	returnCode=TCM_AUTH2FAIL;
-	goto activateidentity_out;
-    }	
-*/
     //  decrypt ca_conts 
 	datalen=DIGEST_SIZE*16;
 	// decrypt the encData 
@@ -804,25 +768,25 @@ activateidentity_out:
     else
     {  	
        	ret = vtcm_Compute_AuthCode(vtcm_out,
-                               	        DTYPE_VTCM_OUT,
+                               	        DTYPE_VTCM_OUT_AUTH2,
                                     	SUBTYPE_ACTIVATEIDENTITY_OUT,
                                     	pikauthSession,
                                     	vtcm_out->pikAuth);
     	if(ret == TCM_SUCCESS)
     	{
         	ret = vtcm_Compute_AuthCode2(vtcm_out,
-                                    	DTYPE_VTCM_OUT,
+                                    	DTYPE_VTCM_OUT_AUTH2,
                                     	SUBTYPE_ACTIVATEIDENTITY_OUT,
                                     	ownerauthSession,
                                     	vtcm_out->ownerAuth);
     	}
-    	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_ACTIVATEIDENTITY_OUT);
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_ACTIVATEIDENTITY_OUT);
 	if(vtcm_template==NULL)
 		return -EINVAL;
     	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, vtcm_template);
 
 
-      	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_ACTIVATEIDENTITY_OUT ,recv_msg);
+      	send_msg = message_create(DTYPE_VTCM_OUT_AUTH2 ,SUBTYPE_ACTIVATEIDENTITY_OUT ,recv_msg);
     	if(send_msg == NULL)
     	{
         	printf("send_msg == NULL\n");

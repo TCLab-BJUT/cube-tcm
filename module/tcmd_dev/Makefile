@@ -1,4 +1,4 @@
-# Software-based Trusted Platform Module (TPM) Emulator
+# Software-based Trusted Platform Module (TCM) Emulator
 # Copyright (C) 2004-2010 Mario Strasser <mast@gmx.net>
 #
 # $Id: Makefile 364 2010-02-11 10:24:45Z mast $
@@ -11,7 +11,7 @@ KERNEL_BUILD   := /lib/modules/$(KERNEL_RELEASE)/build
 MOD_SUBDIR     := misc
 
 # module settings
-MODULE_NAME    := tpmd_dev
+MODULE_NAME    := tcmd_dev
 obj-m          := $(MODULE_NAME).o
 
 # do not print "Entering directory ..."
@@ -23,17 +23,17 @@ all:
 
 clean:
 	@$(MAKE) -C $(KERNEL_BUILD) M=$(CURDIR) clean
-	@rm -f Modules.symvers tpmd_dev.rules
+	@rm -f Modules.symvers tcmd_dev.rules
 
-TPM_GROUP ?= tss
+TCM_GROUP ?= tss
 INSTALL ?= install
 
-tpmd_dev.rules: tpmd_dev.rules.in
-	@sed -e "s/\$$TPM_GROUP/$(TPM_GROUP)/g" tpmd_dev.rules.in > tpmd_dev.rules
+tcmd_dev.rules: tcmd_dev.rules.in
+	@sed -e "s/\$$TCM_GROUP/$(TCM_GROUP)/g" tcmd_dev.rules.in > tcmd_dev.rules
 
-install: tpmd_dev.rules
+install: tcmd_dev.rules
 	@$(MAKE) -C $(KERNEL_BUILD) M=$(CURDIR) INSTALL_MOD_PATH=$(DESTDIR) modules_install
-	@$(INSTALL) -m 644 -D tpmd_dev.rules $(DESTDIR)/etc/udev/rules.d/80-tpmd_dev.rules
+	@$(INSTALL) -m 644 -D tcmd_dev.rules $(DESTDIR)/etc/udev/rules.d/80-tcmd_dev.rules
 
 .PHONY: all clean install
 

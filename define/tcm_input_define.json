@@ -47,7 +47,7 @@
 	"record":
 	{
 		"type":"VTCM_IN",
-		"elem_no":39,
+		"elem_no":38,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -75,7 +75,6 @@
             "PHYSICALDISABLE=0x70800000",
             "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-            "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
 			"STARTUP=0x99800000",
@@ -101,7 +100,7 @@
 	"record":
 	{
 		"type":"VTCM_IN_AUTH1",
-		"elem_no":38,
+		"elem_no":37,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -127,7 +126,6 @@
             "PHYSICALDISABLE=0x70800000",
             "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-            "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
             "FLUSHSPECIFIC=0xBA800000",
@@ -173,7 +171,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT",
-		"elem_no":42,
+		"elem_no":41,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
@@ -201,7 +199,6 @@
             "PHYSICALDISABLE=0x70800000",
             "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-            "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
 			"STARTUP=0x99800000",
@@ -230,7 +227,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT_AUTH1",
-		"elem_no":35,
+		"elem_no":34,
 		"elemlist":
 		[
             "TAKEOWNERSHIP=0x0D800000",
@@ -254,7 +251,6 @@
             "PHYSICALDISABLE=0x70800000",
             "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-            "ACTIVATEIDENTITY=0x7A800000",
            	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
             "FLUSHSPECIFIC=0xBA800000",
@@ -2564,7 +2560,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH2",
 		"subtype":"ACTIVATEIDENTITY",
 		"struct_desc":
 		{
@@ -2592,7 +2588,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH2",
 		"subtype":"ACTIVATEIDENTITY",
 		"struct_desc":
 		{
