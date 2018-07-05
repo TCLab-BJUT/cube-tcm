@@ -47,12 +47,10 @@
 	"record":
 	{
 		"type":"VTCM_IN",
-		"elem_no":38,
+		"elem_no":36,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
-            "CHANGEAUTH=0x0C800000",
-            "CHANGEAUTHOWNER=0x10800000",
 			"EXTEND=0x14800000",
 			"PCRREAD=0x15800000",
             "QUOTE=0x16800000",
@@ -100,11 +98,9 @@
 	"record":
 	{
 		"type":"VTCM_IN_AUTH1",
-		"elem_no":37,
+		"elem_no":31,
 		"elemlist":
 		[
-            "PHYSICALPRESENCE=0x0A000040",
-            "CHANGEAUTH=0x0C800000",
             "TAKEOWNERSHIP=0x0D800000",
             "CHANGEAUTHOWNER=0x10800000",
             "QUOTE=0x16800000",
@@ -122,11 +118,7 @@
 			"FORCECLEAR=0x5D800000",
             "DISABLEFORCECLEAR=0x5E800000",
 			"GETCAPABILITY=0x65800000",
-            "PHYSICALENABLE=0x6F800000",
-            "PHYSICALDISABLE=0x70800000",
-            "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-           	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
@@ -152,9 +144,10 @@
 	"record":
 	{
 		"type":"VTCM_IN_AUTH2",
-		"elem_no":4,
+		"elem_no":5,
 		"elemlist":
 		[
+            		"CHANGEAUTH=0x0C800000",
     		        "UNSEAL=0x18800000",
      		        "CERTIFYKEY=0x32800000",
     		        "MAKEIDENTITY=0x79800000",
@@ -171,12 +164,10 @@
 	"record":
 	{
 		"type":"VTCM_OUT",
-		"elem_no":41,
+		"elem_no":39,
 		"elemlist":
 		[
             "PHYSICALPRESENCE=0x0A000040",
-            "CHANGEAUTH=0x0C800000",
-            "CHANGEAUTHOWNER=0x10800000",
 			"EXTEND=0x14800000",
 			"PCRREAD=0x15800000",
             "QUOTE=0x16800000",
@@ -227,7 +218,7 @@
 	"record":
 	{
 		"type":"VTCM_OUT_AUTH1",
-		"elem_no":34,
+		"elem_no":30,
 		"elemlist":
 		[
             "TAKEOWNERSHIP=0x0D800000",
@@ -247,11 +238,7 @@
 			"FORCECLEAR=0x5D800000",
             "DISABLEFORCECLEAR=0x5E800000",
 			"GETCAPABILITY=0x65800000",
-            "PHYSICALENABLE=0x6F800000",
-            "PHYSICALDISABLE=0x70800000",
-            "PHYSICALSETDEACTIVATED=0x72800000",
 			"CREATEEKPAIR=0x78800000",
-           	"READPUBEK=0x7C800000",
             "OWNERREADINTERNALPUB=0x81800000",
             "FLUSHSPECIFIC=0xBA800000",
             "WRAPKEY=0xBD800000",
@@ -276,9 +263,10 @@
 	"record":
 	{
 		"type":"VTCM_OUT_AUTH2",
-		"elem_no":3,
+		"elem_no":4,
 		"elemlist":
 		[
+            		"CHANGEAUTH=0x0C800000",
      		        "CERTIFYKEY=0x32800000",
     		        "MAKEIDENTITY=0x79800000",
    		        "ACTIVATEIDENTITY=0x7A800000"
@@ -2764,7 +2752,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH2",
 		"subtype":"CHANGEAUTH",
 		"struct_desc":
 		{
@@ -2795,7 +2783,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH2",
 		"subtype":"CHANGEAUTH",
 		"struct_desc":
 		{
@@ -2915,7 +2903,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"CHANGEAUTHOWNER",
 		"struct_desc":
 		{
@@ -2941,7 +2929,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"CHANGEAUTHOWNER",
 		"struct_desc":
 		{

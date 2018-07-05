@@ -3987,7 +3987,7 @@ int proc_vtcm_ChangeAuth(void * sub_proc,void * recv_msg)
         return -EINVAL;
 
     //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_CHANGEAUTH_OUT);//Get the entire command template
+    void * command_template = memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_CHANGEAUTH_OUT);//Get the entire command template
     if(command_template == NULL)
     {
         printf("can't solve this command!\n");
@@ -4025,7 +4025,7 @@ int proc_vtcm_ChangeAuth(void * sub_proc,void * recv_msg)
     tcm_output->paramSize = 78 + tcm_output->outDataSize;
     tcm_output->returnCode = ret;
 
-    void *send_msg = message_create(DTYPE_VTCM_OUT,SUBTYPE_CHANGEAUTH_OUT,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_CHANGEAUTH_OUT,recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
     message_add_record(send_msg ,tcm_output);
