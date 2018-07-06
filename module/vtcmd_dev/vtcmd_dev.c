@@ -18,6 +18,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/miscdevice.h>
+#include <linux/cdev.h>
 #include <linux/poll.h>
 #include <linux/slab.h>
 
@@ -50,10 +51,10 @@
 #define alert(fmt, ...) printk(KERN_ALERT "%s %s:%d: Alert: " fmt "\n", \
                         TCM_MODULE_NAME, __FILE__, __LINE__, ## __VA_ARGS__)
 
-MODULE_LICENSE("LGPL");
+MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Hu Jun");
 MODULE_DESCRIPTION("Virtual Trusted Cryptography Module (VTCM) Emulator");
-MODULE_SUPPORTED_DEVICE(VVTCM_DEVICE_ID);
+MODULE_SUPPORTED_DEVICE(VTCM_DEVICE_ID);
 
 /* module parameters */
 char *vtcmd_socket_name = VTCM_SOCKET_NAME;
@@ -65,11 +66,14 @@ module_param(vtcmd_port, int, 0444);
 MODULE_PARM_DESC(vtcmd_port, " Sets the port number of the TCM daemon socket.");
 /* TCM lock */
 static struct semaphore vtcm_mutex;
+static int major;
 
 static struct vtcm_device
 {
 	char * name;
+	dev_t  devno;
 	BYTE uuid[DIGEST_SIZE];
+	struct cdev cdev;
 }vtcm_device[VTCM_DEFAULT_NUM];
 
 
@@ -320,39 +324,95 @@ struct file_operations fops = {
   .unlocked_ioctl = tcm_ioctl,
 };
 
-static struct miscdevice tcm_dev = {
-  .minor      = VTCM_DEVICE_MINOR, 
-  .name       = VTCM_DEVICE_ID, 
-  .fops       = &fops,
-};
+//static struct miscdevice vtcm_dev = {
+//  .minor      = VTCM_DEVICE_MINOR, 
+//  .name       = VTCM_DEVICE_ID, 
+//  .fops       = &fops,
+//};
+
+struct class *vtcm_class;
+
+static void char_reg_setup_cdev (struct cdev *cdev, dev_t devno)
+{
+    int error;
+ 
+    cdev_init (cdev, &fops);
+    cdev->owner = THIS_MODULE;
+    error = cdev_add (cdev, devno , 1);
+    if (error)
+        printk (KERN_NOTICE "Error %d adding char_reg_setup_cdev", error);
+}
 
 int __init init_tcm_module(void)
 {
   int i;
+  int ret;
+  dev_t devno;
+/*
   int res = misc_register(&tcm_dev);
   if (res != 0) {
     error("misc_register() failed for minor %d\n", VTCM_DEVICE_MINOR);
     return res;
   }
   printk("tcmd_dev: input parameters %s : %d\n",vtcmd_socket_name,vtcmd_port);
+*/
   /* initialize variables */
   sema_init(&vtcm_mutex, 1);
   module_state = 0;
   tcm_response.data = NULL;
   tcm_response.size = 0;
   tcmd_sock = NULL;
+  
+  ret=alloc_chrdev_region(&devno,0,VTCM_DEFAULT_NUM,VTCM_DEVICE_ID);
+  if(ret<0)
+	return -EINVAL;
+  major=MAJOR(devno);
+
+  printk("vtcm major devno is %d!\n",major);
+  vtcm_device[0].name=kmalloc(8*VTCM_DEFAULT_NUM,GFP_KERNEL);
+  if(vtcm_device[0].name==NULL)
+	return -ENOMEM;
+  memset(vtcm_device[0].name,0,8*VTCM_DEFAULT_NUM);
+
+
+  vtcm_class = class_create(THIS_MODULE,"vtcm_dev_class");
+    if(IS_ERR(vtcm_class)) 
+    {
+        printk("Err: failed in creating class.\n");
+        return -1; 
+    }
+
   for(i=0;i<VTCM_DEFAULT_NUM;i++)
   {
-	vtcm_device[i].name=NULL;
+	vtcm_device[i].name=vtcm_device[0].name+8*i;
+	memcpy(vtcm_device[i].name,VTCM_DEVICE_ID,4);
+	vtcm_device[i].name[4]='0'+i;
+	vtcm_device[i].devno=MKDEV(major,i);	
 	memset(vtcm_device[i].uuid,0,DIGEST_SIZE);
+        printk("create vtcm dev %s devno %d!\n",vtcm_device[i].name,vtcm_device[i].devno);
+        device_create(vtcm_class,NULL, vtcm_device[i].devno, NULL, vtcm_device[i].name);
+        printk("char reg dev %s cdev %p!\n",vtcm_device[i].name,&vtcm_device[i].cdev);
+        char_reg_setup_cdev (&vtcm_device[0].cdev, vtcm_device[i].devno);
   }		
+ 
 
   return 0;
 }
 
 void __exit cleanup_tcm_module(void)
 {
-  misc_deregister(&tcm_dev);
+//misc_deregister(&tcm_dev);
+   int i;
+   dev_t devno = MKDEV(major,0);
+   for(i=0;i<VTCM_DEFAULT_NUM;i++)
+   {
+     cdev_del (&vtcm_device[i].cdev);
+     device_destroy(vtcm_class, vtcm_device[i].devno);         // delete device node under /dev//必须先删除设备，再删除class类
+   }
+    class_destroy(vtcm_class);                 // delete class created by us
+    unregister_chrdev_region (devno, VTCM_DEFAULT_NUM);
+    printk("char device exited\n");
+
   tcmd_disconnect();
   if (tcm_response.data != NULL) kfree(tcm_response.data);
 }
