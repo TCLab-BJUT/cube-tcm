@@ -1,2 +1,2 @@
 #!/bin/sh
-insmod ./tcmd_dev.ko tcmd_socket_name="127.0.0.1" tcmd_port=$1
+insmod ./vtcmd_dev.ko vtcmd_socket_name="127.0.0.1" vtcmd_port=$1

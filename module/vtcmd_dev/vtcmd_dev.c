@@ -28,6 +28,10 @@
 #include <linux/in.h>
 #include <linux/un.h>
 #include <net/net_namespace.h>
+#include <linux/completion.h>
+#include <linux/sched.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
 
 #include "config.h"
 
@@ -73,9 +77,12 @@ static struct vtcm_device
 	char * name;
 	dev_t  devno;
 	BYTE uuid[DIGEST_SIZE];
+	BYTE * cmd_buf;
 	struct cdev cdev;
+	struct completion vtcm_notice;
 }vtcm_device[VTCM_DEFAULT_NUM];
 
+static struct task_struct *vtcm_io_task;
 
 /* TCM command response */
 static struct {
@@ -90,6 +97,25 @@ static struct socket *tcmd_sock;
 static struct sockaddr addr;
 
 
+static int vtcm_io_process(void * data)
+{
+	int i;
+	struct vtcm_device * device_list = (struct vtcm_device *)data;
+	
+	while(!kthread_should_stop())
+	{
+		for(i=0;i<VTCM_DEFAULT_NUM;i++)
+		{
+			if(!completion_done(&device_list[i].vtcm_notice))
+			{
+				printk("vtcm %d has command!\n",i);		
+				complete(&device_list[i].vtcm_notice);
+			}
+		}
+		msleep(10);
+	}
+	return 0;
+}
 
 
 static int tcmd_connect(char *socket_name,int port)
@@ -300,6 +326,8 @@ static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
      	 kfree(tcm_response.data);
       	tcm_response.data = NULL;
     }
+
+    // split
     if (tcmd_handle_command(pbuf, count) == 0) {
       tcm_response.size -= copy_to_user((char*)arg, tcm_response.data, tcm_response.size);
       kfree(tcm_response.data);
@@ -389,12 +417,16 @@ int __init init_tcm_module(void)
 	vtcm_device[i].name[4]='0'+i;
 	vtcm_device[i].devno=MKDEV(major,i);	
 	memset(vtcm_device[i].uuid,0,DIGEST_SIZE);
+	vtcm_device[i].cmd_buf=kmalloc(VTCM_CMD_BUF_SIZE,GFP_KERNEL);
+	if(vtcm_device[i].cmd_buf==NULL)
+		return -ENOMEM;
         printk("create vtcm dev %s devno %d!\n",vtcm_device[i].name,vtcm_device[i].devno);
         device_create(vtcm_class,NULL, vtcm_device[i].devno, NULL, vtcm_device[i].name);
         printk("char reg dev %s cdev %p!\n",vtcm_device[i].name,&vtcm_device[i].cdev);
-        char_reg_setup_cdev (&vtcm_device[0].cdev, vtcm_device[i].devno);
+        char_reg_setup_cdev (&vtcm_device[i].cdev, vtcm_device[i].devno);
+	init_completion(&vtcm_device[i].vtcm_notice);
   }		
- 
+  vtcm_io_task = kthread_run(vtcm_io_process,vtcm_device,"vtcm_io_process");	
 
   return 0;
 }
@@ -406,15 +438,22 @@ void __exit cleanup_tcm_module(void)
    dev_t devno = MKDEV(major,0);
    for(i=0;i<VTCM_DEFAULT_NUM;i++)
    {
-     cdev_del (&vtcm_device[i].cdev);
-     device_destroy(vtcm_class, vtcm_device[i].devno);         // delete device node under /dev//必须先删除设备，再删除class类
+       if(vtcm_device[i].cmd_buf!=NULL)	
+             kfree(vtcm_device[i].cmd_buf);	
+       cdev_del (&vtcm_device[i].cdev);
+       device_destroy(vtcm_class, vtcm_device[i].devno);         // delete device node under /dev//必须先删除设备，再删除class类
    }
     class_destroy(vtcm_class);                 // delete class created by us
     unregister_chrdev_region (devno, VTCM_DEFAULT_NUM);
     printk("char device exited\n");
 
-  tcmd_disconnect();
-  if (tcm_response.data != NULL) kfree(tcm_response.data);
+    tcmd_disconnect();
+    if (tcm_response.data != NULL) kfree(tcm_response.data);
+    if(vtcm_io_task)
+    {
+	printk("stop vtcm_io_process");
+        kthread_stop(vtcm_io_task);
+    }
 }
 
 module_init(init_tcm_module);

@@ -32,6 +32,7 @@
 #define VTCM_DEFAULT_NUM  2
 #define DIGEST_SIZE       32
 #define BYTE              unsigned char
+#define VTCM_CHANNEL_BUF_SIZE 8192
 
 #endif /* _CONFIG_H_ */
 
