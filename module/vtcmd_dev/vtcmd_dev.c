@@ -72,14 +72,24 @@ MODULE_PARM_DESC(vtcmd_port, " Sets the port number of the TCM daemon socket.");
 static struct semaphore vtcm_mutex;
 static int major;
 
+enum {
+	VTCM_STATE_WAIT,
+	VTCM_STATE_SEND,
+	VTCM_STATE_RECV,
+	VTCM_STATE_RET
+};
+
 static struct vtcm_device
 {
 	char * name;
 	dev_t  devno;
 	BYTE uuid[DIGEST_SIZE];
 	BYTE * cmd_buf;
+	BYTE * res_buf;
 	struct cdev cdev;
 	struct completion vtcm_notice;
+	int state;
+	int timeout;
 }vtcm_device[VTCM_DEFAULT_NUM];
 
 static struct task_struct *vtcm_io_task;
@@ -97,32 +107,13 @@ static struct socket *tcmd_sock;
 static struct sockaddr addr;
 
 
-static int vtcm_io_process(void * data)
-{
-	int i;
-	struct vtcm_device * device_list = (struct vtcm_device *)data;
-	
-	while(!kthread_should_stop())
-	{
-		for(i=0;i<VTCM_DEFAULT_NUM;i++)
-		{
-			if(!completion_done(&device_list[i].vtcm_notice))
-			{
-				printk("vtcm %d has command!\n",i);		
-				complete(&device_list[i].vtcm_notice);
-			}
-		}
-		msleep(10);
-	}
-	return 0;
-}
-
 
 static int tcmd_connect(char *socket_name,int port)
 {
   int res;
   struct sockaddr_in * tcm_addr;
 //   res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
+// res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0, &tcmd_sock);
    res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
   if (res != 0) {
     error("sock_create_kern() failed: %d\n", res);
@@ -161,7 +152,7 @@ static void tcmd_disconnect(void)
   }	
 }
 
-static int tcmd_handle_command(const uint8_t *in, uint32_t in_size)
+static int tcmd_handle_command(const uint8_t *in, uint32_t in_size,uint8_t *out,uint32_t *out_size)
 {
   int res;
   mm_segment_t oldmm;
@@ -186,27 +177,29 @@ static int tcmd_handle_command(const uint8_t *in, uint32_t in_size)
     return res;
   }
   /* receive response from tcmd */
-  tcm_response.size = VTCM_CMD_BUF_SIZE;
-  tcm_response.data = kmalloc(tcm_response.size, GFP_KERNEL);
-  memset(tcm_response.data,0,VTCM_CMD_BUF_SIZE);
+//  tcm_response.size = VTCM_CMD_BUF_SIZE;
+//  tcm_response.data = kmalloc(tcm_response.size, GFP_KERNEL);
+  memset(out,0,*out_size);
 //  debug("%s(%d %d)", __FUNCTION__, res, tcm_response.size);
-  if (tcm_response.data == NULL) return -1;
+  if (out == NULL) return -1;
   memset(&recv_msg, 0, sizeof(recv_msg));
   memset(&recv_vec, 0, sizeof(recv_vec));
-  recv_vec.iov_base = (void*)tcm_response.data;
-  recv_vec.iov_len = tcm_response.size;
+  recv_vec.iov_base = (void*)out;
+  recv_vec.iov_len = *out_size;
 //  msg.msg_iov = &iov;
 //  msg.msg_iovlen = 1;
+  
+
   oldmm = get_fs();
   set_fs(KERNEL_DS);
-  res = kernel_recvmsg(tcmd_sock, &recv_msg,&recv_vec,1,tcm_response.size, 0);
+  res = kernel_recvmsg(tcmd_sock, &recv_msg,&recv_vec,1,*out_size, 0);
   set_fs(oldmm);
   if (res < 0) {
-    error("sock_recvmsg() failed: %d\n", res);
-    tcm_response.data = NULL;
-    return res;
+      error("sock_recvmsg() failed: %d\n", res);
+ //     tcm_response.data = NULL;
+      return res;
   }
-  tcm_response.size = res;
+  *out_size = res;
 
 // close device start
   tcmd_disconnect();
@@ -279,7 +272,7 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
     kfree(tcm_response.data);
     tcm_response.data = NULL;
   }
-  if (tcmd_handle_command(buf, count) != 0) { 
+  if (tcmd_handle_command(buf, count,tcm_response.data,&tcm_response.size) != 0) { 
     count = -EILSEQ;
     tcm_response.data = NULL;
   }
@@ -293,60 +286,44 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
 static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
         int ret;
-//      unsigned char * pbuf;	
-	uint32_t count;
+	uint32_t count=0;
         struct inode *inode =
                     file->f_path.dentry->d_inode;
         int minor = MINOR(inode->i_rdev);
 
 	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
 
-// 	pbuf=kmalloc(6,GFP_KERNEL);
-//	if(pbuf==NULL)
-//		return -ENOMEM;
         if (cmd == TCMIOC_TRANSMIT) {
-	ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,6);
-	if(ret!=0)
-	{
-    		error("tcm_ioctl() failed: %d\n", ret);
-		return ret;
-	}			
-    	count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
-  	debug("%s(%d, %d)", __FUNCTION__, cmd, count);
-//	if(count>6)
-//	{
-//		kfree(pbuf);
-//		pbuf=kmalloc(count,GFP_KERNEL);
-//		if(pbuf==NULL)
-//			return -ENOMEM;
-//	}
-	ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,count);
-	if(ret!=0)
-	{
-    		error("tcm_ioctl() failed: %d\n", ret);
-		return ret;
-	}			
+		ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,6);
+		if(ret!=0)
+		{
+    			error("tcm_ioctl() failed: %d\n", ret);
+			return ret;
+		}			
+    		count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
+  		debug("%s(%d, %d, %d)", __FUNCTION__, cmd, count,minor);
 
-    	down(&vtcm_mutex);
-    	if (tcm_response.data != NULL) {
-     	 kfree(tcm_response.data);
-      	tcm_response.data = NULL;
-    }
+		ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,count);
+		if(ret!=0)
+		{
+    			error("tcm_ioctl() failed: %d\n", ret);
+			return ret;
+		}			
+		vtcm_dev->state=VTCM_STATE_SEND;
+		wait_for_completion(&vtcm_dev->vtcm_notice);
+		vtcm_dev->state=VTCM_STATE_RET;
+      		count = ntohl(*(uint32_t *)(vtcm_dev->res_buf+2));
+      		copy_to_user((char*)arg, vtcm_dev->res_buf,count);
+
+		printk("finish waiting count data %d!\n",count);
+    	}
+	vtcm_dev->state=VTCM_STATE_WAIT;
 
     // split
-    if (tcmd_handle_command(vtcm_dev->cmd_buf, count) == 0) {
-      tcm_response.size -= copy_to_user((char*)arg, tcm_response.data, tcm_response.size);
-      kfree(tcm_response.data);
-      tcm_response.data = NULL;
-    } else {
-      tcm_response.size = 0;
-      tcm_response.data = NULL;
-    }
-    up(&vtcm_mutex);
+//    if (tcmd_handle_command(vtcm_dev->cmd_buf, count) == 0) {
+//    	up(&vtcm_mutex);
 //    kfree(pbuf);
-    return tcm_response.size;
-  }
-  return -1;
+    return count;
 }
 
 struct file_operations fops = {
@@ -365,6 +342,37 @@ struct file_operations fops = {
 //};
 
 struct class *vtcm_class;
+
+static int vtcm_io_process(void * data)
+{
+	int i;
+	struct vtcm_device * device_list = (struct vtcm_device *)data;
+//	const int max_time=3000;  // max delay time limit (ms)
+	struct vtcm_device * vtcm_dev;
+	int count;
+	int response_size;
+	
+	while(!kthread_should_stop())
+	{
+		for(i=0;i<VTCM_DEFAULT_NUM;i++)
+		{
+			vtcm_dev=&device_list[i];
+			if(vtcm_dev->state==VTCM_STATE_SEND)
+			{
+				count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
+				response_size=VTCM_CMD_BUF_SIZE/2;
+				printk("vtcm %d has command len %d!\n",i,count);		
+				if (tcmd_handle_command(vtcm_dev->cmd_buf, count,
+					vtcm_dev->res_buf,&response_size) == 0) {
+				     printk("vtcm %d return data %d!\n",i,response_size);		
+				}
+				complete(&vtcm_dev->vtcm_notice);
+			}
+		}
+		msleep(10);
+	}
+	return 0;
+}
 
 static void char_reg_setup_cdev (struct cdev *cdev, dev_t devno)
 {
@@ -418,6 +426,7 @@ int __init init_tcm_module(void)
 
   for(i=0;i<VTCM_DEFAULT_NUM;i++)
   {
+	// init each vtcm_device struct
 	vtcm_device[i].name=vtcm_device[0].name+8*i;
 	memcpy(vtcm_device[i].name,VTCM_DEVICE_ID,4);
 	vtcm_device[i].name[4]='0'+i;
@@ -426,11 +435,15 @@ int __init init_tcm_module(void)
 	vtcm_device[i].cmd_buf=kmalloc(VTCM_CMD_BUF_SIZE,GFP_KERNEL);
 	if(vtcm_device[i].cmd_buf==NULL)
 		return -ENOMEM;
+	vtcm_device[i].res_buf=vtcm_device[i].cmd_buf+VTCM_CMD_BUF_SIZE/2;
         printk("create vtcm dev %s devno %d!\n",vtcm_device[i].name,vtcm_device[i].devno);
         device_create(vtcm_class,NULL, vtcm_device[i].devno, NULL, vtcm_device[i].name);
         printk("char reg dev %s cdev %p!\n",vtcm_device[i].name,&vtcm_device[i].cdev);
         char_reg_setup_cdev (&vtcm_device[i].cdev, vtcm_device[i].devno);
 	init_completion(&vtcm_device[i].vtcm_notice);
+	complete(&vtcm_device[i].vtcm_notice);
+	vtcm_device[i].state=VTCM_STATE_WAIT;
+	vtcm_device[i].timeout=0;
   }		
   vtcm_io_task = kthread_run(vtcm_io_process,vtcm_device,"vtcm_io_process");	
 
