@@ -292,29 +292,35 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
 
 static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-   int ret;
-        unsigned char * pbuf;	
+        int ret;
+//      unsigned char * pbuf;	
 	uint32_t count;
- 	pbuf=kmalloc(6,GFP_KERNEL);
-	if(pbuf==NULL)
-		return -ENOMEM;
-    if (cmd == TCMIOC_TRANSMIT) {
-	ret=copy_from_user(pbuf,(void *)arg,6);
+        struct inode *inode =
+                    file->f_path.dentry->d_inode;
+        int minor = MINOR(inode->i_rdev);
+
+	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
+
+// 	pbuf=kmalloc(6,GFP_KERNEL);
+//	if(pbuf==NULL)
+//		return -ENOMEM;
+        if (cmd == TCMIOC_TRANSMIT) {
+	ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,6);
 	if(ret!=0)
 	{
     		error("tcm_ioctl() failed: %d\n", ret);
 		return ret;
 	}			
-    	count = ntohl(*(uint32_t *)(pbuf+2));
-//  	debug("%s(%d, %d)", __FUNCTION__, cmd, count);
-	if(count>6)
-	{
-		kfree(pbuf);
-		pbuf=kmalloc(count,GFP_KERNEL);
-		if(pbuf==NULL)
-			return -ENOMEM;
-	}
-	ret=copy_from_user(pbuf,(void *)arg,count);
+    	count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
+  	debug("%s(%d, %d)", __FUNCTION__, cmd, count);
+//	if(count>6)
+//	{
+//		kfree(pbuf);
+//		pbuf=kmalloc(count,GFP_KERNEL);
+//		if(pbuf==NULL)
+//			return -ENOMEM;
+//	}
+	ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,count);
 	if(ret!=0)
 	{
     		error("tcm_ioctl() failed: %d\n", ret);
@@ -328,7 +334,7 @@ static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     }
 
     // split
-    if (tcmd_handle_command(pbuf, count) == 0) {
+    if (tcmd_handle_command(vtcm_dev->cmd_buf, count) == 0) {
       tcm_response.size -= copy_to_user((char*)arg, tcm_response.data, tcm_response.size);
       kfree(tcm_response.data);
       tcm_response.data = NULL;
@@ -337,7 +343,7 @@ static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
       tcm_response.data = NULL;
     }
     up(&vtcm_mutex);
-    kfree(pbuf);
+//    kfree(pbuf);
     return tcm_response.size;
   }
   return -1;
