@@ -207,7 +207,7 @@ int vtcm_tcp_channel_start(void * sub_proc,void * para)
                     len = recv_conn->conn_ops->read(recv_conn, Buf, 1024);
                     if (len < 0) {
                         perror("read error");
-                        conn_hub->hub_ops->del_connector(conn_hub, recv_conn);
+           //           conn_hub->hub_ops->del_connector(conn_hub, recv_conn);
                     } else if (len == 0) {
                         printf("peer close\n");
                         conn_hub->hub_ops->del_connector(conn_hub, recv_conn);
