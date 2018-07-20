@@ -41,6 +41,26 @@ static unsigned char sendbuf[4096];
 static CHANNEL * vtcm_channel;
 static void * extend_template;
 
+int tcm_get_type_bytag(int tag)
+{
+	int ret;
+	switch(tag)
+	{
+		case 0xc100:
+			ret=DTYPE_VTCM_IN;
+			break;
+		case 0xc200:
+			ret=DTYPE_VTCM_IN_AUTH1;
+			break;
+		case 0xc300:
+			ret=DTYPE_VTCM_IN_AUTH2;
+			break;
+		default:
+			ret= -EINVAL;
+	}
+	return ret;
+}
+
 int vtcm_channel_init(void * sub_proc,void * para)
 {
     int ret;
@@ -147,10 +167,14 @@ int vtcm_channel_start(void * sub_proc,void * para)
 				offset=ret;
                			output_data = (struct vtcm_external_input_command *)Talloc0(extend_size) ;
           	     		ret = blob_2_struct(ReadBuf+offset, output_data,extend_template) ;
-				type=output_data->tag;
-				subtype=output_data->ordinal;
+				command_template=NULL;
 
-               			command_template = memdb_get_template(type,subtype) ;
+				type=tcm_get_type_bytag(output_data->tag);
+				if(type>0)
+				{
+					subtype=output_data->ordinal;
+               				command_template = memdb_get_template(type,subtype) ;
+				}
 					//Get the entire command template
               			if(command_template == NULL)
                			{
@@ -298,8 +322,8 @@ int vtcm_channel_start(void * sub_proc,void * para)
 
             printf("response cmd size %d\n", blob_size);
 
-	    int len=channel_write(vtcm_channel,sendbuf,blob_size);
-            if (len == blob_size)
+	    int len=channel_write(vtcm_channel,sendbuf,blob_size+offset);
+            if (len == blob_size+offset)
                 printf("write success\n");
         }
     }

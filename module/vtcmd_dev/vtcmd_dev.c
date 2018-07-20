@@ -84,6 +84,7 @@ static struct vtcm_device
 	char * name;
 	dev_t  devno;
 	BYTE uuid[DIGEST_SIZE];
+	BYTE * data_buf;
 	BYTE * cmd_buf;
 	BYTE * res_buf;
 	struct cdev cdev;
@@ -106,7 +107,30 @@ static struct socket *tcmd_sock;
 //static struct sockaddr_un addr;
 static struct sockaddr addr;
 
+#define TCM_TAG_RQU_VTCM_COMMAND        0xD100 /* An authenticated response with two authentication
+                                                  handles */
+#define TCM_TAG_RSP_VTCM_COMMAND       	0xD400 /* An authenticated response with two authentication
+                                                  handles */
+#define TCM_TAG_RQU_MANAGE_COMMAND      0xE100 /* An authenticated response with two authentication
+                                                  handles */
+#define TCM_TAG_RSP_MANAGE_COMMAND      0xE400 /* An authenticated response with two authentication
+                                                  handles */
 
+struct vtcm_manage_cmd_head
+{
+    u16 tag;
+    int paramSize;
+    u16 vtcm_no;	
+    u16 cmd;
+}__attribute__((packed));
+
+struct vtcm_manage_return_head
+{
+    u16 tag;
+    int paramSize;
+    u16 vtcm_no;	
+    u16 returnCode;
+}__attribute__((packed));
 
 static int tcmd_connect(char *socket_name,int port)
 {
@@ -405,6 +429,8 @@ static int vtcm_io_process(void * data)
 	struct vtcm_device * vtcm_dev;
 	int count;
 	int response_size;
+
+	struct vtcm_manage_cmd_head * vtcm_cmd_head;
 	
 	// open device start
 //	res = tcmd_connect(vtcmd_socket_name,vtcmd_port);
@@ -421,10 +447,17 @@ static int vtcm_io_process(void * data)
 					count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
 					response_size=VTCM_CMD_BUF_SIZE/2;
 					printk("vtcm %d has command len %d!\n",i,count);		
-					if (tcmd_send_comm(vtcm_dev->cmd_buf, count) == 0) {
+
+					vtcm_cmd_head=(struct vtcm_manage_cmd_head *)(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head));
+					vtcm_cmd_head->tag=TCM_TAG_RQU_VTCM_COMMAND;
+					vtcm_cmd_head->paramSize=ntohl(count+sizeof(*vtcm_cmd_head));
+					vtcm_cmd_head->vtcm_no=ntohs(i+1);
+					vtcm_cmd_head->cmd=0;
+					if (tcmd_send_comm(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head),
+						 count+sizeof(*vtcm_cmd_head)) == 0) {
 						printk("vtcm %d send command succeed!\n",i);		
 						vtcm_dev->state=VTCM_STATE_RECV;
-						if (tcmd_recv_comm(vtcm_dev->res_buf,&response_size) == 0) {
+						if (tcmd_recv_comm(vtcm_dev->res_buf-sizeof(*vtcm_cmd_head),&response_size) == 0) {
 				       		 	printk("vtcm %d return data %d!\n",i,response_size);		
 						}
 					}
@@ -496,9 +529,12 @@ int __init init_tcm_module(void)
 	vtcm_device[i].name[4]='0'+i;
 	vtcm_device[i].devno=MKDEV(major,i);	
 	memset(vtcm_device[i].uuid,0,DIGEST_SIZE);
-	vtcm_device[i].cmd_buf=kmalloc(VTCM_CMD_BUF_SIZE,GFP_KERNEL);
-	if(vtcm_device[i].cmd_buf==NULL)
+	vtcm_device[i].data_buf=kmalloc(VTCM_CMD_BUF_SIZE,GFP_KERNEL);
+	if(vtcm_device[i].data_buf==NULL)
 		return -ENOMEM;
+	if(vtcm_device[i].data_buf==NULL)
+		return -ENOMEM;
+	vtcm_device[i].cmd_buf=vtcm_device[i].data_buf+sizeof(struct vtcm_manage_cmd_head);
 	vtcm_device[i].res_buf=vtcm_device[i].cmd_buf+VTCM_CMD_BUF_SIZE/2;
         printk("create vtcm dev %s devno %d!\n",vtcm_device[i].name,vtcm_device[i].devno);
         device_create(vtcm_class,NULL, vtcm_device[i].devno, NULL, vtcm_device[i].name);
@@ -528,8 +564,8 @@ void __exit cleanup_tcm_module(void)
    dev_t devno = MKDEV(major,0);
    for(i=0;i<VTCM_DEFAULT_NUM;i++)
    {
-       if(vtcm_device[i].cmd_buf!=NULL)	
-             kfree(vtcm_device[i].cmd_buf);	
+       if(vtcm_device[i].data_buf!=NULL)	
+             kfree(vtcm_device[i].data_buf);	
        cdev_del (&vtcm_device[i].cdev);
        device_destroy(vtcm_class, vtcm_device[i].devno);         // delete device node under /dev//必须先删除设备，再删除class类
    }
