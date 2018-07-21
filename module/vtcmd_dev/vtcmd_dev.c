@@ -31,6 +31,7 @@
 #include <linux/completion.h>
 #include <linux/sched.h>
 #include <linux/kthread.h>
+#include <linux/time.h>
 #include <linux/delay.h>
 
 #include "config.h"
@@ -76,7 +77,8 @@ enum {
 	VTCM_STATE_WAIT,
 	VTCM_STATE_SEND,
 	VTCM_STATE_RECV,
-	VTCM_STATE_RET
+	VTCM_STATE_RET,
+	VTCM_STATE_ERR=0x1001
 };
 
 static struct vtcm_device
@@ -90,7 +92,7 @@ static struct vtcm_device
 	struct cdev cdev;
 	struct completion vtcm_notice;
 	int state;
-	int timeout;
+	u64 timeout;
 }vtcm_device[VTCM_DEFAULT_NUM];
 
 static struct task_struct *vtcm_io_task;
@@ -137,7 +139,7 @@ static int tcmd_connect(char *socket_name,int port)
   int res;
   struct sockaddr_in * tcm_addr;
 //   res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
-// res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0, &tcmd_sock);
+//   res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0, &tcmd_sock);
    res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
   if (res != 0) {
     error("sock_create_kern() failed: %d\n", res);
@@ -213,7 +215,7 @@ static int tcmd_recv_comm(uint8_t *out,uint32_t *out_size)
 //  tcm_response.size = VTCM_CMD_BUF_SIZE;
 //  tcm_response.data = kmalloc(tcm_response.size, GFP_KERNEL);
   memset(out,0,*out_size);
-  debug("%s(%d %d)", __FUNCTION__, *out_size, tcm_response.size);
+// debug("%s(%d %d)", __FUNCTION__, *out_size, tcm_response.size);
   if (out == NULL) return -1;
   memset(&recv_msg, 0, sizeof(recv_msg));
   memset(&recv_vec, 0, sizeof(recv_vec));
@@ -225,7 +227,7 @@ static int tcmd_recv_comm(uint8_t *out,uint32_t *out_size)
 
   oldmm = get_fs();
   set_fs(KERNEL_DS);
-  res = kernel_recvmsg(tcmd_sock, &recv_msg,&recv_vec,1,*out_size, 0);
+  res = kernel_recvmsg(tcmd_sock, &recv_msg,&recv_vec,1,*out_size, MSG_DONTWAIT);
   set_fs(oldmm);
   if (res < 0) {
       error("sock_recvmsg() failed: %d\n", res);
@@ -379,7 +381,6 @@ static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			return ret;
 		}			
     		count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
-  		debug("%s(%d, %d, %d)", __FUNCTION__, cmd, count,minor);
 
 		ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,count);
 		if(ret!=0)
@@ -387,13 +388,18 @@ static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     			error("tcm_ioctl() failed: %d\n", ret);
 			return ret;
 		}			
+		printk(" ioctl vtcm dev %p\n",vtcm_dev);
 		vtcm_dev->state=VTCM_STATE_SEND;
+		vtcm_dev->timeout=get_jiffies_64();
+  		debug("%s(%lld, %d, %d)", __FUNCTION__, vtcm_dev->timeout, count,minor);
 		wait_for_completion(&vtcm_dev->vtcm_notice);
-		vtcm_dev->state=VTCM_STATE_RET;
-      		count = ntohl(*(uint32_t *)(vtcm_dev->res_buf+2));
-      		copy_to_user((char*)arg, vtcm_dev->res_buf,count);
+		if(vtcm_dev->state==VTCM_STATE_RET)
+		{
+      			count = ntohl(*(uint32_t *)(vtcm_dev->res_buf+2));
+      			copy_to_user((char*)arg, vtcm_dev->res_buf,count);
 
-		printk("finish waiting count data %d!\n",count);
+			printk("finish waiting count data %d!\n",count);
+		}
     	}
 	vtcm_dev->state=VTCM_STATE_WAIT;
 
@@ -429,21 +435,54 @@ static int vtcm_io_process(void * data)
 	struct vtcm_device * vtcm_dev;
 	int count;
 	int response_size;
+	int vtcm_no;
+	BYTE * recv_buf;
+
+	int clock=0;
 
 	struct vtcm_manage_cmd_head * vtcm_cmd_head;
+	struct vtcm_manage_return_head * vtcm_return_head;
 	
+	recv_buf=kmalloc(4096,GFP_KERNEL);
+	if(recv_buf==NULL)
+		return -ENOMEM;
+	printk(" vtcm io process begin!\n");
 	// open device start
 //	res = tcmd_connect(vtcmd_socket_name,vtcmd_port);
 	// open device end
 	while(!kthread_should_stop())
 	{
+		if(clock==0)
+			printk(" enter the process circle %p!\n",tcmd_sock);
+		clock++;
 		if(tcmd_sock!=NULL)
 		{
+			//send process
 			for(i=0;i<VTCM_DEFAULT_NUM;i++)
 			{
 				vtcm_dev=&device_list[i];
+				if(clock%100==1)
+				{
+					printk(" io process vtcm dev %d %p\n",i,vtcm_dev);
+				}
+				if(vtcm_dev->timeout!=0)
+				{
+					int outtime = get_jiffies_64()-vtcm_dev->timeout;
+					if(clock%100==1)
+					{
+						printk(" io process outtime %d \n",outtime);
+					}
+					if(outtime > 1000 )
+					{	
+						printk("cmd wait %d ms!\n",outtime);
+						vtcm_dev->state=VTCM_STATE_ERR;
+						complete(&vtcm_dev->vtcm_notice);
+						continue;
+					}
+				}
 				if(vtcm_dev->state==VTCM_STATE_SEND)
 				{
+				
 					count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
 					response_size=VTCM_CMD_BUF_SIZE/2;
 					printk("vtcm %d has command len %d!\n",i,count);		
@@ -457,17 +496,74 @@ static int vtcm_io_process(void * data)
 						 count+sizeof(*vtcm_cmd_head)) == 0) {
 						printk("vtcm %d send command succeed!\n",i);		
 						vtcm_dev->state=VTCM_STATE_RECV;
-						if (tcmd_recv_comm(vtcm_dev->res_buf-sizeof(*vtcm_cmd_head),&response_size) == 0) {
-				       		 	printk("vtcm %d return data %d!\n",i,response_size);		
-						}
 					}
-					complete(&vtcm_dev->vtcm_notice);
+					else
+					{
+						printk("vtcm %d send command error!\n",i);
+						vtcm_dev->state	=VTCM_STATE_ERR;	
+						
+					}
 				}
 			}
+			//receive process
+			
+			response_size=4000;
+			if(clock%100==1)
+			{
+					printk(" io process receive section %d\n",clock);
+			}
+			msleep(10);
+			if (tcmd_recv_comm(recv_buf,&response_size)==0)
+			{
+				if(response_size==0)
+				{
+					msleep(10);
+					continue;
+				}
+				if(response_size<sizeof(*vtcm_return_head))
+				{
+					printk("return %d byte data less than return head size!\n",response_size);
+					return -EINVAL;	
+				}				
+				vtcm_return_head=(struct vtcm_manage_return_head *)recv_buf;
+				if(vtcm_return_head->tag != TCM_TAG_RSP_VTCM_COMMAND)
+				{
+					printk("vtcm return head format error!\n");
+					return -EINVAL;
+				}
+				vtcm_no=htons(vtcm_return_head->vtcm_no);	
+				if((vtcm_no<=0) || (vtcm_no>VTCM_DEFAULT_NUM))
+				{
+					printk("Invaild vtcm no %d!\n",vtcm_no);
+					return -EINVAL;
+				}
+				vtcm_dev=&device_list[vtcm_no-1];
+
+				if(vtcm_dev->state!=VTCM_STATE_RECV)
+				{
+					printk("vtcm %d's state error! not in recv state!\n",vtcm_no);
+					return -EINVAL;
+				}
+				count=htonl(vtcm_return_head->paramSize);
+				if(count>response_size)
+				{
+					printk("vtcm %d get cmd size error!\n",count);
+					return -EINVAL;
+				}
+				vtcm_dev->state=VTCM_STATE_RET;
+				memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
+				complete(&vtcm_dev->vtcm_notice);
+				
+			}
+			if(clock%100==1)
+			{
+				printk(" out the tcmd recv process %d \n",clock);
+			}
 		}
-		msleep(10);
 	}
 	 // close device end
+	kfree(recv_buf);
+	printk("exit the io process!\n");
 	return 0;
 }
 
