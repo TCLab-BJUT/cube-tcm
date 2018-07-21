@@ -230,7 +230,6 @@ static int tcmd_recv_comm(uint8_t *out,uint32_t *out_size)
   res = kernel_recvmsg(tcmd_sock, &recv_msg,&recv_vec,1,*out_size, MSG_DONTWAIT);
   set_fs(oldmm);
   if (res < 0) {
-      error("sock_recvmsg() failed: %d\n", res);
  //     tcm_response.data = NULL;
       return res;
   }
@@ -467,7 +466,7 @@ static int vtcm_io_process(void * data)
 				}
 				if(vtcm_dev->timeout!=0)
 				{
-					int outtime = get_jiffies_64()-vtcm_dev->timeout;
+					int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
 					if(clock%100==1)
 					{
 						printk(" io process outtime %d \n",outtime);
@@ -551,6 +550,7 @@ static int vtcm_io_process(void * data)
 					return -EINVAL;
 				}
 				vtcm_dev->state=VTCM_STATE_RET;
+				vtcm_dev->timeout=0;
 				memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
 				complete(&vtcm_dev->vtcm_notice);
 				
