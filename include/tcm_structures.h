@@ -2054,7 +2054,6 @@ typedef struct tdTCM_STANY_DATA {
 */
 
 typedef struct tdTCM_CERTIFY_INFO { 
-    TCM_STRUCT_VER version;             /* This MUST be 1.1.0.0  */
     TCM_KEY_USAGE keyUsage;             /* This SHALL be the same value that would be set in a
                                            TCM_KEY representation of the key to be certified. The
                                            upper byte MUST be zero */
@@ -2072,12 +2071,9 @@ typedef struct tdTCM_CERTIFY_INFO {
     TCM_NONCE data;                     /* This SHALL be externally provided data.  */
     TCM_BOOL parentPCRStatus;           /* This SHALL indicate if any parent key was wrapped to a
                                            PCR */
-    TCM_SIZED_BUFFER pcrInfo;           /*  */
-#if 0
     uint32_t PCRInfoSize;		/* This SHALL be the size of the pcrInfo parameter. A value
                                            of zero indicates that the key is not wrapped to a PCR */
     BYTE* PCRInfo;                      /* This SHALL be the TCM_PCR_INFO structure.  */
-#endif
     /* NOTE: kgold - Added this structure, a cache of PCRInfo when not NULL */
     //TCM_PCR_INFO *tcm_pcr_info;
 }__attribute__((packed)) TCM_CERTIFY_INFO;

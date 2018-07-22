@@ -2102,10 +2102,10 @@
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
 				{"name":"keyHandle","type":"TPM32"},
-                {"name":"externalData","type":"BINDATA","size":"32"},
-                {"name":"targetPCR","type":"SUBSTRUCT","ref_name":"tcm_pcr_selection"},
-                {"name":"authHandle","type":"TPM32"},
-                {"name":"privAuth","type":"BINDATA","size":"32"}
+                		{"name":"externalData","type":"BINDATA","size":"32"},
+                		{"name":"targetPCR","type":"SUBSTRUCT","ref_name":"tcm_pcr_selection"},
+                		{"name":"authHandle","type":"TPM32"},
+                		{"name":"privAuth","type":"BINDATA","size":"32"}
 			]
 		}
         "flag_no":2,
@@ -2157,6 +2157,54 @@
 				"elemlist":"nonce"
 			}
 		]
+	}	
+}
+{
+	"head":
+	{
+		"name":"tcm_in_Certify",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_IN",
+		"subtype":"CERTIFYKEY",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
+				{"name":"paramSize","type":"TPM32"},
+				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
+				{"name":"certkeyHandle","type":"TPM32"},
+				{"name":"keyHandle","type":"TPM32"},
+                		{"name":"externalData","type":"BINDATA","size":"32"}
+			]
+		}
+	}	
+}
+{
+	"head":
+	{
+		"name":"tcm_out_Certify",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_OUT",
+		"subtype":"CERTIFYKEY",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
+				{"name":"paramSize","type":"TPM32"},
+				{"name":"returnCode","type":"TPM32"},
+                		{"name":"certifyInfo","type":"SUBSTRUCT","ref_name":"tcm_certify_info"},
+                		{"name":"sigSize","type":"TPM32"},
+                		{"name":"sig","type":"DEFINE","def":"sigSize"},
+			]
+		}
 	}	
 }
 {
@@ -2796,54 +2844,6 @@
                 {"name":"outData","type":"DEFINE","def":"outDataSize"},
                 {"name":"resAuth","type":"BINDATA","size":"32"},
                 {"name":"entityAuth","type":"BINDATA","size":"32"}
-			]
-		}
-	}	
-}
-{
-	"head":
-	{
-		"name":"tcm_in_CertifyKey",
-		"type":"RECORDTYPE"
-	},
-	"record":
-	{
-		"type":"VTCM_IN",
-		"subtype":"CERTIFYKEY",
-		"struct_desc":
-		{
-			"elem_desc":
-			[
-				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
-				{"name":"paramSize","type":"TPM32"},
-				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
-				{"name":"certHandle","type":"TPM32"},
-                {"name":"keyHandle","type":"TPM32"},
-                {"name":"certAuth","type":"BINDATA","size":"32"}
-			]
-		}
-	}	
-}
-{
-	"head":
-	{
-		"name":"tcm_out_CertifyKey",
-		"type":"RECORDTYPE"
-	},
-	"record":
-	{
-		"type":"VTCM_OUT",
-		"subtype":"CERTIFYKEY",
-		"struct_desc":
-		{
-			"elem_desc":
-			[
-				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
-				{"name":"paramSize","type":"TPM32"},
-				{"name":"returnCode","type":"TPM32"},
-                {"name":"certifyInfo","type":"TPM32"},
-                {"name":"outDataSize","type":"TPM32"},
-                {"name":"outData","type":"DEFINE","def":"outDataSize"}
 			]
 		}
 	}	

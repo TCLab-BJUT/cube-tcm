@@ -83,7 +83,7 @@
         "record":
         {    
                 "type":"VTCM_PCR",
-                "elem_no":6,
+                "elem_no":7,
                 "elemlist":
                 [
                         "TCM_PCR_ATTRIBUTES=0x01",
@@ -91,7 +91,8 @@
                         "TCM_PCR_COMPOSITE",
                         "TCM_PCR_INFO_SHORT",
                         "TCM_PCR_INFO_LONG",
-                        "QUOTE_INFO"
+                        "QUOTE_INFO",
+			"CERTIFY_INFO"
                 ]
         }
 }
@@ -624,6 +625,33 @@
 				{"name":"fixed","type":"STRING","size":4},
 				{"name":"externalData","type":"BINDATA","size":32},
 				{"name":"info","type":"SUBSTRUCT","ref_name":"tcm_pcr_info_long"}
+			]
+		}
+	}	
+}
+{
+	"head":
+	{
+		"name":"tcm_certify_info",
+		"type":"RECORDTYPE"
+	},
+	"record":
+	{
+		"type":"VTCM_PCR",
+		"subtype":"CERTIFY_INFO",
+		"struct_desc":
+		{
+			"elem_desc":
+			[
+				{"name":"keyUsage","type":"TPM16"},
+				{"name":"keyFlags","type":"TPM32"},
+				{"name":"authDataUsage","type":"UCHAR"},
+				{"name":"algorithmParms","type":"SUBSTRUCT","ref_name":"tcm_key_parms"},
+				{"name":"pubkeyDigest","type":"BINDATA","size":32},
+				{"name":"data","type":"BINDATA","size":32},
+				{"name":"parentPCRStatus","type":"UCHAR"},
+				{"name":"PCRInfoSize","type":"TPM32"},
+				{"name":"PCRInfo","type":"DEFINE","def":"PCRInfoSize"}
 			]
 		}
 	}	

@@ -184,7 +184,8 @@ enum subtype_vtcm_pcr_struct
     SUBTYPE_TCM_PCR_COMPOSITE,
     SUBTYPE_TCM_PCR_INFO_SHORT,
     SUBTYPE_TCM_PCR_INFO_LONG,
-    SUBTYPE_TCM_QUOTE_INFO
+    SUBTYPE_TCM_QUOTE_INFO,
+    SUBTYPE_TCM_CERTIFY_INFO
 };
 enum subtype_vtcm_identity
 {
@@ -870,6 +871,26 @@ struct tcm_out_Quote
     int sigSize;
     BYTE * sig;
     BYTE resAuth[32];
+}__attribute__((packed));
+
+struct tcm_in_Certify
+{
+    UINT16 tag;
+    int paramSize;
+    int ordinal;
+    int verifykeyHandle;
+    int verifiedkeyHandle;
+    BYTE externalData[32];
+}__attribute__((packed));
+
+struct tcm_out_Certify
+{
+    UINT16 tag;
+    int paramSize;
+    int returnCode;
+    TCM_CERTIFY_INFO certifyInfo;
+    int sigSize;
+    BYTE * sig;
 }__attribute__((packed));
 
 struct tcm_in_Sm4Encrypt
