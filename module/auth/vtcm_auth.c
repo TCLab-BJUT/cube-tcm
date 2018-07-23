@@ -82,7 +82,7 @@ int vtcm_auth_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN_AUTH2) && (subtype == SUBTYPE_ACTIVATEIDENTITY_IN)) {
             proc_vtcm_ActivateIdentity(sub_proc,recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_QUOTE_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_QUOTE_IN)) {
             proc_vtcm_Quote(sub_proc,recv_msg);
         }
     }
@@ -874,7 +874,7 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
 
     }
     // generate command's bin blob
-    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_QUOTE_IN);
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_QUOTE_IN);
     	if(vtcm_template==NULL)
     		return -EINVAL;
     	offset = struct_2_blob(vtcm_in,Buf,vtcm_template);
@@ -888,7 +888,7 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_in,
-                                  DTYPE_VTCM_IN,
+                                  DTYPE_VTCM_IN_AUTH1,
                                   SUBTYPE_QUOTE_IN,
                                   authSession,
                                   CheckData);
@@ -985,19 +985,19 @@ quote_out:
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_out,
-                                  DTYPE_VTCM_OUT,
+                                  DTYPE_VTCM_OUT_AUTH1,
                                   SUBTYPE_QUOTE_OUT,
                                   authSession,
                                   vtcm_out->resAuth);
     }
-    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_QUOTE_OUT ,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH1 ,SUBTYPE_QUOTE_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");
         return -EINVAL;      
     }
     int responseSize = 0;
-    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT);
+    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_QUOTE_OUT);
     responseSize = struct_2_blob(vtcm_out, Buf, vtcm_template);
     if(responseSize<0)
 	return responseSize;

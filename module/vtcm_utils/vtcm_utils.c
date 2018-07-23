@@ -5348,7 +5348,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
 
   // output command's bin value 
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_QUOTE_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_QUOTE_IN);
   if(vtcm_template==NULL)
     return -EINVAL;
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -5359,7 +5359,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
 
   uint32_t temp_int;
   //compute smkauthcode
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_QUOTE_IN,pikauthdata,vtcm_input->privAuth); 
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_QUOTE_IN,pikauthdata,vtcm_input->privAuth); 
 
   printf("Begin input for quote:\n");
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -5389,7 +5389,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
   else
   {
 
-  	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT);
+  	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_QUOTE_OUT);
   	if(vtcm_template==NULL)
    	     return -EINVAL;
   	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
@@ -5397,7 +5397,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
     		return -EINVAL;
   	print_bin_data(Buf,ret,16);
   	BYTE CheckData[TCM_HASH_SIZE];
-  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_QUOTE_OUT,pikauthdata,CheckData);
+  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_QUOTE_OUT,pikauthdata,CheckData);
   	if(ret<0)
     		return -EINVAL;
   	if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
