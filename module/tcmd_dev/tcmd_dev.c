@@ -32,7 +32,7 @@
 
 #define DEBUG
 #define TCM_DEVICE_MINOR  224
-#define TCM_DEVICE_ID     "vtcm"
+#define TCM_DEVICE_ID     "tcm"
 #define TCM_MODULE_NAME   "tcmd_dev"
 
 #define TCM_STATE_IS_OPEN 0
