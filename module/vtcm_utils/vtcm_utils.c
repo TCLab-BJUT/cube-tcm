@@ -327,7 +327,10 @@ int vtcm_utils_init(void * sub_proc,void * para)
     vtcm_caller=channel_find(init_para->channel_name);
 
     if(vtcm_caller==NULL)
-	return -EINVAL;	
+    {
+	print_cubeerr("vtcm_utils's tcm channel does not exist!,enter no tcm running state!\n");
+	return 0;	
+    }	
 
   INIT_LIST_HEAD(&sessions_list.list);
   sessions_list.record=NULL;
@@ -380,6 +383,7 @@ int vtcm_utils_start(void * sub_proc,void * para)
 int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
 {
   int ret = 0;
+  int cmd_run=0;
 
   struct tcm_utils_input * input_para;
   ret==message_get_record(recv_msg,&input_para,0);
@@ -393,230 +397,241 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
     return -EINVAL;
   }
   curr_recv_msg=recv_msg;
-  if(strcmp(input_para->params,"createek")==0)
+  if(vtcm_caller!=NULL)
   {
-    ret=proc_vtcmutils_createEKPair(sub_proc,input_para);
+
+  	if(strcmp(input_para->params,"createek")==0)
+  	{
+    		ret=proc_vtcmutils_createEKPair(sub_proc,input_para);
+  	}
+	else if(strcmp(input_para->params,"extend")==0)
+  	{
+ 	   ret=proc_vtcmutils_Extend(sub_proc,input_para);
+  	}
+	else if(strcmp(input_para->params,"pcrread")==0)
+  	{
+	    ret=proc_vtcmutils_PcrRead(sub_proc,input_para);
+  	}
+	else if(strcmp(input_para->params,"readpubek")==0)
+  	{
+	    ret=proc_vtcmutils_readPubek(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"apcreate")==0)
+  	{
+	    ret=proc_vtcmutils_APCreate(sub_proc, input_para);
+  	}
+	else if(strcmp(input_para->params,"physicalenable")==0)
+  	{
+	    ret=proc_vtcmutils_PhysicalEnable(sub_proc,input_para);
+  	}
+	else if(strcmp(input_para->params,"physicaldisable")==0)
+  	{
+ 	   ret=proc_vtcmutils_PhysicalDisable(sub_proc,input_para);
+  	}
+	else if(strcmp(input_para->params,"physicalsetdeactivated")==0)
+  	{
+	    ret=proc_vtcmutils_PhysicalSetDeactivated(sub_proc,input_para);
+  	}
+	else if(strcmp(input_para->params,"takeownership")==0)
+  	{
+  	    ret=proc_vtcmutils_takeownership(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"getcapability")==0)
+  	{
+	    ret=proc_vtcmutils_getcapability(sub_proc,input_para);
+ 	}
+  	else if(strcmp(input_para->params,"getrandom")==0)
+  	{
+    	    ret=proc_vtcmutils_getRandom(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"startup")==0)
+  	{
+    	    ret=proc_vtcmutils_StartUp(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"sm3start")==0)
+  	{
+    	    ret=proc_vtcmutils_SM3Start(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"sm3update")==0)
+        {
+    	     ret=proc_vtcmutils_SM3Update(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"sm3complete")==0)
+  	{
+ 	    ret=proc_vtcmutils_SM3Complete(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"createwrapkey")==0)
+  	{
+             ret=proc_vtcmutils_CreateWrapKey(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"loadkey")==0)
+  	{
+    	     ret=proc_vtcmutils_LoadKey(sub_proc,input_para);
+        }
+	 else if(strcmp(input_para->params,"sign")==0)
+  	{
+    		ret=proc_vtcmutils_Sign(sub_proc,input_para);
+ 	 }
+  	else if(strcmp(input_para->params,"wrapkey")==0)
+  	{
+    		//   ret=proc_vtcmutils_WrapKey(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"selftestfull")==0)
+  	{
+             ret=proc_vtcmutils_SelfTestFull(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"sm3extend")==0)
+  	{
+    	   	ret=proc_vtcmutils_SM3CompleteExtend(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"apterminate")==0)
+  	{
+    		ret=proc_vtcmutils_APTerminate(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"evictkey")==0)
+  	{
+    	        ret=proc_vtcmutils_EvictKey(sub_proc,input_para);
+        }
+  	else if(strcmp(input_para->params,"pcrreset")==0)
+  	{
+    		ret=proc_vtcmutils_PcrReset(sub_proc,input_para);
+        }
+  	else  if(strcmp(input_para->params,"continueselftest")==0)
+        {
+    		ret=proc_vtcmutils_ContinueSelfTest(sub_proc,input_para);
+        }
+  	else  if(strcmp(input_para->params,"gettestresult")==0)
+  	{
+    		ret=proc_vtcmutils_GetTestResult(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"forceclear")==0)
+  	{
+    		ret=proc_vtcmutils_ForceClear(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"disableforceclear")==0)
+  	{
+    		ret=proc_vtcmutils_DisableForceClear(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"ownerclear")==0)
+  	{
+    		ret=proc_vtcmutils_OwnerClear(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"disableownerclear")==0)
+  	{
+    		ret=proc_vtcmutils_DisableOwnerClear(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"flushspecific")==0)
+  	{
+    		ret=proc_vtcmutils_FlushSpecific(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"nvdefinespace")==0)
+  	{
+    		ret=proc_vtcmutils_NV_DefineSpace(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"nvwritevalue")==0)
+  	{
+    		ret=proc_vtcmutils_NV_WriteValue(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"nvreadvalue")==0)
+  	{
+    		ret=proc_vtcmutils_NV_ReadValue(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"sm4encrypt")==0)
+  	{
+    		ret=proc_vtcmutils_SM4Encrypt(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"sm4decrypt")==0)
+  	{
+    		ret=proc_vtcmutils_SM4Decrypt(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"sm2decrypt")==0)
+  	{
+    		ret=proc_vtcmutils_SM2Decrypt(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"ownerreadinternalpub")==0)
+  	{
+    		ret=proc_vtcmutils_OwnerReadInternalPub(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"makeidentity")==0)
+  	{
+    		ret=proc_vtcmutils_MakeIdentity(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"activateidentity")==0)
+  	{
+    		ret=proc_vtcmutils_ActivateIdentity(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"quote")==0)
+  	{
+    		ret=proc_vtcmutils_Quote(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"seal")==0)
+  	{
+    		ret=proc_vtcmutils_Seal(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"unseal")==0)
+  	{
+    		ret=proc_vtcmutils_UnSeal(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"Sign")==0)
+  	{
+    		ret=proc_vtcmutils_Sign(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"changeauth")==0)
+  	{
+    	// ret=proc_vtcmutils_ChangeAuth(sub_proc,input_para);
+  	}
+	cmd_run=1;
   }
-  else if(strcmp(input_para->params,"extend")==0)
+
+  if(cmd_run==0)
+ // run external command
   {
-    ret=proc_vtcmutils_Extend(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"pcrread")==0)
-  {
-    ret=proc_vtcmutils_PcrRead(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"readpubek")==0)
-  {
-    ret=proc_vtcmutils_readPubek(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"apcreate")==0)
-  {
-    ret=proc_vtcmutils_APCreate(sub_proc, input_para);
-  }
-  else if(strcmp(input_para->params,"physicalenable")==0)
-  {
-    ret=proc_vtcmutils_PhysicalEnable(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"physicaldisable")==0)
-  {
-    ret=proc_vtcmutils_PhysicalDisable(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"physicalsetdeactivated")==0)
-  {
-    ret=proc_vtcmutils_PhysicalSetDeactivated(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"takeownership")==0)
-  {
-    ret=proc_vtcmutils_takeownership(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"getcapability")==0)
-  {
-    ret=proc_vtcmutils_getcapability(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"getrandom")==0)
-  {
-    ret=proc_vtcmutils_getRandom(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"startup")==0)
-  {
-    ret=proc_vtcmutils_StartUp(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm3start")==0)
-  {
-    ret=proc_vtcmutils_SM3Start(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm3update")==0)
-  {
-    ret=proc_vtcmutils_SM3Update(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm3complete")==0)
-  {
-    ret=proc_vtcmutils_SM3Complete(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"createwrapkey")==0)
-  {
-    ret=proc_vtcmutils_CreateWrapKey(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"loadkey")==0)
-  {
-    ret=proc_vtcmutils_LoadKey(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sign")==0)
-  {
-    ret=proc_vtcmutils_Sign(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"caverify")==0)
-  {
-    ret=proc_vtcmutils_ExCAVerify(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"verify")==0)
-  {
-    ret=proc_vtcmutils_ExVerify(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"verifyquote")==0)
-  {
-    ret=proc_vtcmutils_ExVerifyQuote(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"checkquotepcr")==0)
-  {
-    ret=proc_vtcmutils_ExCheckQuotePCR(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"wrapkey")==0)
-  {
-    //   ret=proc_vtcmutils_WrapKey(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"selftestfull")==0)
-  {
-    ret=proc_vtcmutils_SelfTestFull(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm3extend")==0)
-  {
-    ret=proc_vtcmutils_SM3CompleteExtend(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"apterminate")==0)
-  {
-    ret=proc_vtcmutils_APTerminate(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"evictkey")==0)
-  {
-    ret=proc_vtcmutils_EvictKey(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"pcrreset")==0)
-  {
-    ret=proc_vtcmutils_PcrReset(sub_proc,input_para);
-  }
-  else  if(strcmp(input_para->params,"continueselftest")==0)
-  {
-    ret=proc_vtcmutils_ContinueSelfTest(sub_proc,input_para);
-  }
-  else  if(strcmp(input_para->params,"gettestresult")==0)
-  {
-    ret=proc_vtcmutils_GetTestResult(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"forceclear")==0)
-  {
-    ret=proc_vtcmutils_ForceClear(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"disableforceclear")==0)
-  {
-    ret=proc_vtcmutils_DisableForceClear(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"ownerclear")==0)
-  {
-    ret=proc_vtcmutils_OwnerClear(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"disableownerclear")==0)
-  {
-    ret=proc_vtcmutils_DisableOwnerClear(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"flushspecific")==0)
-  {
-    ret=proc_vtcmutils_FlushSpecific(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"nvdefinespace")==0)
-  {
-    ret=proc_vtcmutils_NV_DefineSpace(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"nvwritevalue")==0)
-  {
-    ret=proc_vtcmutils_NV_WriteValue(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"nvreadvalue")==0)
-  {
-    ret=proc_vtcmutils_NV_ReadValue(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm4encrypt")==0)
-  {
-    ret=proc_vtcmutils_SM4Encrypt(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm4decrypt")==0)
-  {
-    ret=proc_vtcmutils_SM4Decrypt(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm2encrypt")==0)
-  {
-    ret=proc_vtcmutils_SM2Encrypt(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"sm2decrypt")==0)
-  {
-    ret=proc_vtcmutils_SM2Decrypt(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"ownerreadinternalpub")==0)
-  {
-    ret=proc_vtcmutils_OwnerReadInternalPub(sub_proc,input_para);
-  }
+
+  	if(strcmp(input_para->params,"caverify")==0)
+  	{
+   		ret=proc_vtcmutils_ExCAVerify(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"verify")==0)
+  	{
+    		ret=proc_vtcmutils_ExVerify(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"verifyquote")==0)
+  	{
+    		ret=proc_vtcmutils_ExVerifyQuote(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"checkquotepcr")==0)
+  	{
+    		ret=proc_vtcmutils_ExCheckQuotePCR(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"sm2encrypt")==0)
+  	{
+    		ret=proc_vtcmutils_SM2Encrypt(sub_proc,input_para);
+  	}
   //     if(strcmp(input->params,"certifykey")==0)
   //      {
   //        ret=proc_vtcmutils_CertifyKey(sub_proc,input_para);   
   //      }
-  else if(strcmp(input_para->params,"createsm2key")==0)
-  {
-    ret=proc_vtcmutils_ExCreateSm2Key(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"loadcakey")==0)
-  {
-    ret=proc_vtcmutils_ExLoadCAKey(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"makeidentity")==0)
-  {
-    ret=proc_vtcmutils_MakeIdentity(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"casign")==0)
-  {
-    ret=proc_vtcmutils_ExCaSign(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"activateidentity")==0)
-  {
-    ret=proc_vtcmutils_ActivateIdentity(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"decryptpikcert")==0)
-  {
-    ret=proc_vtcmutils_ExDecryptPikCert(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"quote")==0)
-  {
-    ret=proc_vtcmutils_Quote(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"seal")==0)
-  {
-    ret=proc_vtcmutils_Seal(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"unseal")==0)
-  {
-    ret=proc_vtcmutils_UnSeal(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"Sign")==0)
-  {
-    ret=proc_vtcmutils_Sign(sub_proc,input_para);
-  }
-  else if(strcmp(input_para->params,"changeauth")==0)
-  {
-    // ret=proc_vtcmutils_ChangeAuth(sub_proc,input_para);
-  }
-  else
-  {
-    printf("function error\n");
-  }
+  	else if(strcmp(input_para->params,"createsm2key")==0)
+  	{
+    		ret=proc_vtcmutils_ExCreateSm2Key(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"loadcakey")==0)
+  	{
+    		ret=proc_vtcmutils_ExLoadCAKey(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"casign")==0)
+  	{
+    		ret=proc_vtcmutils_ExCaSign(sub_proc,input_para);
+  	}
+  	else if(strcmp(input_para->params,"decryptpikcert")==0)
+  	{
+    		ret=proc_vtcmutils_ExDecryptPikCert(sub_proc,input_para);
+  	}
+  	else
+  	{
+    		printf("function error\n");
+  	}	
+   }
   curr_recv_msg=NULL;
   return ret;
 }
