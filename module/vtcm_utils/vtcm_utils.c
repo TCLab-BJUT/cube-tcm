@@ -580,7 +580,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   	{
     	// ret=proc_vtcmutils_ChangeAuth(sub_proc,input_para);
   	}
-	cmd_run=1;
+	else
+	{
+		cmd_run=1;
+	}
   }
 
   if(cmd_run==0)
