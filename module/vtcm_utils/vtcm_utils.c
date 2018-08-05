@@ -4443,8 +4443,8 @@ int proc_vtcmutils_createEKPair(void * sub_proc, void * para){
   ret = vtcmutils_transmit(vtcm_input->paramSize,BBuffer,&outlen,BBuffer_1);
   if(ret<0)
     return ret;
-  vtcm_template1=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_CREATEEKPAIR_OUT);
-  if(vtcm_template1==NULL)
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_CREATEEKPAIR_OUT);
+  if(vtcm_template==NULL)
     return -EINVAL;
   ret = blob_2_struct(BBuffer_1,vtcm_output,vtcm_template);
   int fd;
