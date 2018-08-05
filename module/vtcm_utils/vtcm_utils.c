@@ -400,6 +400,7 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   if(vtcm_caller!=NULL)
   {
 
+        cmd_run=1;
   	if(strcmp(input_para->params,"createek")==0)
   	{
     		ret=proc_vtcmutils_createEKPair(sub_proc,input_para);
@@ -582,7 +583,7 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   	}
 	else
 	{
-		cmd_run=1;
+		cmd_run=0;
 	}
   }
 
