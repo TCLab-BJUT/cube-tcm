@@ -1584,10 +1584,10 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
     return -EINVAL;
   Memcpy(vtcm_input->areaToSign,Buf,vtcm_input->areaToSignSize);
   // compute authcode
-  ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_SIGN_IN,authdata,vtcm_input->privAuth);
+  ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SIGN_IN,authdata,vtcm_input->privAuth);
 
   printf("Begin input for Sign\n");
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SIGN_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_SIGN_IN);
   ret =  struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(ret<0)
     return ret;
@@ -1617,7 +1617,7 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
   else
   {
  	 // check authcode
-	  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);
+	  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SIGN_OUT);
 	  if(vtcm_template==NULL)
 		return -EINVAL;
  	 ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
@@ -1625,7 +1625,7 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
     		return ret;
   	print_bin_data(Buf,ret,8);
   	BYTE CheckData[TCM_HASH_SIZE];
-  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT,authdata,CheckData);
+  	ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SIGN_OUT,authdata,CheckData);
   	if(ret<0)
     		return -EINVAL;
   	if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0){

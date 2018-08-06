@@ -57,7 +57,6 @@
             "UNSEAL=0x18800000",
             "EVICTKEY=0x22800000",
             "CERTIFYKEY=0x32800000",
-            "SIGN=0x3C800000",
             "SETCAPABILITY=0x3F800000",
             "GETRANDOM=0x46800000",
 			"SELFTESTFULL=0x50800000",
@@ -173,7 +172,6 @@
             "UNSEAL=0x18800000",
             "EVICTKEY=0x22800000",
             "CERTIFYKEY=0x32800000",
-            "SIGN=0x3C800000",
             "SETCAPABILITY=0x3F800000",
             "GETRANDOM=0x46800000",
 			"SELFTESTFULL=0x50800000",
@@ -2437,7 +2435,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_IN",
+		"type":"VTCM_IN_AUTH1",
 		"subtype":"SIGN",
 		"struct_desc":
 		{
@@ -2475,7 +2473,7 @@
 	},
 	"record":
 	{
-		"type":"VTCM_OUT",
+		"type":"VTCM_OUT_AUTH1",
 		"subtype":"SIGN",
 		"struct_desc":
 		{

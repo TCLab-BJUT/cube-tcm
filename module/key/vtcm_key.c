@@ -125,7 +125,7 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SM2DECRYPT_IN)) {
             proc_vtcm_SM2Decrypt(sub_proc, recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SIGN_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SIGN_IN)) {
             proc_vtcm_Sign(sub_proc, recv_msg);
         }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SEAL_IN)) {
@@ -3044,7 +3044,7 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_in, 
-                                  DTYPE_VTCM_IN, 
+                                  DTYPE_VTCM_IN_AUTH1, 
                                   SUBTYPE_SIGN_IN, 
                                   authSession, CheckData);
     }
@@ -3064,10 +3064,10 @@ int proc_vtcm_Sign(void * sub_proc,void * recv_msg)
          goto sign_out;	
     }
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SIGN_OUT);//Get the entire command template
     if(template_out == NULL)
     {
-        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT,SUBTYPE_SIGN_OUT);
+        printf("Fatal error: can't solve command (%x %x)'s output!\n",DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SIGN_OUT);
 	return -EINVAL;
     }
     vtcm_out = Talloc(struct_size(template_out));
@@ -3134,7 +3134,7 @@ sign_out:
     	vtcm_out->paramSize = struct_2_blob(vtcm_out, Buf, template_out);
 
         ret = vtcm_Compute_AuthCode(vtcm_out,
-                 DTYPE_VTCM_OUT,
+                 DTYPE_VTCM_OUT_AUTH1,
                  SUBTYPE_SIGN_OUT,
                  authSession,
                  vtcm_out->resAuth);
@@ -3145,7 +3145,7 @@ sign_out:
 	}
 	
 
-    	send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SIGN_OUT ,recv_msg);
+    	send_msg = message_create(DTYPE_VTCM_OUT_AUTH1 ,SUBTYPE_SIGN_OUT ,recv_msg);
     	if(send_msg == NULL)
     	{
         	printf("send_msg == NULL\n");
