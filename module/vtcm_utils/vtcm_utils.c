@@ -4812,7 +4812,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
   struct tcm_out_MakeIdentity * vtcm_output;
   char * pwdo="ooo";
   char * pwds="sss";
-  char * pwdk="kkk";
+  char * pwdk;
   BYTE ownerauth[TCM_HASH_SIZE];
   BYTE smkauth[TCM_HASH_SIZE];
   BYTE pikauth[TCM_HASH_SIZE];
@@ -4867,6 +4867,10 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
       {
         keyfile=value_para;
       }
+      else if(!Strcmp("-pwd",index_para))
+      {
+        pwdk=value_para;
+      }
       else
       {
         printf("Error cmd format! should be %s -ism smkhandle -ioh ownerhandle -if userfile -of reqfile",
@@ -4894,8 +4898,6 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
 
   // compute the three auth value
 
-  sm3(pwdo,Strlen(pwdo),ownerauth);
-  sm3(pwds,Strlen(pwds),smkauth);
   sm3(pwdk,Strlen(pwdk),pikauth);
 
   // compute crypt pik auth
