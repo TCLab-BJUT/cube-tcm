@@ -11,7 +11,7 @@ in: apcreate -it 04 -pwd sss
 #建立smk会话，记录会话句柄
 out: 1:$smkHandle
 								     
-in: makeidentity -ioh $ownerHandle -ish $smkHandle -if user_info.list -of request.req -kf pik.key
+in: makeidentity -ioh $ownerHandle -ish $smkHandle -if user_info.list -of request.req -kf pik.key -pwd kkk
 #生成鉴别密钥和密钥认证申请包,密钥文件导出 
 
 in: apterminate -ih $ownerHandle
