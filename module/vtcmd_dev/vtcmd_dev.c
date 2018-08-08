@@ -139,7 +139,6 @@ static int tcmd_connect(char *socket_name,int port)
   int res;
   struct sockaddr_in * tcm_addr;
 //   res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
-//   res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0, &tcmd_sock);
    res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
   if (res != 0) {
     error("sock_create_kern() failed: %d\n", res);
@@ -395,7 +394,7 @@ static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if(vtcm_dev->state==VTCM_STATE_RET)
 		{
       			count = ntohl(*(uint32_t *)(vtcm_dev->res_buf+2));
-      			copy_to_user((char*)arg, vtcm_dev->res_buf,count);
+      			ret=copy_to_user((char*)arg, vtcm_dev->res_buf,count);
 
 			printk("finish waiting count data %d!\n",count);
 		}
