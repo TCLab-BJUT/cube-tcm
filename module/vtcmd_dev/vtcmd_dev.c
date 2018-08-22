@@ -448,127 +448,115 @@ static int vtcm_io_process(void * data)
 	{
 		if(clock==0)
 			printk(" enter the process circle %p!\n",tcmd_sock);
+		msleep(10);
 		clock++;
 		if(tcmd_sock == NULL)
 		{
 			int ret;
-  			ret = tcmd_connect(vtcmd_socket_name,vtcmd_port);
-			if(ret!=0)
-			{
-				msleep(500);
-				continue;
-			}
-			else
+			if(clock%50==0)
+  				ret = tcmd_connect(vtcmd_socket_name,vtcmd_port);
+			if(ret == 0)
 			{
    				printk("connect succeed!\n");
 			}
 		}
-		if(tcmd_sock!=NULL)
-		{
-			//send process
-			for(i=0;i<VTCM_DEFAULT_NUM;i++)
-			{
-				vtcm_dev=&device_list[i];
-		//		if(clock%100==1)
-		//		{
-		//			printk(" io process vtcm dev %d %p\n",i,vtcm_dev);
-		//		}
-				if(vtcm_dev->timeout!=0)
-				{
-					int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
-	//				if(clock%100==1)
-	//				{
-	//					printk(" io process outtime %d \n",outtime);
-	//				}
-					if(outtime > 1000 )
-					{	
-						printk("cmd wait %d ms!\n",outtime);
-						vtcm_dev->state=VTCM_STATE_ERR;
-						vtcm_dev->timeout=0;
-						complete(&vtcm_dev->vtcm_notice);
-						continue;
-					}
-				}
-				if(vtcm_dev->state==VTCM_STATE_SEND)
-				{
-				
-					count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
-					response_size=VTCM_CMD_BUF_SIZE/2;
-					printk("vtcm %d has command len %d!\n",i,count);		
 
-					vtcm_cmd_head=(struct vtcm_manage_cmd_head *)(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head));
-					vtcm_cmd_head->tag=TCM_TAG_RQU_VTCM_COMMAND;
-					vtcm_cmd_head->paramSize=ntohl(count+sizeof(*vtcm_cmd_head));
-					vtcm_cmd_head->vtcm_no=ntohs(i+1);
-					vtcm_cmd_head->cmd=0;
-					if (tcmd_send_comm(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head),
-						 count+sizeof(*vtcm_cmd_head)) == 0) {
-						printk("vtcm %d send command succeed!\n",i);		
-						vtcm_dev->state=VTCM_STATE_RECV;
-					}
-					else
-					{
-						printk("vtcm %d send command error!\n",i);
-						vtcm_dev->state	=VTCM_STATE_ERR;	
+		//send process
+		for(i=0;i<VTCM_DEFAULT_NUM;i++)
+		{
+			vtcm_dev=&device_list[i];
+			if(vtcm_dev->timeout!=0)
+			{
+				int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
+				if(outtime > 1000 )
+				{	
+					printk("cmd wait %d ms!\n",outtime);
+					vtcm_dev->state=VTCM_STATE_ERR;
+					vtcm_dev->timeout=0;
+					complete(&vtcm_dev->vtcm_notice);
+					continue;
+				}
+			}
+			if((tcmd_sock!=NULL) &&(vtcm_dev->state==VTCM_STATE_SEND))
+			{
+				count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
+				response_size=VTCM_CMD_BUF_SIZE/2;
+				printk("vtcm %d has command len %d!\n",i,count);		
+
+				vtcm_cmd_head=(struct vtcm_manage_cmd_head *)(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head));
+				vtcm_cmd_head->tag=TCM_TAG_RQU_VTCM_COMMAND;
+				vtcm_cmd_head->paramSize=ntohl(count+sizeof(*vtcm_cmd_head));
+				vtcm_cmd_head->vtcm_no=ntohs(i+1);
+				vtcm_cmd_head->cmd=0;
+				if (tcmd_send_comm(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head),
+					 count+sizeof(*vtcm_cmd_head)) == 0) {
+					printk("vtcm %d send command succeed!\n",i);		
+					vtcm_dev->state=VTCM_STATE_RECV;
+				}
+				else
+				{
+					printk("vtcm %d send command error!\n",i);
+					vtcm_dev->state	=VTCM_STATE_ERR;	
+					vtcm_dev->timeout=0;
+					tcmd_sock=NULL;
+					complete(&vtcm_dev->vtcm_notice);
 						
-					}
 				}
 			}
 			//receive process
 			
 			response_size=4000;
-//			if(clock%100==1)
-//			{
-//					printk(" io process receive section %d\n",clock);
-//			}
-			msleep(10);
-			if (tcmd_recv_comm(recv_buf,&response_size)==0)
+			
+			if(tcmd_sock!=NULL)
 			{
-				if(response_size==0)
-				{
-					msleep(10);
-					continue;
-				}
-				if(response_size<sizeof(*vtcm_return_head))
-				{
-					printk("return %d byte data less than return head size!\n",response_size);
-					tcmd_sock=NULL;
-					continue;
-				}				
-				vtcm_return_head=(struct vtcm_manage_return_head *)recv_buf;
-				if(vtcm_return_head->tag != TCM_TAG_RSP_VTCM_COMMAND)
-				{
-					printk("vtcm return head format error!\n");
-					tcmd_sock=NULL;
-					continue;
-				}
-				vtcm_no=htons(vtcm_return_head->vtcm_no);	
-				if((vtcm_no<=0) || (vtcm_no>VTCM_DEFAULT_NUM))
-				{
-					printk("Invaild vtcm no %d!\n",vtcm_no);
-					tcmd_sock=NULL;
-					continue;
-				}
-				vtcm_dev=&device_list[vtcm_no-1];
 
-				if(vtcm_dev->state!=VTCM_STATE_RECV)
+				if (tcmd_recv_comm(recv_buf,&response_size)==0)
 				{
-					printk("vtcm %d's state error! not in recv state!\n",vtcm_no);
-					tcmd_sock=NULL;
-					continue;
-				}
-				count=htonl(vtcm_return_head->paramSize);
-				if(count>response_size)
-				{
-					printk("vtcm %d get cmd size error!\n",count);
-					tcmd_sock=NULL;
-					continue;
-				}
-				vtcm_dev->state=VTCM_STATE_RET;
-				vtcm_dev->timeout=0;
-				memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
-				complete(&vtcm_dev->vtcm_notice);
+					if(response_size==0)
+					{
+						continue;
+					}
+					if(response_size<sizeof(*vtcm_return_head))
+					{
+						printk("return %d byte data less than return head size!\n",response_size);
+						tcmd_sock=NULL;
+						continue;
+					}				
+					vtcm_return_head=(struct vtcm_manage_return_head *)recv_buf;
+					if(vtcm_return_head->tag != TCM_TAG_RSP_VTCM_COMMAND)
+					{
+						printk("vtcm return head format error!\n");
+						tcmd_sock=NULL;
+						continue;
+					}
+					vtcm_no=htons(vtcm_return_head->vtcm_no);	
+					if((vtcm_no<=0) || (vtcm_no>VTCM_DEFAULT_NUM))
+					{
+						printk("Invaild vtcm no %d!\n",vtcm_no);
+						tcmd_sock=NULL;
+						continue;
+					}
+					vtcm_dev=&device_list[vtcm_no-1];
+
+					if(vtcm_dev->state!=VTCM_STATE_RECV)
+					{
+						printk("vtcm %d's state error! not in recv state!\n",vtcm_no);
+						tcmd_sock=NULL;
+						continue;
+					}
+					count=htonl(vtcm_return_head->paramSize);
+					if(count>response_size)
+					{
+						printk("vtcm %d get cmd size error!\n",count);
+						tcmd_sock=NULL;
+						continue;
+					}
+					vtcm_dev->state=VTCM_STATE_RET;
+					vtcm_dev->timeout=0;
+					memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
+					complete(&vtcm_dev->vtcm_notice);
 				
+				}
 			}
 		}
 	}
