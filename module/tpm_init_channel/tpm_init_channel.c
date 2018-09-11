@@ -29,7 +29,7 @@
 
 #define MAX_LINE_LEN 1024
 
-
+#define SHA1SIZE 20
 
 static unsigned char Buf[DIGEST_SIZE*128];
 static BYTE * ReadBuf=Buf;
@@ -43,6 +43,8 @@ static unsigned char sendbuf[4096];
 static CHANNEL * ex_channel;
 static CHANNEL * in_channel;
 static void * extend_template;
+static void * return_template;
+static BYTE TPMPCR[16][SHA1SIZE];
 
 struct tpm_init_cmd
 {
@@ -50,6 +52,40 @@ struct tpm_init_cmd
 	unsigned int ordinal;
 	int out_len;
 	BYTE out_data[64];	
+};
+
+struct tpm_ordemu_struct
+{
+	UINT16 tag;
+	unsigned int ordinal;
+	int (*emu_func)(struct vtcm_external_input_command * input_head,BYTE * input,BYTE * output);
+};
+
+int tpm_ordemu_init(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_GetTicks(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_ResetEstablishmentBit(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_SHA1Start(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_SHA1Complete(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_Extend(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+
+struct tpm_ordemu_struct tpm_emu_seq[] =
+{
+	{
+		0x0180,
+		0x81010000,
+		&tpm_ordemu_init
+	},
+	{
+		0xC100,
+		0xA0000000,
+		&tpm_ordemu_GetTicks
+	},
+	{
+		0,
+		0,
+		NULL
+	}
 };
 
 struct tpm_init_cmd init_cmd_seq[] =
@@ -107,6 +143,12 @@ int tpm_init_channel_init(void * sub_proc,void * para)
     	printf("load extend template error!\n");
     	return -EINVAL;
     }
+    return_template=memdb_get_template(DTYPE_VTCM_EXTERNAL,SUBTYPE_RETURN_DATA_EXTERNAL) ;
+    if(return_template==NULL)
+    {
+    	printf("load return template error!\n");
+    	return -EINVAL;
+    }
 
     return 0;
 }
@@ -139,12 +181,19 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 			return -EINVAL;
 		if(output_data.paramSize>readbuf_len)
 			continue;
-		while(init_cmd_seq[i].ordinal!=0)
+		while(tpm_emu_seq[i].ordinal!=0)
 		{
-			if(output_data.ordinal == init_cmd_seq[i].ordinal)
+			if((output_data.ordinal == tpm_emu_seq[i].ordinal)
+				&&(output_data.tag == tpm_emu_seq[i].tag))
 			{
 			//Match a tpm init sequence
-				ret=channel_write(ex_channel,init_cmd_seq[i].out_data,init_cmd_seq[i].out_len);
+				if(tpm_emu_seq[i].emu_func==NULL)
+					return -EINVAL;
+				int out_len=0;
+				out_len=tpm_emu_seq[i].emu_func(&output_data,ReadBuf,sendbuf);
+				if(out_len<0)
+					return -EINVAL;			
+				ret=channel_write(ex_channel,sendbuf,out_len);
 				if(ret<0)
 					return -EINVAL;
 				break;
@@ -171,4 +220,24 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 	}
     }
     return 0;
+}
+int tpm_ordemu_init(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	int out_len=10;
+	BYTE out_data[10]={0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x0A};
+	Memcpy(output,out_data,out_len);
+	return out_len;
+}
+
+int tpm_ordemu_GetTicks(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0a;
+	output_head.returnCode=0x26;
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	return ret;
 }
