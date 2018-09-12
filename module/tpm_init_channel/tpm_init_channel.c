@@ -22,6 +22,7 @@
 #include "ex_module.h"
 #include "channel.h"
 #include "sys_func.h"
+#include "sha1.h"
 
 #include "app_struct.h"
 #include "vtcm_struct.h"
@@ -45,6 +46,7 @@ static CHANNEL * in_channel;
 static void * extend_template;
 static void * return_template;
 static BYTE TPMPCR[16][SHA1SIZE];
+static tpm_sha1_ctx_t sha1_ctx;
 
 struct tpm_init_cmd
 {
@@ -104,7 +106,21 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 		0x65000000,
 		&tpm_ordemu_GetCapability
 	},
-
+	{
+		0xC100,
+		0xA0000000,
+		&tpm_ordemu_SHA1Start
+	},
+	{
+		0xC100,
+		0xA2000000,
+		&tpm_ordemu_SHA1Complete
+	},
+	{
+		0xC100,
+		0x14000000,
+		&tpm_ordemu_Extend
+	},
 	{
 		0,
 		0,
@@ -316,7 +332,7 @@ int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYT
 			break;					
 			case 0x0120:
 			{
-				BYTE out_data[16]={0x00,0x0C,0x00,0x1E,0x84,0x80,0x00,0x4C,0x4B,0x40,0x03,0x93,0x87,0x00}; 
+				BYTE out_data[16]={0x00,0x1E,0x84,0x80,0x00,0x4C,0x4B,0x40,0x03,0x93,0x87,0x00}; 
 				tpm_out->paramSize=0x1A;
 				tpm_out->returnCode=0;
 				tpm_out->respSize=0x0C;
@@ -329,6 +345,84 @@ int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYT
 		}
 	}
 	
-        ret = struct_2_blob(tpm_out,output,return_template) ;
+        ret = struct_2_blob(tpm_out,output,tpm_out_template) ;
 	return ret;
+}
+
+int tpm_ordemu_SHA1Start(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0E;
+	output_head.returnCode=0x0;
+	BYTE out_data[16]={0x00,0x00,0x0F,0xCD};
+
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	if(ret<0)
+		return ret;
+	tpm_sha1_init(&sha1_ctx);
+	Memcpy(output+sizeof(output_head),out_data,output_head.paramSize-sizeof(output_head));
+	return output_head.paramSize;
+}
+
+int tpm_ordemu_SHA1Complete(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	struct tcm_in_Sm3Complete * tpm_in;
+	void * tpm_in_template;
+
+
+	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM3COMPLETE_IN);
+	if(tpm_in_template==NULL)
+	{
+		printf("template error!\n");
+		return -EINVAL;
+	}
+	tpm_in=Talloc0(sizeof(*tpm_in));
+	ret=blob_2_struct(input,tpm_in,tpm_in_template);
+
+	tpm_sha1_update(&sha1_ctx,tpm_in->dataBlock,tpm_in->dataBlockSize);
+
+	output_head.tag=0xC400;
+	output_head.paramSize=0x1E;
+	output_head.returnCode=0x0;
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	if(ret<0)
+		return ret;
+	tpm_sha1_final(&sha1_ctx,output+sizeof(output_head));
+	return output_head.paramSize;
+}
+int tpm_ordemu_Extend(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	struct tcm_in_extend * tpm_in;
+	void * tpm_in_template;
+
+	BYTE SHA1Buf[SHA1SIZE*2];
+
+	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_EXTEND_IN);
+	if(tpm_in_template==NULL)
+	{
+		printf("template error!\n");
+		return -EINVAL;
+	}
+	tpm_in=Talloc0(sizeof(*tpm_in));
+	ret=blob_2_struct(input,tpm_in,tpm_in_template);
+
+	output_head.tag=0xC400;
+	output_head.paramSize=0x1E;
+	output_head.returnCode=0x0;
+
+	Memcpy(SHA1Buf,TPMPCR[tpm_in->pcrNum],SHA1SIZE);
+	Memcpy(SHA1Buf+SHA1SIZE,tpm_in->inDigest,SHA1SIZE);
+	calculate_context_sha1(SHA1Buf,SHA1SIZE*2,output+sizeof(output_head));
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	if(ret<0)
+		return ret;
+	return output_head.paramSize;
 }
