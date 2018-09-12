@@ -78,7 +78,7 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 	},
 	{
 		0xC100,
-		0xA0000000,
+		0xF1000000,
 		&tpm_ordemu_GetTicks
 	},
 	{
