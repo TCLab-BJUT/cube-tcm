@@ -78,6 +78,7 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 		0x81010000,
 		&tpm_ordemu_init
 	},
+
 	{
 		0xC100,
 		0xF1000000,
@@ -98,6 +99,12 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 		0x0B000040,
 		&tpm_ordemu_ResetEstablishmentBit
 	},
+	{
+		0xC100,
+		0x65000000,
+		&tpm_ordemu_GetCapability
+	},
+
 	{
 		0,
 		0,
@@ -257,5 +264,71 @@ int tpm_ordemu_ResetEstablishmentBit(struct vtcm_external_input_command * input_
 	output_head.returnCode=0x3D;
 
         ret = struct_2_blob(&output_head,output,return_template) ;
+	return ret;
+}
+
+int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	struct tcm_in_GetCapability * tpm_in;
+	struct tcm_out_GetCapability * tpm_out;
+	void * tpm_in_template;
+	void * tpm_out_template;
+
+
+	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_GETCAPABILITY_IN);
+	if(tpm_in_template==NULL)
+	{
+		printf("template error!\n");
+		return -EINVAL;
+	}
+	tpm_out_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_GETCAPABILITY_OUT);
+	if(tpm_out_template==NULL)
+	{
+		printf("template error!\n");
+		return -EINVAL;
+	}
+
+	tpm_in=Talloc0(sizeof(*tpm_in));
+	tpm_out=Talloc0(sizeof(*tpm_out));
+	ret=blob_2_struct(input,tpm_in,tpm_in_template);
+	
+	tpm_out->tag=0xC400;
+
+	if(tpm_in->capArea==0x05)
+	{
+		if(tpm_in->subCapSize!=0x04)
+			return -EINVAL;
+		int subCapValue=tpm_in->subCap[2]*0x100+tpm_in->subCap[3];
+
+		switch(subCapValue)
+		{
+			case 0x0115:
+			{
+				BYTE out_data[16]={0x00,0x0F,0x42,0x40,0x00,0x0F,0x42,0x40,0x00,0x0F,0x42,0x40,0x00,0x0F,0x42,0x40};
+				tpm_out->paramSize=0x1E;
+				tpm_out->returnCode=0;
+				tpm_out->respSize=0x10;
+				tpm_out->resp=Talloc0(tpm_out->respSize);
+				Memcpy(tpm_out->resp,out_data,tpm_out->respSize);
+			}	
+			break;					
+			case 0x0120:
+			{
+				BYTE out_data[16]={0x00,0x0C,0x00,0x1E,0x84,0x80,0x00,0x4C,0x4B,0x40,0x03,0x93,0x87,0x00}; 
+				tpm_out->paramSize=0x1A;
+				tpm_out->returnCode=0;
+				tpm_out->respSize=0x0C;
+				tpm_out->resp=Talloc0(tpm_out->respSize);
+				Memcpy(tpm_out->resp,out_data,tpm_out->respSize);
+			}	
+			break;					
+			default:
+				return -EINVAL;
+		}
+	}
+	
+        ret = struct_2_blob(tpm_out,output,return_template) ;
 	return ret;
 }
