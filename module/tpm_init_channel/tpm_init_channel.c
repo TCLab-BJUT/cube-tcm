@@ -63,6 +63,8 @@ struct tpm_ordemu_struct
 
 int tpm_ordemu_init(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_GetTicks(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_Startup(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_SelfTestFull(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_ResetEstablishmentBit(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_SHA1Start(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
@@ -82,46 +84,26 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 		&tpm_ordemu_GetTicks
 	},
 	{
-		0,
-		0,
-		NULL
-	}
-};
-
-struct tpm_init_cmd init_cmd_seq[] =
-{
-	{
-		0x0180,
-		0x81010000,
-		10,
-		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x0A}
-	},
-	{
-		0,
-		0xF1000000,
-		10,
-		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x26}
-	},
-	{
-		0,
+		0xC100,
 		0x99000000,
-		10,
-		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x00}
+		&tpm_ordemu_Startup
 	},
 	{
-		0,
-		0x50000000, 		
-		10,
-		{0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x00}
+		0xC100,
+		0x50000000,
+		&tpm_ordemu_SelfTestFull
 	},
 	{
-		0,
+		0xC100,
+		0x0B000040,
+		&tpm_ordemu_ResetEstablishmentBit
+	},
+	{
 		0,
 		0,
 		NULL
 	}
 };
-
 
 int tpm_init_channel_init(void * sub_proc,void * para)
 {
@@ -201,7 +183,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 			i++;
 			
 		}		
-		if(init_cmd_seq[i].ordinal==0)
+		if(tpm_emu_seq[i].ordinal==0)
 		// if no tpm init sequence match
 		{
 			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize);
@@ -237,6 +219,42 @@ int tpm_ordemu_GetTicks(struct vtcm_external_input_command * input_head,BYTE * i
 	output_head.tag=0xC400;
 	output_head.paramSize=0x0a;
 	output_head.returnCode=0x26;
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	return ret;
+}
+
+int tpm_ordemu_Startup(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0a;
+	output_head.returnCode=0x00;
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	return ret;
+}
+
+int tpm_ordemu_SelfTestFull(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0a;
+	output_head.returnCode=0x00;
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	return ret;
+}
+
+int tpm_ordemu_ResetEstablishmentBit(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0a;
+	output_head.returnCode=0x3D;
 
         ret = struct_2_blob(&output_head,output,return_template) ;
 	return ret;
