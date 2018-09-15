@@ -70,8 +70,10 @@ int tpm_ordemu_SelfTestFull(struct vtcm_external_input_command * input_head,BYTE
 int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_ResetEstablishmentBit(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_SHA1Start(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_SHA1Update(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_SHA1Complete(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_Extend(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_PhysicalPresence(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 
 struct tpm_ordemu_struct tpm_emu_seq[] =
 {
@@ -113,6 +115,11 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 	},
 	{
 		0xC100,
+		0xA1000000,
+		&tpm_ordemu_SHA1Update
+	},
+	{
+		0xC100,
 		0xA2000000,
 		&tpm_ordemu_SHA1Complete
 	},
@@ -120,6 +127,11 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 		0xC100,
 		0x14000000,
 		&tpm_ordemu_Extend
+	},
+	{
+		0xC100,
+		0x0A000040,
+		&tpm_ordemu_PhysicalPresence
 	},
 	{
 		0,
@@ -367,6 +379,34 @@ int tpm_ordemu_SHA1Start(struct vtcm_external_input_command * input_head,BYTE * 
 	return output_head.paramSize;
 }
 
+int tpm_ordemu_SHA1Update(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	struct tcm_in_Sm3Update * tpm_in;
+	void * tpm_in_template;
+
+
+	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM3COMPLETE_IN);
+	if(tpm_in_template==NULL)
+	{
+		printf("template error!\n");
+		return -EINVAL;
+	}
+	tpm_in=Talloc0(sizeof(*tpm_in));
+	ret=blob_2_struct(input,tpm_in,tpm_in_template);
+
+	tpm_sha1_update(&sha1_ctx,tpm_in->dataBlock,tpm_in->dataBlockSize);
+
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0A;
+	output_head.returnCode=0x0;
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	if(ret<0)
+		return ret;
+	return output_head.paramSize;
+}
 int tpm_ordemu_SHA1Complete(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
 {
 	int ret;
@@ -421,6 +461,33 @@ int tpm_ordemu_Extend(struct vtcm_external_input_command * input_head,BYTE * inp
 	Memcpy(SHA1Buf,TPMPCR[tpm_in->pcrNum],SHA1SIZE);
 	Memcpy(SHA1Buf+SHA1SIZE,tpm_in->inDigest,SHA1SIZE);
 	calculate_context_sha1(SHA1Buf,SHA1SIZE*2,output+sizeof(output_head));
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	if(ret<0)
+		return ret;
+	return output_head.paramSize;
+}
+int tpm_ordemu_PhysicalPresence(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	struct tcm_in_PhysicalPresence * tpm_in;
+	void * tpm_in_template;
+
+	BYTE SHA1Buf[SHA1SIZE*2];
+
+	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_PHYSICALPRESENCE_IN);
+	if(tpm_in_template==NULL)
+	{
+		printf("template error!\n");
+		return -EINVAL;
+	}
+	tpm_in=Talloc0(sizeof(*tpm_in));
+	ret=blob_2_struct(input,tpm_in,tpm_in_template);
+
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0A;
+	output_head.returnCode=0x0;
+
         ret = struct_2_blob(&output_head,output,return_template) ;
 	if(ret<0)
 		return ret;
