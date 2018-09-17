@@ -389,6 +389,16 @@ int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYT
 				return -EINVAL;
 		}
 	}
+	else if(tpm_in->capArea==0x1a)
+	{
+			BYTE out_data[16]={0x00,0x30,0x01,0x01,0x00,0x00,0x00,0x01,0x01,0x01,0x23,0x45,0x67,0x00,0x00}; 
+			tpm_out->paramSize=0x1A;
+			tpm_out->returnCode=0;
+			tpm_out->respSize=0x0E;
+			tpm_out->resp=Talloc0(tpm_out->respSize);
+			Memcpy(tpm_out->resp,out_data,tpm_out->respSize);
+			
+	}
 	
         ret = struct_2_blob(tpm_out,output,tpm_out_template) ;
 	return ret;
