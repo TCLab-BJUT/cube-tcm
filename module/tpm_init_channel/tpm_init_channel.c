@@ -32,6 +32,16 @@
 
 #define SHA1SIZE 20
 
+#define TCM_TAG_RQU_VTCM_COMMAND        0xD100 /* An authenticated response with two authentication
+                                                  handles */
+#define TCM_TAG_RSP_VTCM_COMMAND        0xD400 /* An authenticated response with two authentication
+                                                  handles */
+#define TCM_TAG_RQU_MANAGE_COMMAND      0xE100 /* An authenticated response with two authentication
+                                                  handles */
+#define TCM_TAG_RSP_MANAGE_COMMAND      0xE400 /* An authenticated response with two authentication
+                                                  handles */
+
+
 static unsigned char Buf[DIGEST_SIZE*128];
 static BYTE * ReadBuf=Buf;
 static int readbuf_len=0;
@@ -45,6 +55,8 @@ static CHANNEL * ex_channel;
 static CHANNEL * in_channel;
 static void * extend_template;
 static void * return_template;
+static void * vtcm_head_template;
+static void * vtcm_return_template;
 static BYTE TPMPCR[16][SHA1SIZE];
 static tpm_sha1_ctx_t sha1_ctx;
 
@@ -184,6 +196,18 @@ int tpm_init_channel_init(void * sub_proc,void * para)
     	printf("load return template error!\n");
     	return -EINVAL;
     }
+    vtcm_head_template=memdb_get_template(DTYPE_VTCM_STRUCT,SUBTYPE_VTCM_CMD_HEAD);
+    if(vtcm_head_template==NULL)
+    {
+    	printf("load vtcm head template error!\n");
+    	return -EINVAL;
+    }
+    vtcm_return_template=memdb_get_template(DTYPE_VTCM_STRUCT,SUBTYPE_VTCM_RETURN_HEAD) ;
+    if(return_template==NULL)
+    {
+    	printf("load vtcm return template error!\n");
+    	return -EINVAL;
+    }
 
     return 0;
 }
@@ -194,7 +218,10 @@ int tpm_init_channel_start(void * sub_proc,void * para)
     int rc = 0;
     int extend_size;
     struct vtcm_external_input_command output_data;
+    struct vtcm_manage_cmd_head cmd_head;
+    struct vtcm_manage_return_head return_head;
     extend_size=struct_size(extend_template);	
+    int offset=0;
 
 
     for (;;)
@@ -211,13 +238,21 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 			continue;	
 
 		print_bin_data(ReadBuf,readbuf_len,8);
-
-		i=0;
+                offset=0;
+		
         	ret = blob_2_struct(ReadBuf, &output_data,extend_template) ;
 		if(ret<0)
 			return -EINVAL;
 		if(output_data.paramSize>readbuf_len)
 			continue;
+
+		if(output_data.tag==TCM_TAG_RQU_VTCM_COMMAND)
+		{
+			offset=ret;	
+			ret=blob_2_struct(ReadBuf+offset,&output_data,extend_template);
+		}
+
+		i=0;
 		while(tpm_emu_seq[i].ordinal!=0)
 		{
 			if((output_data.ordinal == tpm_emu_seq[i].ordinal)
@@ -227,10 +262,22 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 				if(tpm_emu_seq[i].emu_func==NULL)
 					return -EINVAL;
 				int out_len=0;
-				out_len=tpm_emu_seq[i].emu_func(&output_data,ReadBuf,sendbuf);
+				out_len=tpm_emu_seq[i].emu_func(&output_data,ReadBuf+offset,sendbuf+offset);
 				if(out_len<0)
 					return -EINVAL;			
-				ret=channel_write(ex_channel,sendbuf,out_len);
+				if(offset>0)
+				{
+					ret=blob_2_struct(ReadBuf,&cmd_head,vtcm_head_template);
+					if(ret<0)
+						return -EINVAL;
+					return_head.tag=TCM_TAG_RSP_VTCM_COMMAND;
+					return_head.paramSize=sizeof(return_head)+out_len;
+					return_head.vtcm_no=cmd_head.vtcm_no;
+					return_head.returnCode=0;
+					ret=struct_2_blob(&return_head,sendbuf,vtcm_return_template);
+				}
+				
+				ret=channel_write(ex_channel,sendbuf,out_len+offset);
 				if(ret<0)
 					return -EINVAL;
 				break;
@@ -245,8 +292,8 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 			if(ret<output_data.paramSize)
 				return -EINVAL;
 		}
-		Memcpy(ReadBuf,ReadBuf+output_data.paramSize,readbuf_len-output_data.paramSize);
-		readbuf_len-=output_data.paramSize;
+		readbuf_len-=output_data.paramSize+offset;
+		Memcpy(ReadBuf,ReadBuf+output_data.paramSize+offset,readbuf_len);
 	}
 	ret=channel_inner_read(in_channel,WriteBuf,1024);
 	if(ret<0)

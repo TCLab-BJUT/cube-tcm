@@ -433,6 +433,7 @@ static int vtcm_io_process(void * data)
 	BYTE * recv_buf;
 
 	int clock=0;
+	const int maxwaittime=5000;
 
 	struct vtcm_manage_cmd_head * vtcm_cmd_head;
 	struct vtcm_manage_return_head * vtcm_return_head;
@@ -468,7 +469,7 @@ static int vtcm_io_process(void * data)
 			if(vtcm_dev->timeout!=0)
 			{
 				int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
-				if(outtime > 1000 )
+				if(outtime > maxwaittime)
 				{	
 					printk("cmd wait %d ms!\n",outtime);
 					vtcm_dev->state=VTCM_STATE_ERR;
