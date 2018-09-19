@@ -34,6 +34,19 @@ static BYTE * ReadBuf=Buf+DIGEST_SIZE*32;
 static int readbuf_len;
 static int dev_fd;
 
+enum vtcm_trans_type
+{
+	DRV_IOCTL=1,
+	DRV_RW
+};
+static enum vtcm_trans_type trans_type;
+enum vtcm_drv_channel_type
+{
+	ACTIVE=1,
+	PASSIVE
+};
+static enum vtcm_drv_channel_type drv_channel_type;
+
 #define TCMIOC_CANCEL   _IO('T', 0x00)
 #define TCMIOC_TRANSMIT _IO('T', 0x01)
 
@@ -47,10 +60,43 @@ int vtcm_drv_client_init(void * sub_proc,void * para)
 	return -ENOMEM;
 
 
-    // init the channel
-    vtcm_drv_client=channel_register(init_para->channel_name,CHANNEL_RDWR,sub_proc);
-    if(vtcm_drv_client==NULL)
+    if((init_para->channel_type==NULL)
+	  ||(Strcmp(init_para->channel_type,"ACTIVE")==0))
+    {
+    	// init the channel
+	drv_channel_type=ACTIVE;
+    	vtcm_drv_client=channel_register(init_para->channel_name,CHANNEL_RDWR,sub_proc);
+    	if(vtcm_drv_client==NULL)
+		return -EINVAL;
+    }
+    else if(Strcmp(init_para->channel_type,"PASSIVE")==0)
+    {
+	drv_channel_type=PASSIVE;
+    	vtcm_drv_client=channel_find(init_para->channel_name);
+    	if(vtcm_drv_client==NULL)
+		return -EINVAL;
+    }
+    else
+    {
+	print_cubeerr("vtcm_drv_client: error channel type!\n");
 	return -EINVAL;
+    }
+
+    if(init_para->trans_type==NULL)
+    	trans_type=DRV_IOCTL;
+    else if(Strcmp(init_para->trans_type,"IOCTL")==0)
+    {
+	trans_type=DRV_IOCTL;
+    }
+    else if(Strcmp(init_para->trans_type,"RW")==0)
+    {
+	trans_type=DRV_RW;
+    }	
+    else
+    {
+	print_cubeerr("vtcm_drv_client: error trans type!\n");
+	return -EINVAL;
+    }	
 
     return 0;
 }
@@ -70,7 +116,10 @@ int vtcm_drv_client_start(void * sub_proc,void * para)
     for (;;)
     {
         usleep(conn_val.tv_usec);
-        len=channel_inner_read(vtcm_drv_client,ReadBuf,1024);
+	if(drv_channel_type==ACTIVE)
+        	len=channel_inner_read(vtcm_drv_client,ReadBuf,1024);
+	else
+        	len=channel_read(vtcm_drv_client,ReadBuf,1024);
 	if(len<0)
 		return len;
 	if(len==0)
@@ -86,7 +135,10 @@ int vtcm_drv_client_start(void * sub_proc,void * para)
 //  	print_cubeaudit("write %d data!\n",ret);
   //	len=read(dev_fd,Buf,1024);
   	print_cubeaudit("read %d data!\n",len);
-	ret=channel_inner_write(vtcm_drv_client,ReadBuf,len);	
+	if(drv_channel_type==ACTIVE)
+		ret=channel_inner_write(vtcm_drv_client,ReadBuf,len);	
+	else
+		ret=channel_write(vtcm_drv_client,ReadBuf,len);	
 	if(ret<len)
 	{
 		printf(" vtcm_drv_client write channel failed!\n");

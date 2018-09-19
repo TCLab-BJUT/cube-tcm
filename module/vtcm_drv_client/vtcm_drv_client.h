@@ -8,6 +8,8 @@ struct drv_init_para
 {
 	char * dev_name;
 	char * channel_name;
+	char * channel_type;
+	char * trans_type;    
 }__attribute__((packed));
 
 #endif
