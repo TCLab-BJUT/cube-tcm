@@ -128,9 +128,23 @@ int vtcm_drv_client_start(void * sub_proc,void * para)
 //  	ret = write(dev_fd,ReadBuf,len);
 //  	if(ret!=len)
 //    		return -EINVAL;
-        len = ioctl(dev_fd, TCMIOC_TRANSMIT, ReadBuf);
-	if(len==-1)
-		return -EINVAL; 
+	if(trans_type==DRV_IOCTL)
+	{
+        	len = ioctl(dev_fd, TCMIOC_TRANSMIT, ReadBuf);
+		if(len==-1)
+			return -EINVAL;
+	}
+	else
+	{
+		ret=write(dev_fd,ReadBuf,len);
+		if(ret>0)
+			len=read(dev_fd,ReadBuf,1024);
+		if(len<0)
+		{
+			printf("vtcm_drv_client read return data error!\n");
+			return -EINVAL;
+		}
+	} 
 
 //  	print_cubeaudit("write %d data!\n",ret);
   //	len=read(dev_fd,Buf,1024);
