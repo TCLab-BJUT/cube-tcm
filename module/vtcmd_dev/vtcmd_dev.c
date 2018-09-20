@@ -237,58 +237,6 @@ static int tcmd_recv_comm(uint8_t *out,uint32_t *out_size)
   return 0;
 }
 
-static int tcmd_handle_command(const uint8_t *in, uint32_t in_size,uint8_t *out,uint32_t *out_size)
-{
-  int res;
-  mm_segment_t oldmm;
-  struct msghdr send_msg,recv_msg;
-  struct kvec send_vec,recv_vec;
-
-  /* send command to tcmd */
-  memset(&send_msg, 0, sizeof(send_msg));
-  memset(&send_vec, 0, sizeof(send_vec));
-  send_vec.iov_base = (void*)in;
-  send_vec.iov_len = in_size;
-//  msg.msg_iov = &iov;
-//  msg.msg_iovlen = 1;
-  debug("%s(%p %d)", __FUNCTION__,in,in_size);
-  res = kernel_sendmsg(tcmd_sock, &send_msg, &send_vec,1,in_size);
-  if (res < 0) {
-    error("sock_sendmsg() failed: %d\n", res);
-    return res;
-  }
-  /* receive response from tcmd */
-//  tcm_response.size = VTCM_CMD_BUF_SIZE;
-//  tcm_response.data = kmalloc(tcm_response.size, GFP_KERNEL);
-  memset(out,0,*out_size);
-//  debug("%s(%d %d)", __FUNCTION__, res, tcm_response.size);
-  if (out == NULL) return -1;
-  memset(&recv_msg, 0, sizeof(recv_msg));
-  memset(&recv_vec, 0, sizeof(recv_vec));
-  recv_vec.iov_base = (void*)out;
-  recv_vec.iov_len = *out_size;
-//  msg.msg_iov = &iov;
-//  msg.msg_iovlen = 1;
-  
-
-  oldmm = get_fs();
-  set_fs(KERNEL_DS);
-  res = kernel_recvmsg(tcmd_sock, &recv_msg,&recv_vec,1,*out_size, 0);
-  set_fs(oldmm);
-  if (res < 0) {
-      error("sock_recvmsg() failed: %d\n", res);
- //     tcm_response.data = NULL;
-      return res;
-  }
-  *out_size = res;
-
-//// close device start
-  tcmd_disconnect();
- // close device end
-
-  return 0;
-}
-
 static int tcm_open(struct inode *inode, struct file *file)
 {
   debug("%s()", __FUNCTION__);
@@ -320,38 +268,90 @@ static int tcm_release(struct inode *inode, struct file *file)
 
 static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 {
-  debug("%s(%zd)", __FUNCTION__, count);
-//  down(&vtcm_mutex);
-  if (tcm_response.data != NULL) {
-    count = min(count, (size_t)tcm_response.size - (size_t)*ppos);
-    count -= copy_to_user(buf, &tcm_response.data[*ppos], count);
-    *ppos += count;
-    if ((size_t)tcm_response.size == (size_t)*ppos) {
-      kfree(tcm_response.data);
-      tcm_response.data = NULL;
-    }
-  } else {
-    count = 0;
-  }
-//  up(&vtcm_mutex);
-  return count;
+        int ret;
+	uint32_t read_size=0;
+        struct inode *inode =
+                    file->f_path.dentry->d_inode;
+        int minor = MINOR(inode->i_rdev);
+
+	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
+
+        debug("%s(%zd)", __FUNCTION__, count);
+
+	if((vtcm_dev->state==VTCM_STATE_SEND)
+		||(vtcm_dev->state==VTCM_STATE_RECV))
+	{
+		wait_for_completion(&vtcm_dev->vtcm_notice);
+	}
+
+	if(vtcm_dev->state==VTCM_STATE_RET)
+	{
+      		read_size = ntohl(*(uint32_t *)(vtcm_dev->res_buf+2));
+      		ret=copy_to_user(buf, vtcm_dev->res_buf,read_size);
+		if(ret<0)
+		{
+    			error("tcm_read() failed: %d\n", ret);
+			return -EINVAL;
+		}
+		if(count<read_size)
+		{
+    			error("tcm_read() size too small!: %d\n", read_size);
+			return -EINVAL;
+		}
+
+		printk("finish waiting count data %d!\n",read_size);
+		vtcm_dev->state=VTCM_STATE_WAIT;
+    	}
+	else
+		read_size=0;
+        debug("%s(%d)", __FUNCTION__, read_size);
+
+        return read_size;
 }
 
 static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 {
-  debug("%s(%zd)", __FUNCTION__, count);
-//  down(&vtcm_mutex);
-  *ppos = 0;
-  if (tcm_response.data != NULL) {
-    kfree(tcm_response.data);
-    tcm_response.data = NULL;
-  }
-  if (tcmd_handle_command(buf, count,tcm_response.data,&tcm_response.size) != 0) { 
-    count = -EILSEQ;
-    tcm_response.data = NULL;
-  }
-//  up(&vtcm_mutex);
-  return count;
+        int ret;
+	uint32_t write_size=0;
+        struct inode *inode =
+                    file->f_path.dentry->d_inode;
+        int minor = MINOR(inode->i_rdev);
+
+	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
+
+        debug("%s(%zd)", __FUNCTION__, count);
+        //  down(&vtcm_mutex);
+
+	if(vtcm_dev->state!=VTCM_STATE_WAIT)
+		return 0;
+	
+        *ppos = 0;
+	if(count<10)
+		return -EINVAL;
+
+	ret=copy_from_user(vtcm_dev->cmd_buf,buf,6);
+	if(ret!=0)
+	{
+    		error("tcm_write() failed: %d\n", ret);
+		return ret;
+	}			
+    	write_size = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
+	if(write_size!=count)
+		return -EINVAL;
+
+	ret=copy_from_user(vtcm_dev->cmd_buf,buf,count);
+	if(ret!=0)
+	{
+    		error("tcm_write() failed: %d\n", ret);
+		return ret;
+	}
+
+	printk(" write vtcm dev %p\n",vtcm_dev);
+	vtcm_dev->state=VTCM_STATE_SEND;
+	vtcm_dev->timeout=get_jiffies_64();
+  	debug("%s(%lld, %ld, %d)", __FUNCTION__, vtcm_dev->timeout, count,minor);
+
+	return count;
 }
 
 #define TCMIOC_CANCEL   _IO('T', 0x00)
