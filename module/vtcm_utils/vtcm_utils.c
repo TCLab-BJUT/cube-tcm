@@ -2542,7 +2542,7 @@ int proc_vtcmutils_CertifyKey(void * sub_proc, void * para)
    }
  	
     ret=RAND_bytes(vtcm_input->externalData,DIGEST_SIZE);
-    if(ret<DIGEST_SIZE)
+    if(ret<0)
 	return -EINVAL;
 	
     vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_CERTIFYKEY_IN);
