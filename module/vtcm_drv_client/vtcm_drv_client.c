@@ -142,13 +142,13 @@ int vtcm_drv_client_start(void * sub_proc,void * para)
 		if(len<0)
 		{
 			printf("vtcm_drv_client read return data error!\n");
-			return -EINVAL;
+			continue;
 		}
 	} 
 
 //  	print_cubeaudit("write %d data!\n",ret);
   //	len=read(dev_fd,Buf,1024);
-  	print_cubeaudit("read %d data!\n",len);
+  	printf("vtcm_drv_client read %d data!\n",len);
 	if(drv_channel_type==ACTIVE)
 		ret=channel_inner_write(vtcm_drv_client,ReadBuf,len);	
 	else

@@ -73,7 +73,7 @@ MODULE_PARM_DESC(vtcmd_port, " Sets the port number of the TCM daemon socket.");
 //static struct semaphore vtcm_mutex;
 static int major;
 
-enum {
+enum vtcm_state {
 	VTCM_STATE_WAIT,
 	VTCM_STATE_SEND,
 	VTCM_STATE_RECV,
@@ -81,6 +81,12 @@ enum {
 	VTCM_STATE_ERR=0x1001
 };
 
+enum vtcm_action{
+	VTCM_ACTION_NONE,
+	VTCM_ACTION_IOCTL,
+	VTCM_ACTION_RW
+	
+}vtcm_action;
 static struct vtcm_device
 {
 	char * name;
@@ -91,11 +97,13 @@ static struct vtcm_device
 	BYTE * res_buf;
 	struct cdev cdev;
 	struct completion vtcm_notice;
-	int state;
+	enum vtcm_state state;
+	enum vtcm_action action;
 	u64 timeout;
 }vtcm_device[VTCM_DEFAULT_NUM];
 
 static struct task_struct *vtcm_io_task;
+const int maxwaittime=5000;
 
 /* TCM command response */
 static struct {
@@ -230,9 +238,13 @@ static int tcmd_recv_comm(uint8_t *out,uint32_t *out_size)
   set_fs(oldmm);
   if (res < 0) {
  //     tcm_response.data = NULL;
+ //  	debug("%s( receive data error %d)", __FUNCTION__,res);
       return res;
   }
   *out_size = res;
+
+  if(*out_size>0)
+  	debug("%s(%p %d)", __FUNCTION__,out,*out_size);
 
   return 0;
 }
@@ -278,10 +290,35 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 
         debug("%s(%zd)", __FUNCTION__, count);
 
-	if((vtcm_dev->state==VTCM_STATE_SEND)
-		||(vtcm_dev->state==VTCM_STATE_RECV))
+
+	while(vtcm_dev->state!=VTCM_STATE_RET)
 	{
-		wait_for_completion(&vtcm_dev->vtcm_notice);
+		if(vtcm_dev->state==VTCM_STATE_ERR)
+		{
+        		debug("%s meets error state!\n", __FUNCTION__);
+			return -EINVAL;
+		}
+		if(vtcm_dev->action!=VTCM_ACTION_RW)
+		{
+        		debug("%s no write cmd", __FUNCTION__);
+			return 0;
+		}	
+		if((vtcm_dev->state==VTCM_STATE_SEND)
+			||(vtcm_dev->state==VTCM_STATE_RECV))
+		{
+			if(vtcm_dev->timeout!=0)
+			{
+				int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
+				if(outtime > maxwaittime)
+				{	
+        				debug("%s wait %d ms!\n", __FUNCTION__, outtime);
+					vtcm_dev->state=VTCM_STATE_ERR;
+					vtcm_dev->timeout=0;
+					return 0;
+				}
+			}
+		}
+		msleep(10);
 	}
 
 	if(vtcm_dev->state==VTCM_STATE_RET)
@@ -300,11 +337,11 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 		}
 
 		printk("finish waiting count data %d!\n",read_size);
-		vtcm_dev->state=VTCM_STATE_WAIT;
     	}
 	else
 		read_size=0;
-        debug("%s(%d)", __FUNCTION__, read_size);
+        debug("%s(return value %d)", __FUNCTION__, read_size);
+	vtcm_dev->state=VTCM_STATE_WAIT;
 
         return read_size;
 }
@@ -322,12 +359,16 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
         debug("%s(%zd)", __FUNCTION__, count);
         //  down(&vtcm_mutex);
 
+	if(vtcm_dev->state==VTCM_STATE_ERR)
+		vtcm_dev->state=VTCM_STATE_WAIT;
 	if(vtcm_dev->state!=VTCM_STATE_WAIT)
 		return 0;
 	
+	vtcm_dev->action=VTCM_ACTION_RW;
         *ppos = 0;
 	if(count<10)
 		return -EINVAL;
+        debug("%s write begin", __FUNCTION__);
 
 	ret=copy_from_user(vtcm_dev->cmd_buf,buf,6);
 	if(ret!=0)
@@ -337,7 +378,10 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
 	}			
     	write_size = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
 	if(write_size!=count)
+	{
+    		error("tcm_write() size mismatch!: %d\n", ret);
 		return -EINVAL;
+	}
 
 	ret=copy_from_user(vtcm_dev->cmd_buf,buf,count);
 	if(ret!=0)
@@ -366,6 +410,13 @@ static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         int minor = MINOR(inode->i_rdev);
 
 	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
+
+	if(vtcm_dev->state==VTCM_STATE_ERR)
+		vtcm_dev->state=VTCM_STATE_WAIT;
+	if(vtcm_dev->state!=VTCM_STATE_WAIT)
+		return 0;
+	
+	vtcm_dev->action=VTCM_ACTION_IOCTL;
 
         if (cmd == TCMIOC_TRANSMIT) {
 		ret=copy_from_user(vtcm_dev->cmd_buf,(void *)arg,6);
@@ -433,7 +484,6 @@ static int vtcm_io_process(void * data)
 	BYTE * recv_buf;
 
 	int clock=0;
-	const int maxwaittime=5000;
 
 	struct vtcm_manage_cmd_head * vtcm_cmd_head;
 	struct vtcm_manage_return_head * vtcm_return_head;
@@ -471,7 +521,7 @@ static int vtcm_io_process(void * data)
 				int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
 				if(outtime > maxwaittime)
 				{	
-					printk("cmd wait %d ms!\n",outtime);
+					debug("cmd timeout %d ms!\n",outtime);
 					vtcm_dev->state=VTCM_STATE_ERR;
 					vtcm_dev->timeout=0;
 					complete(&vtcm_dev->vtcm_notice);
@@ -491,7 +541,7 @@ static int vtcm_io_process(void * data)
 				vtcm_cmd_head->cmd=0;
 				if (tcmd_send_comm(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head),
 					 count+sizeof(*vtcm_cmd_head)) == 0) {
-					printk("vtcm %d send command succeed!\n",i);		
+					printk("vtcm %d send command succeed! %p\n",i,tcmd_sock);		
 					vtcm_dev->state=VTCM_STATE_RECV;
 				}
 				else
@@ -500,7 +550,8 @@ static int vtcm_io_process(void * data)
 					vtcm_dev->state	=VTCM_STATE_ERR;	
 					vtcm_dev->timeout=0;
 					tcmd_sock=NULL;
-					complete(&vtcm_dev->vtcm_notice);
+					if(vtcm_dev->action==VTCM_ACTION_IOCTL)
+						complete(&vtcm_dev->vtcm_notice);
 						
 				}
 			}
@@ -541,7 +592,7 @@ static int vtcm_io_process(void * data)
 
 					if(vtcm_dev->state!=VTCM_STATE_RECV)
 					{
-						printk("vtcm %d's state error! not in recv state!\n",vtcm_no);
+						printk("vtcm %d's state error! not in recv state!\n",vtcm_no-1);
 						tcmd_sock=NULL;
 						continue;
 					}
@@ -555,7 +606,8 @@ static int vtcm_io_process(void * data)
 					vtcm_dev->state=VTCM_STATE_RET;
 					vtcm_dev->timeout=0;
 					memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
-					complete(&vtcm_dev->vtcm_notice);
+					if(vtcm_dev->action==VTCM_ACTION_IOCTL)
+						complete(&vtcm_dev->vtcm_notice);
 				
 				}
 			}
@@ -639,6 +691,7 @@ int __init init_tcm_module(void)
 	init_completion(&vtcm_device[i].vtcm_notice);
 //	complete(&vtcm_device[i].vtcm_notice);
 	vtcm_device[i].state=VTCM_STATE_WAIT;
+	vtcm_device[i].action=VTCM_ACTION_NONE;
 	vtcm_device[i].timeout=0;
   }		
   ret = tcmd_connect(vtcmd_socket_name,vtcmd_port);
