@@ -289,7 +289,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 		if(tpm_emu_seq[i].ordinal==0)
 		// if no tpm init sequence match
 		{
-			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize);
+			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize+offset);
 			if(ret<output_data.paramSize)
 				return -EINVAL;
 			printf("tpm_init_channel send %d data!\n",ret);
