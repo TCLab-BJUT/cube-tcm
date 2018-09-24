@@ -1144,6 +1144,14 @@ int proc_vtcm_CertifyKey(void* sub_proc, void* recv_msg)
     }
 
      // compute sig data
+    // get verifykey's priv key
+	TCM_STORE_ASYMKEY * privkey;
+        ret = vtcm_Key_GetStoreAsymkey(&privkey, verifykey);
+        if(ret != TCM_SUCCESS)
+        {
+		returnCode=-TCM_KEYNOTFOUND;
+		goto certifykey_out;
+        }
 
     vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_CERTIFY_INFO);
     if(vtcm_template==NULL)
@@ -1158,14 +1166,6 @@ int proc_vtcm_CertifyKey(void* sub_proc, void* recv_msg)
     unsigned long lenUID=DIGEST_SIZE;
     Memset(UserID,'A',32);	
 
-    // get verifykey's priv key
-	TCM_STORE_ASYMKEY * privkey;
-        ret = vtcm_Key_GetStoreAsymkey(&privkey, verifykey);
-        if(ret != TCM_SUCCESS)
-        {
-		returnCode=-TCM_KEYNOTFOUND;
-		goto certifykey_out;
-        }
 
 
     ret=GM_SM2Sign(signedData,&pulSigLen,Buf,ret,UserID,lenUID,privkey->privKey.key,privkey->privKey.keyLength);	
