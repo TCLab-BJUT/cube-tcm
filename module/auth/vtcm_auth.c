@@ -85,6 +85,9 @@ int vtcm_auth_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_QUOTE_IN)) {
             proc_vtcm_Quote(sub_proc,recv_msg);
         }
+        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_CERTIFYKEY_IN)) {
+            proc_vtcm_CertifyKey(sub_proc,recv_msg);
+        }
     }
     return 0;
 };
@@ -1016,3 +1019,200 @@ quote_out:
 	
 }
 
+int proc_vtcm_CertifyKey(void* sub_proc, void* recv_msg)
+{
+
+    int ret = 0;
+    int i = 0;
+    int offset=0;
+    int keylen;
+    int datalen;
+    int got_handle;
+    uint32_t            entityValue = 0;        /* The selection value based on entityType, e.g. a
+                                                   keyHandle # */
+    TCM_ENTITY_TYPE     entityType;             /* The type of entity in use */
+    uint32_t authHandle = 0;
+    TCM_SESSION_DATA *authSession;
+    TCM_DIGEST  *entityDigest = NULL;   /* digest of the entity establishing the OSAP
+                                                   session, initialize to silence compiler */
+    TCM_SECRET          *authData;              /* usageAuth for the entity */
+
+
+    TCM_BOOL parentPCRStatus; 
+    TCM_BOOL keyPCRStatus; 
+    TCM_KEY * verifykey;
+    TCM_KEY * verifiedkey;
+    BYTE * signdata;
+    BYTE cmdHash[DIGEST_SIZE];
+    BYTE CheckData[TCM_HASH_SIZE];
+
+    //input process
+    struct tcm_in_Certify *vtcm_in;
+    struct tcm_out_Certify *vtcm_out;
+    void *vtcm_template;
+    uint32_t returnCode=0;
+    BYTE pikauth[TCM_HASH_SIZE];
+    
+    printf("proc_vtcm_CertifyKey : Start\n");
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0); // get structure 
+    if(ret < 0) 
+        return ret;
+    if(vtcm_in == NULL)
+        return -EINVAL;
+    vtcm_out=Talloc0(sizeof(*vtcm_out));
+    if(vtcm_out==NULL)
+	return -ENOMEM;
+    
+    //get auth session
+    tcm_state_t* curr_tcm = ex_module_getpointer(sub_proc);
+/*
+    ret=vtcm_AuthSessions_GetEntry(&authSession,curr_tcm->tcm_stany_data.sessions,vtcm_in->authHandle);
+    if(ret<0)
+    {
+	returnCode=-TCM_INVALID_AUTHHANDLE;
+	goto certifykey_out;	
+    }
+*/
+    // Get the pik
+        ret = vtcm_KeyHandleEntries_GetKey(&verifykey, 
+                                           &parentPCRStatus, 
+                                           curr_tcm, 
+                                           vtcm_in->verifykeyHandle,
+                                           FALSE,     // not r/o, using to encrypt
+                                           FALSE,     // do not ignore PCRs
+                                           FALSE);    // cannot use EK
+
+    if(ret != TCM_SUCCESS)
+    {
+	returnCode=-TCM_INVALID_KEYHANDLE;
+	goto certifykey_out;
+
+    }
+
+    // Get the verified key
+        ret = vtcm_KeyHandleEntries_GetKey(&verifiedkey, 
+                                           &keyPCRStatus, 
+                                           curr_tcm, 
+                                           vtcm_in->verifiedkeyHandle,
+                                           FALSE,     // not r/o, using to encrypt
+                                           FALSE,     // do not ignore PCRs
+                                           FALSE);    // cannot use EK
+
+    if(ret != TCM_SUCCESS)
+    {
+	returnCode=-TCM_INVALID_KEYHANDLE;
+	goto certifykey_out;
+
+    }
+
+    // Fill the CertifyInfo Struct
+
+    vtcm_out->certifyInfo.version.major=1;
+    vtcm_out->certifyInfo.version.minor=1;
+    vtcm_out->certifyInfo.keyUsage = verifiedkey->keyUsage;
+    vtcm_out->certifyInfo.keyFlags = verifiedkey->keyFlags;
+    vtcm_out->certifyInfo.authDataUsage = verifiedkey->authDataUsage;
+   
+     // duplicate algorithmParms 		
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY_PARMS);
+    if(vtcm_template==NULL)
+	return -EINVAL;
+    struct_clone(&verifiedkey->algorithmParms,&vtcm_out->certifyInfo.algorithmParms,vtcm_template);
+
+        // compute pubkey's digest
+
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
+    if(vtcm_template==NULL)
+          return -EINVAL;
+    ret=struct_2_blob(&verifiedkey->pubKey,Buf,vtcm_template);
+    if(ret<0)
+    {
+           returnCode=-TCM_BAD_DATASIZE;
+           goto certifykey_out;
+    }
+    sm3(Buf,ret,&vtcm_out->certifyInfo.pubkeyDigest);
+
+    Memcpy(vtcm_out->certifyInfo.data,vtcm_in->externalData,DIGEST_SIZE);
+
+    //duplicate pcr info     
+    vtcm_out->certifyInfo.parentPCRStatus=keyPCRStatus;
+    vtcm_out->certifyInfo.PCRInfoSize=verifiedkey->PCRInfoSize;
+     if(vtcm_out->certifyInfo.PCRInfoSize>0)
+    {
+	vtcm_out->certifyInfo.PCRInfo=Talloc0(vtcm_out->certifyInfo.PCRInfoSize);
+	Memcpy(vtcm_out->certifyInfo.PCRInfo,verifiedkey->PCRInfo,vtcm_out->certifyInfo.PCRInfoSize);
+    }
+
+     // compute sig data
+
+    vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_CERTIFY_INFO);
+    if(vtcm_template==NULL)
+	return -EINVAL;
+    ret=struct_2_blob(&vtcm_out->certifyInfo,Buf,vtcm_template);
+
+    offset=ret;
+    BYTE * signedData=Buf+ret+1;
+    unsigned long pulSigLen=512;
+    BYTE UserID[DIGEST_SIZE];
+    int datasize=ret;
+    unsigned long lenUID=DIGEST_SIZE;
+    Memset(UserID,'A',32);	
+
+    // get verifykey's priv key
+	TCM_STORE_ASYMKEY * privkey;
+        ret = vtcm_Key_GetStoreAsymkey(&privkey, verifykey);
+        if(ret != TCM_SUCCESS)
+        {
+		returnCode=-TCM_KEYNOTFOUND;
+		goto certifykey_out;
+        }
+
+
+    ret=GM_SM2Sign(signedData,&pulSigLen,Buf,ret,UserID,lenUID,privkey->privKey.key,privkey->privKey.keyLength);	
+    if(ret!=0)
+    {
+	   	returnCode=-TCM_BAD_SIGNATURE;
+		goto certifykey_out;	
+    }
+
+    vtcm_out->sigSize=pulSigLen;
+    vtcm_out->sig=Talloc0(vtcm_out->sigSize);
+    Memcpy(vtcm_out->sig,signedData,vtcm_out->sigSize);
+
+certifykey_out:
+
+    vtcm_out->tag=0xC400;
+    vtcm_out->returnCode=returnCode;
+
+//    if(ret == TCM_SUCCESS)
+//    {
+//      ret = vtcm_Compute_AuthCode(vtcm_out,
+  //                                DTYPE_VTCM_OUT_AUTH1,
+    //                              SUBTYPE_QUOTE_OUT,
+      //                            authSession,
+        //                          vtcm_out->resAuth);
+ //   }
+    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_CERTIFYKEY_OUT ,recv_msg);
+    if(send_msg == NULL)
+    {
+        printf("send_msg == NULL\n");
+        return -EINVAL;      
+    }
+    int responseSize = 0;
+    vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_CERTIFYKEY_OUT);
+    responseSize = struct_2_blob(vtcm_out, Buf, vtcm_template);
+    if(responseSize<0)
+	return responseSize;
+
+    vtcm_out->paramSize = responseSize;
+    message_add_record(send_msg, vtcm_out);
+ 
+      // add vtcm's expand info	
+     ret=vtcm_addcmdexpand(send_msg,recv_msg);
+     if(ret<0)
+     {
+ 	  printf("fail to add vtcm copy info!\n");
+     }	
+    ret = ex_module_sendmsg(sub_proc, send_msg);
+    return ret;
+}

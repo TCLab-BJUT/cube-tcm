@@ -2054,6 +2054,7 @@ typedef struct tdTCM_STANY_DATA {
 */
 
 typedef struct tdTCM_CERTIFY_INFO { 
+    TCM_STRUCT_VER version;
     TCM_KEY_USAGE keyUsage;             /* This SHALL be the same value that would be set in a
                                            TCM_KEY representation of the key to be certified. The
                                            upper byte MUST be zero */
