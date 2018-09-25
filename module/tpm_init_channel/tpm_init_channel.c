@@ -276,6 +276,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 					return_head.returnCode=0;
 					ret=struct_2_blob(&return_head,sendbuf,vtcm_return_template);
 				}
+				print_bin_data(sendbuf,out_len+offset,8);
 				
 				ret=channel_write(ex_channel,sendbuf,out_len+offset);
 				if(ret<0)
@@ -288,7 +289,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 		if(tpm_emu_seq[i].ordinal==0)
 		// if no tpm init sequence match
 		{
-			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize);
+			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize+offset);
 			if(ret<output_data.paramSize)
 				return -EINVAL;
 		}
