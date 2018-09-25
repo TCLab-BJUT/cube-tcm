@@ -281,6 +281,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 				ret=channel_write(ex_channel,sendbuf,out_len+offset);
 				if(ret<0)
 					return -EINVAL;
+				printf("tpm_init_channel return %d data!\n",out_len+offset);
 				break;
 			}
 			i++;
@@ -292,6 +293,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize+offset);
 			if(ret<output_data.paramSize)
 				return -EINVAL;
+			printf("tpm_init_channel send %d data!\n",ret);
 		}
 		readbuf_len-=output_data.paramSize+offset;
 		Memcpy(ReadBuf,ReadBuf+output_data.paramSize+offset,readbuf_len);
@@ -302,6 +304,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 	if(ret>0)
 	{
 		channel_write(ex_channel,WriteBuf,ret);
+		printf("tpm_init_channel retuen %d data from in_channel!\n",ret);
 	}
     }
     return 0;

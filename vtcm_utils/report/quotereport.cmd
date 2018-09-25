@@ -21,3 +21,5 @@ in: apterminate -ih $keyAuthHandle
 in: verifyquote -kf pik.key -rf quote.rpt
 
 in: checkquotepcr -pf pcrfile -rf quote.rpt
+
+in: evictkey -ikh $keyHandle

@@ -611,10 +611,10 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   	{
     		ret=proc_vtcmutils_SM2Encrypt(sub_proc,input_para);
   	}
-  //     if(strcmp(input->params,"certifykey")==0)
-  //      {
-  //        ret=proc_vtcmutils_CertifyKey(sub_proc,input_para);   
-  //      }
+        else if(strcmp(input_para->params,"certifykey")==0)
+        {
+          	ret=proc_vtcmutils_CertifyKey(sub_proc,input_para);   
+        }
   	else if(strcmp(input_para->params,"createsm2key")==0)
   	{
     		ret=proc_vtcmutils_ExCreateSm2Key(sub_proc,input_para);
@@ -2484,55 +2484,134 @@ int proc_vtcmutils_SelfTestFull(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
   return ret;
 }
-/*int proc_vtcmutils_CertifyKey(void * sub_proc, void * para){
+
+int proc_vtcmutils_CertifyKey(void * sub_proc, void * para)
+{
+
   int outlen;
   int i=0;
   int ret=0;
-//Store anti-replay data
-unsigned char nonce1[TCM_HASH_SIZE];
-//Hold verification key handle
-unsigned char handle1[4]={0x05,0x00,0x00,0x05};
-//Store the key handle to be verified
-unsigned char handle2[4]={0x05,0x00,0x00,0x06};
-void *vtcm_template;
-struct tcm_in_CertifyKey *vtcm_input;
-struct tcm_out_CertifyKey *vtcm_output;
-vtcm_input = Talloc0(sizeof(*vtcm_input));
-if(vtcm_input==NULL)
-return -ENOMEM;
-vtcm_output = Talloc0(sizeof(*vtcm_output));
-if(vtcm_output==NULL)
-return -ENOMEM;
-vtcm_input->tag = htons(TCM_TAG_RQU_AUTH_COMMAND);
-vtcm_input->ordinal = SUBTYPE_CERTIFYKEY_IN;
-memcpy(vtcm_input->keyhandle1,handle1,4);
-memcpy(vtcm_input->keyhandle2,handle2,4);
-TSS_gennonce(nonce1);
-memcpy(vtcm_input->antidata,nonce1,TCM_HASH_SIZE);
-vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_CERTIFYKEY_IN);
-if(vtcm_template==NULL)
-return -EINVAL;
-vtcm_input->paramSize=sizeof(*vtcm_input);
-ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
-if(ret<0)
-return ret;
-printf("Send command for certifykey:\n");
-for(i=0;i<ret;i++){
-printf("%.2x ",Buf[i]);
-}	
-printf("\n");
-ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
-if(ret<0)
-return ret; 
-printf("Receive  output is:\n");
-for(i=0;i<outlen;i++){
-printf("%.2x ",Buf[i]);
-if((i+1)%5==0)
-printf("\n");
+  int fd;
+  void * vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+  struct tcm_utils_input * input_para=para;
+  char * index_para;
+  char * value_para;
+  char * certfile;
+
+  struct tcm_in_Certify * vtcm_input;
+  struct tcm_out_Certify * vtcm_output;
+  
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_CERTIFYKEY_IN;
+  int offset=0;
+
+  // get makeidentity's params 
+  if((input_para->param_num>0)&&
+     (input_para->param_num%2==1))
+  {
+    	for(i=1;i<input_para->param_num;i+=2)
+    	{
+      		index_para=input_para->params+i*DIGEST_SIZE;
+      		value_para=index_para+DIGEST_SIZE;
+        	if(!Strcmp("-kh",index_para))
+        	{
+        		sscanf(value_para,"%x",&vtcm_input->verifykeyHandle);
+        	}	
+        	else if(!Strcmp("-skh",index_para))
+        	{
+        		sscanf(value_para,"%x",&vtcm_input->verifiedkeyHandle);
+        	}	
+      		else if(!Strcmp("-of",index_para))
+      		{
+        		certfile=value_para;
+      		}
+      		else
+      		{
+        		printf("Error cmd format! should be %s -kh verifykeyhandle -skh verifiedkeyhandle -of certfile",
+               			input_para->params);
+        		return -EINVAL;
+      		}
+    	}
+   }
+ 	
+    ret=RAND_bytes(vtcm_input->externalData,DIGEST_SIZE);
+    if(ret<0)
+	return -EINVAL;
+	
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_CERTIFYKEY_IN);
+    if(vtcm_template==NULL)
+         return -EINVAL;
+    vtcm_input->paramSize=sizeof(*vtcm_input);
+    ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
+    if(ret<0)
+        return ret;
+    printf("Send command for certifykey:\n");
+    print_bin_data(Buf,ret,8);
+    ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
+    if(ret<0)
+        return ret; 
+    // bottom half process: check return data head to decide if return error
+    struct vtcm_external_output_command return_head;
+    vtcm_template=memdb_get_template(DTYPE_VTCM_EXTERNAL,SUBTYPE_RETURN_DATA_EXTERNAL);
+    if(vtcm_template==NULL)
+        return -EINVAL;
+    ret=blob_2_struct(Buf,&return_head,vtcm_template);
+    if(ret<0)
+        return ret;
+    if(return_head.returnCode!=0)
+    {
+	// return Error	
+  	print_bin_data(Buf,ret,16);
+  	sprintf(Buf,"%d \n",return_head.returnCode);
+    }	
+    else
+    {
+
+  	vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_CERTIFYKEY_OUT);
+  	if(vtcm_template==NULL)
+   	     return -EINVAL;
+  	ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+  	if(ret<0)
+    		return -EINVAL;
+  	print_bin_data(Buf,ret,16);
+  	fd=open(certfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  	if(fd<0){
+    		printf("cert file open error!\n");
+    		return -EIO;
+  	}
+	
+	vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_CERTIFY_INFO);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+	
+        ret=struct_2_blob(&vtcm_output->certifyInfo,Buf,vtcm_template);
+        if(ret<0)
+		return -EINVAL;
+
+        write(fd,&ret,sizeof(int));
+  	write(fd,Buf,ret);
+        write(fd,&vtcm_output->sigSize,sizeof(vtcm_output->sigSize));
+	write(fd,vtcm_output->sig,vtcm_output->sigSize);
+  	close(fd);
+  	sprintf(Buf,"%d \n",vtcm_output->returnCode);
+    }
+
+    printf("Output para: %s\n",Buf);
+    void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
+    if(send_msg==NULL)
+    	return -EINVAL;
+    ex_module_sendmsg(sub_proc,send_msg);		
+
+    return ret;
 }
-return ret;
-}
-*/
+
 int proc_vtcmutils_OwnerReadInternalPub(void * sub_proc, void * para){
   int outlen;
   int i=1;

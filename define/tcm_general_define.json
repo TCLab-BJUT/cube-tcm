@@ -643,6 +643,7 @@
 		{
 			"elem_desc":
 			[
+                                {"name":"version","type":"SUBSTRUCT","ref_name":"tcm_version_struct"},
 				{"name":"keyUsage","type":"TPM16"},
 				{"name":"keyFlags","type":"TPM32"},
 				{"name":"authDataUsage","type":"UCHAR"},
