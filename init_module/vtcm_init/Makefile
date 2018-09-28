@@ -12,6 +12,7 @@ main: lib$(PLUGIN).so
 lib$(PLUGIN).so:  $(PLUGIN).o $(PLUGIN_PROC_OBJ) $(INIT_DB_OBJ)
 	$(CC) $(FLAGS) lib$(PLUGIN).so $(PLUGIN).o $(PLUGIN_OBJ) $(TEST_LIB)
 	cp lib$(PLUGIN).so $(CUBEAPPPATH)/vtcm_emulator
+	cp lib$(PLUGIN).so $(CUBEAPPPATH)/vtcm_new_emulator
 	mv lib$(PLUGIN).so $(INSTANCE_DIR)
 	cp $(PLUGIN).cfg $(INSTANCE_DIR)
 $(PLUGIN).o: $(PLUGIN).c $(PLUGIN).h
