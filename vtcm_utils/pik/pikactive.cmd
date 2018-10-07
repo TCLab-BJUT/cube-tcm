@@ -3,7 +3,7 @@
 in: readpubek 
 
 in: loadcakey -pubkey capub.key
-#载入CA公钥 与私钥 
+#载入CA公钥 
 
 in: apcreate -it 02 -pwd ooo
 #建立owner会话  记录会话句柄 

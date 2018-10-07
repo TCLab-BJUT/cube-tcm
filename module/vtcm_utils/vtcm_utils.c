@@ -4621,14 +4621,8 @@ int proc_vtcmutils_Extend(void * sub_proc, void * para){
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   if(ret<0)
     return ret;
-  i = 0;
-  printf("New value of PCR %d:\n",vtcm_input->pcrNum);
-  while(i<TCM_HASH_SIZE){
-    printf("%.2x ",vtcm_output->outDigest[i]);
-    i++;
-  }
-  printf("\n");
 
+  print_bin_data(Buf,ret,8);
   sprintf(Buf,"%d \n",vtcm_output->returnCode);
   printf("Output para: %s\n",Buf);
   void * send_msg =vtcm_auto_build_outputmsg(Buf,curr_recv_msg);
@@ -4771,6 +4765,7 @@ int proc_vtcmutils_PcrRead(void * sub_proc, void * para)
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   if(ret<0)
       return ret;
+  print_bin_data(Buf,ret,8);
   printf("Pcr %d value:\n",vtcm_input->pcrIndex);
   print_bin_data(vtcm_output->outDigest,32,8);
 
