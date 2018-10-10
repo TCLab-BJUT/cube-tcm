@@ -11,7 +11,6 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-
 #include "data_type.h"
 #include "alloc.h"
 #include "list.h"
@@ -38,7 +37,6 @@
 static  BYTE Buf[DIGEST_SIZE*32];
 static  BYTE Output[DIGEST_SIZE*32];
 Record_List sessions_list;
-Record_List contexts_list;
 TCM_PUBKEY * pubEK;
 TCM_SECRET ownweAuth;
 TCM_SECRET smkAuth;
@@ -55,6 +53,119 @@ extern BYTE * CApubkey;
     static key_t shm_share_key;
     static int shm_share_id;
     static int shm_size;
+    char * pathname="/tmp";
+
+enum tsmd_context_init_state
+{
+	TSMD_CONTEXT_INIT_START=0x01,
+	TSMD_CONTEXT_INIT_GETREQ,
+	TSMD_CONTEXT_INIT_BUILDCHANNEL,
+	TSMD_CONTEXT_INIT_WAITCHANNEL,
+	TSMD_CONTEXT_INIT_FINISH,
+	TSMD_CONTEXT_INIT_TIMEOUT
+};
+
+enum tsmd_context_state
+{
+	TSMD_CONTEXT_INIT=0x01,
+	TSMD_CONTEXT_BUILD,
+	TSMD_CONTEXT_APICALL,
+	TSMD_CONTEXT_SENDDATA,
+	TSMD_CONTEXT_RECVDATA,
+	TSMD_CONTEXT_APIRETURN,
+	TSMD_CONTEXT_CLOSE,
+	TSMD_CONTEXT_ERROR
+};
+
+typedef struct tsmd_context_struct
+{
+	int count;
+	UINT32 handle;
+	int shmid;
+	enum tsmd_context_state state;
+		
+	int tsmd_API;
+	int curr_step;
+	void * tsmd_context; 	
+	BYTE * tsmd_send_buf;
+	BYTE * tsmd_recv_buf;
+	CHANNEL * tsmd_API_channel;
+}__attribute__((packed)) TSMD_CONTEXT;
+
+
+struct tsmd_server_struct
+{
+	int curr_count;
+	enum tsmd_context_init_state init_state;
+	Record_List contexts_list;
+}__attribute__((packed));
+
+static struct tsmd_server_struct server_context;
+
+TSMD_CONTEXT * Find_TsmdContext(UINT32 tsmd_handle)
+{
+  Record_List * record;
+  Record_List * head;
+  struct List_head * curr;
+  TSMD_CONTEXT * tsmd_context;
+
+  head=&(server_context.contexts_list.list);
+  curr=head->list.next;
+
+  while(curr!=head)
+  {
+    record=List_entry(curr,Record_List,list);
+    tsmd_context=record->record;
+    if(tsmd_context==NULL)
+       return NULL;
+    if(tsmd_context->handle==tsmd_handle)
+        return tsmd_context;
+    curr=curr->next;
+  }
+  return NULL;
+}
+
+TSMD_CONTEXT * Build_TsmdContext(int count, UINT32 tsmd_nonce)
+{
+
+  TSMD_CONTEXT * new_context=NULL;
+  UINT32 new_handle;
+ 
+  do{
+	RAND_bytes(&new_handle,sizeof(new_handle));
+	new_handle^=tsmd_nonce ;
+	if(new_handle==0)
+		continue; 
+	if(new_handle==tsmd_nonce)
+		continue;
+  }while(new_context!=NULL);
+
+  new_context=Dalloc0(sizeof(*new_context),NULL);
+  if(new_context==NULL)
+    return NULL;
+  new_context->count=count;
+  new_context->handle=new_handle;
+  new_context->shmid=0;
+  new_context->state=TSMD_CONTEXT_INIT;
+  new_context->tsmd_API=0;
+  new_context->curr_step=0;
+  new_context->tsmd_context=NULL;
+  new_context->tsmd_send_buf=NULL;
+  new_context->tsmd_recv_buf=NULL;		
+  new_context->tsmd_API_channel=NULL;
+	
+  // add authdata to the session_list
+
+  Record_List * record = Calloc0(sizeof(*record));
+  if(record==NULL)
+    return -EINVAL;
+  INIT_LIST_HEAD(&record->list);
+  record->record=new_context;
+  List_add_tail(&record->list,&server_context.contexts_list.list);
+  return new_context;	
+}
+
+
 
 TCM_SESSION_DATA * Create_AuthSession_Data(TCM_ENT_TYPE * type,BYTE * auth,BYTE * nonce)
 {
@@ -151,10 +262,9 @@ int tsmd_init(void * sub_proc,void * para)
    INIT_LIST_HEAD(&sessions_list.list);
    sessions_list.record=NULL;
 
-   INIT_LIST_HEAD(&contexts_list.list);
-   contexts_list.record=NULL;
+   INIT_LIST_HEAD(&server_context.contexts_list.list);
+   server_context.contexts_list.record=NULL;
   
-    char * pathname="/tmp";
 
 //   build the sem_key 
     sem_key = ftok(pathname,0x01);
@@ -194,8 +304,13 @@ int tsmd_init(void * sub_proc,void * para)
     }
     share_init_context=(struct context_init *)shmat(shm_share_id,NULL,0);
 		
-    set_semvalue(semid,2);	
 
+    server_context.curr_count=1;
+    INIT_LIST_HEAD(&server_context.contexts_list.list);
+    server_context.init_state=TSMD_CONTEXT_INIT_START;
+    share_init_context->count=server_context.curr_count;
+
+    set_semvalue(semid,2);	
     return 0;
 }
 
@@ -220,7 +335,47 @@ int tsmd_start(void * sub_proc,void * para)
 
 	   if(share_init_context->handle!=0)
 	   {
-		semaphore_v(semid,1);
+		
+		if(server_context.init_state==TSMD_CONTEXT_INIT_START)
+		{
+			server_context.init_state=TSMD_CONTEXT_INIT_GETREQ;
+			TSMD_CONTEXT * new_context = Build_TsmdContext(
+				share_init_context->count,share_init_context->handle);
+			if(new_context==NULL)
+				return -EINVAL;
+    			static key_t shm_key;
+			shm_key=ftok(pathname,new_context->count+0x02);
+			if(shm_key == -1)
+    			{
+       				 printf("ftok shm_share_key error");
+        			return -1;
+    			}
+
+    			printf("shm_key=%d\n",shm_key) ;
+    			new_context->shmid=shmget(shm_key,4096,IPC_CREAT|IPC_EXCL|0666);
+    			if(new_context->shmid<0)
+    			{
+				printf("open context share memory failed!\n");
+				return -EINVAL;
+    			}
+			void * share_addr;
+    			share_addr=shmat(new_context->shmid,NULL,0);
+		
+		
+			share_init_context->handle=new_context->handle;	
+			semaphore_v(semid,1);
+		}
+		else if(server_context.init_state==TSMD_CONTEXT_INIT_GETREQ)
+		{
+			if(share_init_context->count!=server_context.curr_count)
+			{
+				server_context.curr_count++;
+				share_init_context->count=server_context.curr_count;	
+				share_init_context->handle=0;
+				server_context.init_state=TSMD_CONTEXT_INIT_START;
+				semaphore_v(semid,2);
+			}
+		}
 	   }
 	   
     }	

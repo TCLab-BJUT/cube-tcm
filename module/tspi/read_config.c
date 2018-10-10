@@ -23,7 +23,7 @@
 #include "ex_module.h"
 
 #include "main_proc_func.h"
-
+/*
 void * main_read_func(char * libname,char * sym)
 {
     void * handle;	
@@ -43,7 +43,7 @@ void * main_read_func(char * libname,char * sym)
      }
      return func;
 }     	
-
+*/
 int read_sys_cfg(void ** lib_para_struct,void * root_node,char * plugin_dir)
 {
     struct lib_para_struct * lib_para;

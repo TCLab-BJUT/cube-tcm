@@ -128,10 +128,10 @@ int vtcm_key_start(void* sub_proc, void* para)
         else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SIGN_IN)) {
             proc_vtcm_Sign(sub_proc, recv_msg);
         }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_SEAL_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH1) && (subtype == SUBTYPE_SEAL_IN)) {
              proc_vtcm_Seal(sub_proc, recv_msg);
          }
-        else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_UNSEAL_IN)) {
+        else if ((type == DTYPE_VTCM_IN_AUTH2) && (subtype == SUBTYPE_UNSEAL_IN)) {
              proc_vtcm_UnSeal(sub_proc, recv_msg);
          }
         else if ((type == DTYPE_VTCM_IN) && (subtype == SUBTYPE_OWNERREADINTERNALPUB_IN)) {
@@ -937,6 +937,12 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
                 authData = &(tcm_state->tcm_permanent_data.ownerAuth);
             }
             break;
+	case TCM_ET_DATA:
+	   {
+            	authData = (BYTE *)malloc(sizeof(BYTE) * TCM_NONCE_SIZE);
+                memset(authData, 0 ,TCM_NONCE_SIZE);
+	   }
+	   break;
         case TCM_ET_SMK:
             /* 8. else if entityType = TCM_ET_SMK */
             /* a. The entity to authorize is the SM3. entityValue is ignored. */
@@ -3428,7 +3434,7 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
     
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SEAL_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_SEAL_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
         printf("can't solve this command!\n");
@@ -3446,7 +3452,7 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
     
     if(ret == TCM_SUCCESS)
     {
-      ret = vtcm_Compute_AuthCode(vtcm_input, DTYPE_VTCM_IN,SUBTYPE_SEAL_IN, authSession, CheckData);
+      ret = vtcm_Compute_AuthCode(vtcm_input, DTYPE_VTCM_IN_AUTH1,SUBTYPE_SEAL_IN, authSession, CheckData);
       if(ret == TCM_SUCCESS)
       {
         if(Memcmp(CheckData,vtcm_input->authCode,TCM_HASH_SIZE) != 0)
@@ -3539,12 +3545,12 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
     if(ret == TCM_SUCCESS)
     {    
         ret = vtcm_Compute_AuthCode(vtcm_output, 
-                                    DTYPE_VTCM_OUT,
+                                    DTYPE_VTCM_OUT_AUTH1,
                                     SUBTYPE_SEAL_OUT, 
                                     authSession, 
                                     vtcm_output->authCode);
     }
-    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_SEAL_OUT ,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH1 ,SUBTYPE_SEAL_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");
@@ -3676,7 +3682,7 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
     
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
     //output process
-    void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_UNSEAL_OUT);//Get the entire command template
+    void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH2, SUBTYPE_UNSEAL_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
         printf("can't solve this command!\n");
@@ -3696,7 +3702,7 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_input, 
-                                  DTYPE_VTCM_IN,
+                                  DTYPE_VTCM_IN_AUTH2,
                                   SUBTYPE_UNSEAL_IN, 
                                   authSession, 
                                   CheckData);
@@ -3712,7 +3718,7 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_input, 
-                                  DTYPE_VTCM_IN,
+                                  DTYPE_VTCM_IN_AUTH2,
                                   SUBTYPE_UNSEAL_IN, 
                                   authSession, 
                                   CheckData_2);
@@ -3765,7 +3771,7 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_output, 
-                                  DTYPE_VTCM_OUT,
+                                  DTYPE_VTCM_OUT_AUTH2,
                                   SUBTYPE_UNSEAL_OUT, 
                                   authSession, 
                                   vtcm_output->UnauthCode);
@@ -3773,12 +3779,12 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
     if(ret == TCM_SUCCESS)
     {
       ret = vtcm_Compute_AuthCode(vtcm_output, 
-                                  DTYPE_VTCM_OUT,
+                                  DTYPE_VTCM_OUT_AUTH2,
                                   SUBTYPE_UNSEAL_OUT, 
                                   authSession, 
                                   vtcm_output->authCode);
     }
-    void *send_msg = message_create(DTYPE_VTCM_OUT ,SUBTYPE_UNSEAL_OUT ,recv_msg);
+    void *send_msg = message_create(DTYPE_VTCM_OUT_AUTH2 ,SUBTYPE_UNSEAL_OUT ,recv_msg);
     if(send_msg == NULL)
     {
         printf("send_msg == NULL\n");

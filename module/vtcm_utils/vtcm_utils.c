@@ -1299,11 +1299,11 @@ int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
   //Memcpy(vtcm_input->authCode,hmacout1,TCM_HASH_SIZE);
 
   // Compute UnAuthCode
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_UNSEAL_IN,authdata1,vtcm_input->UnAuthCode);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_UNSEAL_IN,authdata1,vtcm_input->UnAuthCode);
   // Compute authcode
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_UNSEAL_IN,authdata1,vtcm_input->authCode);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_UNSEAL_IN,authdata1,vtcm_input->authCode);
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_UNSEAL_IN);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_UNSEAL_IN);
   offset =  struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(offset<0)
     return offset;
@@ -1318,14 +1318,14 @@ int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
   if(ret<0)
     return ret;
   //Check 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_UNSEAL_OUT);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_UNSEAL_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
   if(ret<0)
     return ret;
   BYTE CheckData[TCM_HASH_SIZE];
-  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_UNSEAL_OUT,authdata1,CheckData);
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH2,SUBTYPE_UNSEAL_OUT,authdata1,CheckData);
   if(ret<0)
     return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->UnauthCode,DIGEST_SIZE)!=0)
@@ -1334,7 +1334,7 @@ int proc_vtcmutils_UnSeal(void * sub_proc, void * para){
     return -EINVAL;  
   }
   BYTE CheckData1[TCM_HASH_SIZE];
-  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_UNSEAL_OUT,authdata1,CheckData1);
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH2,SUBTYPE_UNSEAL_OUT,authdata1,CheckData1);
   if(ret<0)
     return -EINVAL;
   if(Memcmp(CheckData1,vtcm_output->authCode,DIGEST_SIZE)!=0)
@@ -1398,7 +1398,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
                 }
                 else
                 {
-                        printf("Error cmd format! should be %s -ik keyhandle -is sessionhandle -rf data_file -wf seal_file"
+                        printf("Error cmd format! should be %s -ikh keyhandle -idh sessionhandle -rf data_file -wf seal_file"
                                 ,input_para->params);
                         return -EINVAL;
                 }
@@ -1443,8 +1443,8 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
   //  vtcm_SM3_hmac(hmacout,authdata->sharedSecret,32,hashout,32,&serial,4);
   //  Memcpy(vtcm_input->authCode,hmacout,TCM_HASH_SIZE); 
   //compute authcode
-  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN,SUBTYPE_SEAL_IN,authdata,vtcm_input->authCode);
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SEAL_IN);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SEAL_IN,authdata,vtcm_input->authCode);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_SEAL_IN);
   int offset = 0;
   offset =  struct_2_blob(vtcm_input,Buf,vtcm_template);
   if(offset<0){
@@ -1459,7 +1459,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
   ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
   if(ret<0)
     return ret;
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SEAL_OUT);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SEAL_OUT);
   if(vtcm_template==NULL)
     return -EINVAL;
   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
@@ -1467,7 +1467,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
     return ret;
   // check authdata
   BYTE CheckData[TCM_HASH_SIZE];
-  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT,SUBTYPE_SEAL_OUT,authdata,CheckData);
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SEAL_OUT,authdata,CheckData);
   if(ret<0)
     return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->authCode,DIGEST_SIZE)!=0)
@@ -3874,6 +3874,15 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
       {
         keyfile=value_para;
       }
+      else if(!Strcmp("-flags",index_para))
+      {
+        sscanf(value_para,"%x",&vtcm_input->keyInfo.keyUsage);
+      }	
+      else if(!Strcmp("-usage",index_para))
+      {
+        sscanf(value_para,"%x",&vtcm_input->keyInfo.keyFlags);
+      }	
+    
       else if(!Strcmp("-pwdk",index_para))
       {
         pwdk=value_para;
@@ -3885,7 +3894,7 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
       else
       {
         printf("Error cmd format! should be %s -ih smkauthhandle -is keyusage -kf keyfile"
-               "[-pwdk keypasswd] -[-pwdm migpasswd]",input_para->params);
+               "-usage keyusage -flags keyflags [-pwdk keypasswd] -[-pwdm migpasswd]",input_para->params);
         return -EINVAL;
       }
     }
@@ -3897,7 +3906,8 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
 
   if(!strcmp("sm4",select))
   {
-    vtcm_input->keyInfo.keyUsage=TCM_SM4KEY_STORAGE;
+    if(vtcm_input->keyInfo.keyUsage==0)
+    	vtcm_input->keyInfo.keyUsage=TCM_SM4KEY_STORAGE;
     vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM4;
     vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM4_CBC;
     vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_NONE;
@@ -3923,7 +3933,8 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
     Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
   }else
   {
-    vtcm_input->keyInfo.keyUsage=TCM_SM2KEY_IDENTITY;
+    if(vtcm_input->keyInfo.keyUsage==0)
+    	vtcm_input->keyInfo.keyUsage=TCM_SM2KEY_SIGNING;
     //add smkparms's sm2 key parms
     sm2_parms=Talloc0(sizeof(*sm2_parms));
     if(sm2_parms==NULL)

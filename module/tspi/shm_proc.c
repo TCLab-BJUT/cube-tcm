@@ -45,6 +45,34 @@ struct context_init
 }__attribute__((packed));
 
 
+enum tsmd_context_state
+{       
+        TSMD_CONTEXT_INIT=0x01,
+        TSMD_CONTEXT_BUILD,
+        TSMD_CONTEXT_APICALL,
+        TSMD_CONTEXT_SENDDATA,
+        TSMD_CONTEXT_RECVDATA,
+        TSMD_CONTEXT_APIRETURN,
+        TSMD_CONTEXT_CLOSE,
+        TSMD_CONTEXT_ERROR
+};
+
+typedef struct tsmd_context_struct
+{
+        int count;
+        UINT32 handle;
+        int shmid;
+        enum tsmd_context_state state;
+
+        int tsmd_API;
+        int curr_step;
+        void * tsmd_context;
+        BYTE * tsmd_send_buf;
+        BYTE * tsmd_recv_buf;
+        CHANNEL * tsmd_API_channel;
+}__attribute__((packed)) TSMD_CONTEXT;
+
+TSMD_CONTEXT this_context;
 
 
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
@@ -257,11 +285,13 @@ int main(int argc,char **argv)
 
 
     // get the sem_key
-    
+
     ret=semaphore_p(semid,2);
     	
     if(ret<=0)
 	return -EINVAL;
+
+    this_context.count=share_init_context->count;	
 
     		
     RAND_bytes(&share_init_context->handle,sizeof(share_init_context->handle));
@@ -269,6 +299,27 @@ int main(int argc,char **argv)
     ret=semaphore_p(semid,1);
     if(ret<=0)
 	return -EINVAL;
+    this_context.handle=share_init_context->handle;
+
+   static key_t shm_key;
+   shm_key=ftok(pathname,this_context.count+0x02);
+   if(shm_key == -1)
+   {
+         printf("ftok shm_share_key error");
+         return -1;
+   }
+   printf("shm_key=%d\n",shm_key) ;
+   this_context.shmid=shmget(shm_key,4096,0666);
+   if(this_context.shmid<0)
+   {
+           printf("open context share memory failed!\n");
+          return -EINVAL;
+   }
+   void * share_addr;
+   share_addr=shmat(this_context.shmid,NULL,0);
+
+
+  share_init_context->count++;	
   		
     return ret;
 }
