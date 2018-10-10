@@ -30,50 +30,9 @@
 #include "pik_struct.h"
 #include "sm3.h"
 #include "sm4.h"
-
-typedef struct proc_init_parameter
-{
-	char * name;
-	int type;
-	int (* init) (void *,void *);
-	int (* start) (void *,void *);
-}PROC_INIT;
-struct context_init
-{
-        int count;
-        UINT32 handle;
-}__attribute__((packed));
-
-
-enum tsmd_context_state
-{       
-        TSMD_CONTEXT_INIT=0x01,
-        TSMD_CONTEXT_BUILD,
-        TSMD_CONTEXT_APICALL,
-        TSMD_CONTEXT_SENDDATA,
-        TSMD_CONTEXT_RECVDATA,
-        TSMD_CONTEXT_APIRETURN,
-        TSMD_CONTEXT_CLOSE,
-        TSMD_CONTEXT_ERROR
-};
-
-typedef struct tsmd_context_struct
-{
-        int count;
-        UINT32 handle;
-        int shmid;
-        enum tsmd_context_state state;
-
-        int tsmd_API;
-        int curr_step;
-        void * tsmd_context;
-        BYTE * tsmd_send_buf;
-        BYTE * tsmd_recv_buf;
-        CHANNEL * tsmd_API_channel;
-}__attribute__((packed)) TSMD_CONTEXT;
+#include "tspi_context.h"
 
 TSMD_CONTEXT this_context;
-
 
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -105,9 +64,8 @@ int lib_gettype(char * libname, int * typeno,int * subtypeno)
 		return 0;
 };
 
-int main(int argc,char **argv)
+int _TSMD_Init()
 {
-
     int ret;
     int retval;
     int i,j;
@@ -118,8 +76,6 @@ int main(int argc,char **argv)
     char * app_plugin;		
     char * base_define;
 
-    char json_buffer[4096];
-    char print_buffer[4096];
     int readlen;
     int json_offset;
     void * memdb_template ;
@@ -150,40 +106,11 @@ int main(int argc,char **argv)
 	 NULL
     };
 
-    struct start_para start_para;
-
-    start_para.argc=argc;
-    start_para.argv=argv;	
-
     sys_plugin=getenv("CUBE_SYS_PLUGIN");
-//    if(sys_plugin==NULL)
-//	return -EINVAL;		
-//    app_plugin=getenv("CUBE_APP_PLUGIN");
     // process the command argument
 
-   int ifmerge=0;
+    int ifmerge=0;
 
-    if(argc>=2)
-    {
-	argv_offset=1;
-	if(strcmp(argv[1],"merge")==0)
-	{
-		ifmerge=1;
-		if(argc<=3)
-		{
-			printf("error lib_tool merge format! should be %s merge destlibname [srclibname1|srclibdir1]"
-				"[srclibname2|srclibdir2] ...\n",argv[0]);
-		}
-	}
-	else if(strcmp(argv[1],"show"))
-	{
-		if(argc<2)
-		printf("error format! should be %s show libname ...\n",argv[0]);
-		return -EINVAL;
-	}
-    }
-
-      
 //	alloc_init(alloc_buffer);
 	struct_deal_init();
 	memdb_init();
@@ -234,9 +161,16 @@ int main(int argc,char **argv)
 
     ret=get_local_uuid(local_uuid);
     printf("this machine's local uuid is %s\n",local_uuid);
+    return 0;	
 
+}
 // main proc 
 
+UINT32 Tspi_Context_Create()
+{
+
+
+    int    ret;
     static key_t sem_key;
     static int semid;
 
@@ -323,4 +257,3 @@ int main(int argc,char **argv)
   		
     return ret;
 }
-
