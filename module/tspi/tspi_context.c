@@ -30,9 +30,11 @@
 #include "pik_struct.h"
 #include "sm3.h"
 #include "sm4.h"
+#include "tspi.h"
 #include "tspi_context.h"
 
 TSMD_CONTEXT this_context;
+static char Buf[1024];
 
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -166,10 +168,10 @@ int _TSMD_Init()
 }
 // main proc 
 
-UINT32 Tspi_Context_Create()
+UINT32 Tspi_Context_Create(TSM_HCONTEXT * phContext)
 {
 
-
+    int    i;	
     int    ret;
     static key_t sem_key;
     static int semid;
@@ -243,17 +245,44 @@ UINT32 Tspi_Context_Create()
          return -1;
    }
    printf("shm_key=%d\n",shm_key) ;
-   this_context.shmid=shmget(shm_key,4096,0666);
+   this_context.shm_size=4096;
+
+   for(i=0;i<10;i++)
+   {	
+ 	  this_context.shmid=shmget(shm_key,this_context.shm_size,0666);
+   	if(this_context.shmid>0)
+	{
+		break;
+	}
+	usleep(time_val.tv_usec);
+   }	
+ 
    if(this_context.shmid<0)
    {
-           printf("open context share memory failed!\n");
+          printf("open context share memory failed!\n");
           return -EINVAL;
    }
    void * share_addr;
    share_addr=shmat(this_context.shmid,NULL,0);
 
+   this_context.tsmd_API_channel = channel_register_fixmem("channel",CHANNEL_RDWR|CHANNEL_FIXMEM,NULL,
+                this_context.shm_size/2,share_addr,share_addr+this_context.shm_size/2);
 
-  share_init_context->count++;	
-  		
-    return ret;
+   share_init_context->count++;	
+
+   for(i=0;i<10;i++)
+   {	
+ 	ret=channel_read(this_context.tsmd_API_channel,Buf,5);
+	if(ret==5)
+	{
+		if(Strcmp(Buf,"TSMD")!=0)
+			return -EINVAL;
+		ret=channel_write(this_context.tsmd_API_channel,"TSPI",5);
+		*phContext = this_context.handle;
+		return TSM_SUCCESS;
+	}
+	usleep(time_val.tv_usec);
+   }	
+	
+   return TSM_E_CONNECTION_BROKEN;
 }

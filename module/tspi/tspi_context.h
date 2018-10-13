@@ -33,6 +33,7 @@ typedef struct tsmd_context_struct
 
         int tsmd_API;
         int curr_step;
+	int shm_size;
         void * tsmd_context;
         BYTE * tsmd_send_buf;
         BYTE * tsmd_recv_buf;

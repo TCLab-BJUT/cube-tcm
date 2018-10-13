@@ -31,6 +31,7 @@
 #include "sm3.h"
 #include "sm4.h"
 
+#include "tspi.h"
 #include "tsmd.h"
 
 
@@ -86,6 +87,7 @@ typedef struct tsmd_context_struct
 		
 	int tsmd_API;
 	int curr_step;
+	int shm_size;
 	void * tsmd_context; 	
 	BYTE * tsmd_send_buf;
 	BYTE * tsmd_recv_buf;
@@ -327,6 +329,7 @@ int tsmd_start(void * sub_proc,void * para)
     static void * shm_share_addr;
 
     static CHANNEL * shm_channel;
+    TSMD_CONTEXT * new_context=NULL;
 
 
     while(1)
@@ -339,8 +342,7 @@ int tsmd_start(void * sub_proc,void * para)
 		if(server_context.init_state==TSMD_CONTEXT_INIT_START)
 		{
 			server_context.init_state=TSMD_CONTEXT_INIT_GETREQ;
-			TSMD_CONTEXT * new_context = Build_TsmdContext(
-				share_init_context->count,share_init_context->handle);
+			new_context = Build_TsmdContext(share_init_context->count,share_init_context->handle);
 			if(new_context==NULL)
 				return -EINVAL;
     			static key_t shm_key;
@@ -352,7 +354,8 @@ int tsmd_start(void * sub_proc,void * para)
     			}
 
     			printf("shm_key=%d\n",shm_key) ;
-    			new_context->shmid=shmget(shm_key,4096,IPC_CREAT|IPC_EXCL|0666);
+			new_context->shm_size=4096;
+    			new_context->shmid=shmget(shm_key,new_context->shm_size,IPC_CREAT|IPC_EXCL|0666);
     			if(new_context->shmid<0)
     			{
 				printf("open context share memory failed!\n");
@@ -360,7 +363,14 @@ int tsmd_start(void * sub_proc,void * para)
     			}
 			void * share_addr;
     			share_addr=shmat(new_context->shmid,NULL,0);
-		
+
+			Memset(namebuffer,0,DIGEST_SIZE);
+			Memset(share_addr,0,new_context->shm_size);
+			Strcpy(namebuffer,"channel");
+			Itoa(new_context->count,namebuffer+Strlen(namebuffer));
+
+			new_context->tsmd_API_channel = channel_register_fixmem(namebuffer,CHANNEL_RDWR|CHANNEL_FIXMEM,NULL,
+                		new_context->shm_size/2,share_addr,share_addr+new_context->shm_size/2);
 		
 			share_init_context->handle=new_context->handle;	
 			semaphore_v(semid,1);
@@ -369,12 +379,31 @@ int tsmd_start(void * sub_proc,void * para)
 		{
 			if(share_init_context->count!=server_context.curr_count)
 			{
-				server_context.curr_count++;
-				share_init_context->count=server_context.curr_count;	
-				share_init_context->handle=0;
-				server_context.init_state=TSMD_CONTEXT_INIT_START;
-				semaphore_v(semid,2);
+				channel_inner_write(new_context->tsmd_API_channel,"TSMD",5);
+				server_context.init_state=TSMD_CONTEXT_INIT_WAITCHANNEL;
 			}
+		}
+		else if(server_context.init_state==TSMD_CONTEXT_INIT_WAITCHANNEL)
+		{
+			ret=channel_inner_read(new_context->tsmd_API_channel,Buf,5);
+			if(ret==5)
+			{	
+				if(Strncmp(Buf,"TSPI",5)==0)
+				{
+					server_context.curr_count++;
+					share_init_context->count=server_context.curr_count;	
+					share_init_context->handle=0;
+					semaphore_v(semid,2);
+				}
+				else
+					return -EINVAL;
+				server_context.init_state=TSMD_CONTEXT_INIT_START;
+				new_context->state=TSMD_CONTEXT_BUILD;
+			}
+			else if(ret==0)
+				continue;
+			else
+				return -EINVAL;
 		}
 	   }
 	   
