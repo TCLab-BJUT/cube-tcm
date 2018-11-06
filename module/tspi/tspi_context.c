@@ -32,6 +32,7 @@
 #include "sm4.h"
 #include "tspi.h"
 #include "tspi_context.h"
+#include "tspi_call_struct.h"
 
 TSMD_CONTEXT this_context;
 static char Buf[1024];
@@ -184,6 +185,15 @@ UINT32 Tspi_Context_Create(TSM_HCONTEXT * phContext)
 
     static CHANNEL * shm_channel;
     char * pathname="/tmp";
+
+    if(this_context.count==0)
+    {
+	ret=_TSMD_Init();
+	if(ret<0)
+		return -EINVAL;
+    }	
+
+
     sem_key = ftok(pathname,0x01);
 
     if(sem_key==-1)
@@ -285,4 +295,24 @@ UINT32 Tspi_Context_Create(TSM_HCONTEXT * phContext)
    }	
 	
    return TSM_E_CONNECTION_BROKEN;
+}
+
+UINT32 Tspi_Context_GetTcmObject(TSM_HCONTEXT hContext, TSM_HTCM * phTCM)
+{
+	int ret;
+	ret=channel_write(this_context.tsmd_API_channel,&hContext,sizeof(TSM_HCONTEXT));
+	if(ret<0)
+		return TSM_E_CONNECTION_BROKEN;
+	while(1)
+	{
+		ret=channel_read(this_context.tsmd_API_channel,phTCM,sizeof(TSM_HTCM));
+		if(ret<0)
+			return TSM_E_CONNECTION_BROKEN;
+		if(ret==sizeof(TSM_HTCM))
+			break;
+		usleep(time_val.tv_usec);
+	}
+		
+	return TSM_SUCCESS;		
+	
 }

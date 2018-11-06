@@ -41,20 +41,28 @@ Record_List sessions_list;
 TCM_PUBKEY * pubEK;
 TCM_SECRET ownweAuth;
 TCM_SECRET smkAuth;
+
+struct tsm_object_list
+{
+	int object_type;
+	Record_List object_list;
+}__attribute__((packed));
+
 Record_List entitys_list;
+
 static CHANNEL * vtcm_caller;
 
 extern BYTE * CAprikey;
 extern unsigned long * CAprilen;
 extern BYTE * CApubkey;
 
-    static key_t sem_key;
-    static int semid;
+static key_t sem_key;
+static int semid;
 
-    static key_t shm_share_key;
-    static int shm_share_id;
-    static int shm_size;
-    char * pathname="/tmp";
+static key_t shm_share_key;
+static int shm_share_id;
+static int shm_size;
+char * pathname="/tmp";
 
 enum tsmd_context_init_state
 {

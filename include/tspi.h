@@ -35,7 +35,7 @@ TSM_RESULT Tspi_Context_Connect
     TSM_UNICODE*        wszDestination                 // in
 );
 
-TSM_RESULT Tspi_Context_GetTpmObject
+TSM_RESULT Tspi_Context_GetTcmObject
 (
     TSM_HCONTEXT        hContext,                      // in
     TSM_HTCM*           phTCM                          // out
