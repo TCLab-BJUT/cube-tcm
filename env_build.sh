@@ -14,10 +14,19 @@ cd -
 cd vtcm_emulator
 ln -s $CUBESYSPATH/main/main_proc
 cd -
+cd vtcm_new_emulator
+ln -s $CUBESYSPATH/main/main_proc
+cd -
 cd vtcm_manager
 ln -s $CUBESYSPATH/main/main_proc
 cd -
 cd vtcm_utils
+ln -s $CUBESYSPATH/main/main_proc
+cd -
+cd vtcm_v0_utils
+ln -s $CUBESYSPATH/main/main_proc
+cd -
+cd vtcm_v1_utils
 ln -s $CUBESYSPATH/main/main_proc
 cd -
 
