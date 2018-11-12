@@ -76,6 +76,7 @@ struct tpm_ordemu_struct
 };
 
 int tpm_ordemu_init(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_init1(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_cont1(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_GetTicks(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_Startup(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
@@ -96,6 +97,11 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 		0x0180,
 		0x81010000,
 		&tpm_ordemu_init
+	},
+	{
+		0x0180,
+		0x7A010000,
+		&tpm_ordemu_init1
 	},
 
 	{
@@ -310,6 +316,14 @@ int tpm_init_channel_start(void * sub_proc,void * para)
     return 0;
 }
 int tpm_ordemu_init(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	int out_len=10;
+	BYTE out_data[10]={0x00,0xC4,0x00, 0x00,0x00,0x0A,0x00,0x00,0x00,0x0A};
+	Memcpy(output,out_data,out_len);
+	return out_len;
+}
+int tpm_ordemu_init1(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
 {
 	int ret;
 	int out_len=10;
