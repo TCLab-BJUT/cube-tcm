@@ -50,14 +50,15 @@ int main(int argc,char **argv)
     }
 
     printf("hContext is %x!\n",hContext);
-/*
+
     ret= Tspi_Context_GetTcmObject(hContext,&hTCM);
     if(ret!=TSM_SUCCESS)
     {
 	printf("Tspi_Context_GetTcmObject Error!\n");
 	return ret;
     }
-
+    printf("hTCM is %x!\n",hTCM);
+/*
     ret=Tspi_TCM_PcrRead(hTCM,0,&PcrLength,&PcrValue);
     if(ret!=TSM_SUCCESS)
     {

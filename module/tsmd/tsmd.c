@@ -33,6 +33,7 @@
 
 #include "tspi.h"
 #include "tsmd.h"
+#include "tspi_internal.h"
 
 
 static  BYTE Buf[DIGEST_SIZE*32];
@@ -160,8 +161,8 @@ TSMD_CONTEXT * Build_TsmdContext(int count, UINT32 tsmd_nonce)
   new_context->tsmd_API=0;
   new_context->curr_step=0;
   new_context->tsmd_context=NULL;
-  new_context->tsmd_send_buf=NULL;
-  new_context->tsmd_recv_buf=NULL;		
+  new_context->tsmd_send_buf=Dalloc0(1024,NULL);
+  new_context->tsmd_recv_buf=Dalloc0(1024,NULL);		
   new_context->tsmd_API_channel=NULL;
 	
   // add authdata to the session_list
@@ -344,6 +345,7 @@ int tsmd_start(void * sub_proc,void * para)
     {
            usleep(time_val.tv_usec);
 
+	    // do the tspi context init func
 	   if(share_init_context->handle!=0)
 	   {
 		
@@ -371,6 +373,7 @@ int tsmd_start(void * sub_proc,void * para)
     			}
 			void * share_addr;
     			share_addr=shmat(new_context->shmid,NULL,0);
+    			printf("shm_addr=%x\n",share_addr) ;
 
 			Memset(namebuffer,0,DIGEST_SIZE);
 			Memset(share_addr,0,new_context->shm_size);
@@ -414,8 +417,74 @@ int tsmd_start(void * sub_proc,void * para)
 				return -EINVAL;
 		}
 	   }
-	   
-    }	
 
+	   // throughout  every context to find function call
+           
+	   ret=proc_each_tspicalls(sub_proc);
+	   if(ret<0)
+		break;
+    }	
     return ret;
+}
+
+int proc_each_tspicalls(void * sub_proc)
+{
+	int ret;
+	struct List_head * curr_head;
+	Record_List * curr_record;
+  	TSMD_CONTEXT * tsmd_context;
+
+	curr_head=server_context.contexts_list.list.next;
+
+	while(curr_head!=&server_context.contexts_list.list)
+	{
+		curr_record=(Record_List *)curr_head;
+		curr_head=curr_head->next;
+		tsmd_context=curr_record->record;
+		if(tsmd_context==NULL)
+			continue;
+		ret=channel_inner_read(tsmd_context->tsmd_API_channel,tsmd_context->tsmd_send_buf,1024);
+		if(ret>0)
+		{
+			int apino=*(int *)tsmd_context->tsmd_send_buf;
+			int output_len=0;
+			switch(apino)
+			{
+				case SUBTYPE(TSPI_IN,GETTCMOBJECT):
+					output_len=proc_tspi_GetTcmObject(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
+				default:
+					return -EINVAL;
+			}
+			ret=channel_inner_write(tsmd_context->tsmd_API_channel,tsmd_context->tsmd_recv_buf,output_len);
+		}
+	}
+	return 0;
+}
+
+int proc_tspi_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
+{
+	int ret;
+	RECORD(TSPI_IN, GETTCMOBJECT) tspi_in;	
+	RECORD(TSPI_OUT, GETTCMOBJECT) tspi_out;
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETTCMOBJECT));
+        if(tspi_in_template == NULL)
+        {
+                return -EINVAL;
+        }
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,GETTCMOBJECT));
+        if(tspi_out_template == NULL)
+        {
+                return -EINVAL;
+        }
+
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
+	if(ret<0)
+		return ret;
+	tspi_out.returncode=0;
+	tspi_out.paramSize=sizeof(tspi_out);
+	tspi_out.hTCM=tspi_in.hContext;
+	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
+	return ret;
 }

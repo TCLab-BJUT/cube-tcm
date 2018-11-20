@@ -32,7 +32,7 @@
 #include "sm4.h"
 #include "tspi.h"
 #include "tspi_context.h"
-#include "tspi_call_struct.h"
+#include "tspi_internal.h"
 
 TSMD_CONTEXT this_context;
 static char Buf[1024];
@@ -300,19 +300,46 @@ UINT32 Tspi_Context_Create(TSM_HCONTEXT * phContext)
 UINT32 Tspi_Context_GetTcmObject(TSM_HCONTEXT hContext, TSM_HTCM * phTCM)
 {
 	int ret;
-	ret=channel_write(this_context.tsmd_API_channel,&hContext,sizeof(TSM_HCONTEXT));
+
+	RECORD(TSPI_IN,GETTCMOBJECT) tspi_in;
+	RECORD(TSPI_OUT,GETTCMOBJECT) tspi_out;
+
+	tspi_in.apino=SUBTYPE(TSPI_OUT,GETTCMOBJECT);
+	tspi_in.paramSize=sizeof(tspi_in);
+	tspi_in.hContext=hContext;
+
+	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETTCMOBJECT));
+	if(tspi_in_template == NULL)
+	{
+		return -EINVAL;
+	}
+	void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,GETTCMOBJECT));
+	if(tspi_out_template == NULL)
+	{
+		return -EINVAL;
+	}			
+	
+	ret=struct_2_blob(&tspi_in,Buf,tspi_in_template);
+	if(ret<0)
+		return -EINVAL;
+
+	ret=channel_write(this_context.tsmd_API_channel,Buf,ret);
 	if(ret<0)
 		return TSM_E_CONNECTION_BROKEN;
 	while(1)
 	{
-		ret=channel_read(this_context.tsmd_API_channel,phTCM,sizeof(TSM_HTCM));
+		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
 		if(ret<0)
 			return TSM_E_CONNECTION_BROKEN;
-		if(ret==sizeof(TSM_HTCM))
+		if(ret>0)
 			break;
 		usleep(time_val.tv_usec);
 	}
-		
-	return TSM_SUCCESS;		
+
+	ret=blob_2_struct(Buf,&tspi_out,tspi_out_template);
+	if(ret<0)
+		return TSM_E_INVALID_ATTRIB_DATA;
+	*phTCM=tspi_out.hTCM;	
 	
+	return TSM_SUCCESS;		
 }

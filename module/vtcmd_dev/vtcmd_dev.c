@@ -505,10 +505,12 @@ static int vtcm_io_process(void * data)
 		{
 			int ret;
 			if(clock%50==0)
-  				ret = tcmd_connect(vtcmd_socket_name,vtcmd_port);
-			if(ret == 0)
 			{
-   				printk("connect succeed!\n");
+  				ret = tcmd_connect(vtcmd_socket_name,vtcmd_port);
+				if(ret == 0)
+				{
+   					printk("connect succeed!\n");
+				}
 			}
 		}
 

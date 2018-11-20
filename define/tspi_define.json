@@ -95,3 +95,137 @@
                 }
         }
 }
+{
+        "head":
+        {
+                "name":"tspi_in_GetRandom",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_IN",
+                "subtype":"GETRANDOM",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hTCM","type":"INT"},
+                                {"name":"ulRandomDataLength","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_GetRandom",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"GETRANDOM",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"ulRandomDataLength","type":"INT"},
+                                {"name":"rgbRandomData","type":"DEFINE","def":"ulRandomDataLength"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_in_PcrExtend",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_IN",
+                "subtype":"PCREXTEND",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hTCM","type":"INT"},
+                                {"name":"ulPcrIndex","type":"INT"},
+                                {"name":"ulPcrDataLength","type":"INT"},
+                                {"name":"pbPcrData","type":"DEFINE","def":"ulPcrDataLength"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_PcrExtend",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"PCREXTEND",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"ulPcrValueLength","type":"INT"},
+                                {"name":"rgbPcrValue","type":"DEFINE","def":"ulPcrValueLength"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_in_PcrRead",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_IN",
+                "subtype":"PCRREAD",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hTCM","type":"INT"},
+                                {"name":"ulPcrIndex","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_PcrRead",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"PCRREAD",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"ulPcrValueLength","type":"INT"},
+                                {"name":"rgbPcrValue","type":"DEFINE","def":"ulPcrValueLength"}
+                         ]
+                }
+        }
+}

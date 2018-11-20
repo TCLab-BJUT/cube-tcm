@@ -2,13 +2,13 @@
 #define _TSPI_H_
 
 #define   TSM_OBJECT_TYPE_POLICY    (0x01)      // Policy object
-#define   TSM_OBJECT_TYPE_SM2KEY    (0x02)      // RSA-Key object
-#define   TSM_OBJECT_TYPE_SM4KEY    (0x03)      // RSA-Key object
-#define   TSM_OBJECT_TYPE_ENCDATA   (0x04)      // Encrypted data object
-#define   TSM_OBJECT_TYPE_PCRS      (0x05)      // PCR composite object
-#define   TSM_OBJECT_TYPE_HASH      (0x06)      // Hash object
-#define   TSM_OBJECT_TYPE_NV        (0x07)      // NV object
-#define   TSM_OBJECT_TYPE_MIGDATA   (0x08)      // CMK Migration data object
+#define   TSM_OBJECT_TYPE_KEY       (0x02)      // RSA-Key object
+#define   TSM_OBJECT_TYPE_ENCDATA   (0x03)      // Encrypted data object
+#define   TSM_OBJECT_TYPE_PCRS      (0x04)      // PCR composite object
+#define   TSM_OBJECT_TYPE_HASH      (0x05)      // Hash object
+#define   TSM_OBJECT_TYPE_NV        (0x06)      // NV object
+#define   TSM_OBJECT_TYPE_MIGDATA   (0x07)      // CMK Migration data object
+#define   TSM_OBJECT_TYPE_EXCHANGE  (0x08)      // Key exchange object
 
 #include "tsm_typedef.h"
 #include "tsm_error.h"
