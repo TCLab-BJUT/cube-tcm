@@ -1,0 +1,97 @@
+{	
+	"head":
+	{
+		"name":"dtype_tspi_define",
+		"type":"TYPELIST"
+	},
+	"record":
+	{
+		"elem_no":3,
+		"elemlist":
+		[
+			"TSPI_GENERAL=0x2110",
+			"TSPI_IN=0x2111",
+			"TSPI_OUT=0x2112"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_tspi_in",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"TSPI_IN",
+		"elem_no":4,
+		"elemlist":
+		[
+            		"GETTCMOBJECT=0x01",
+            		"GETRANDOM",
+            		"PCREXTEND",
+            		"PCRREAD"
+		]
+	}
+}
+{
+	"head":
+	{
+		"name":"subtype_tspi_out",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"TSPI_OUT",
+		"elem_no":4,
+		"elemlist":
+		[
+            		"GETTCMOBJECT=0x01",
+            		"GETRANDOM",
+            		"PCREXTEND",
+            		"PCRREAD"
+		]
+	}
+}
+{
+        "head":
+        {
+                "name":"tspi_in_GetTcmObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_IN",
+                "subtype":"GETTCMOBJECT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hContext","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_GetTcmObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"GETTCMOBJECT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hTCM","type":"INT"}
+                         ]
+                }
+        }
+}
