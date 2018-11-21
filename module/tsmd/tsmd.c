@@ -451,7 +451,7 @@ int proc_each_tspicalls(void * sub_proc)
 			switch(apino)
 			{
 				case SUBTYPE(TSPI_IN,GETTCMOBJECT):
-					output_len=proc_tspi_GetTcmObject(sub_proc,tsmd_context->tsmd_send_buf,
+					output_len=proc_tsmd_GetTcmObject(sub_proc,tsmd_context->tsmd_send_buf,
 						tsmd_context->tsmd_recv_buf);	
 					break;
 				default:
@@ -463,7 +463,7 @@ int proc_each_tspicalls(void * sub_proc)
 	return 0;
 }
 
-int proc_tspi_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
+int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 {
 	int ret;
 	RECORD(TSPI_IN, GETTCMOBJECT) tspi_in;	
@@ -482,9 +482,81 @@ int proc_tspi_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
 	if(ret<0)
 		return ret;
-	tspi_out.returncode=0;
+
+  	struct tcm_in_GetRandom tcm_in;
+  	struct tcm_out_GetRandom tcm_out;
+
+	tcm_in.bytesRequested=0x10;
+
+	ret=proc_tcm_GetRandom(&tcm_in,&tcm_out,vtcm_caller);
+	
+	if(ret>0)
+		tspi_out.returncode=0;
+	else
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+	
 	tspi_out.paramSize=sizeof(tspi_out);
 	tspi_out.hTCM=tspi_in.hContext;
 	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
 	return ret;
+}
+
+int proc_tcm_GetRandom(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
+{
+  int outlen;
+  int i=0;
+  int ret=0;
+  struct tcm_in_GetRandom *vtcm_input=tcm_in;
+  struct tcm_out_GetRandom *vtcm_output=tcm_out;
+  void * vtcm_template;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_GETRANDOM_IN;
+  vtcm_input->bytesRequested=0x10;
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_GETRANDOM_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  vtcm_input->paramSize=sizeof(*vtcm_input);
+  ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(ret<0)
+    return ret;
+  printf("Send command for getRandom:\n");
+  print_bin_data(Buf,ret,8);
+  ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
+  if(ret<0)
+    return ret; 
+  printf("Receive  output is:\n");
+  print_bin_data(Buf,outlen,8);
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_GETRANDOM_OUT);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  ret = blob_2_struct(Buf,vtcm_output,vtcm_template);
+  return ret;
+}
+int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
+{
+  	int ret;
+        ret=channel_write(vtcm_caller,in,in_len);
+	if(ret!=in_len)
+		return -EINVAL;
+	for(;;)
+	{
+        	usleep(time_val.tv_usec);
+		ret=channel_read(vtcm_caller,out,DIGEST_SIZE*32);
+		if(ret<0)
+			return ret;
+		if(ret>0)
+		{
+			*out_len=ret;
+			break;
+		}	
+	}	
+	
+  	return ret;
 }
