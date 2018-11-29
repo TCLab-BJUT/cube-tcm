@@ -34,15 +34,18 @@
 #include "tspi.h"
 #include "tsmd.h"
 #include "tspi_internal.h"
+#include "tcm_func.h"
 
 
-static  BYTE Buf[DIGEST_SIZE*32];
-static  BYTE Output[DIGEST_SIZE*32];
-Record_List sessions_list;
+BYTE Buf[DIGEST_SIZE*32];
+BYTE Output[DIGEST_SIZE*32];
+
+extern Record_List sessions_list;
+/*
 TCM_PUBKEY * pubEK;
-TCM_SECRET ownweAuth;
+TCM_SECRET ownerAuth;
 TCM_SECRET smkAuth;
-
+*/
 struct tsm_object_list
 {
 	int object_type;
@@ -51,12 +54,13 @@ struct tsm_object_list
 
 Record_List entitys_list;
 
-static CHANNEL * vtcm_caller;
+CHANNEL * vtcm_caller;
 
+/*
 extern BYTE * CAprikey;
 extern unsigned long * CAprilen;
 extern BYTE * CApubkey;
-
+*/
 static key_t sem_key;
 static int semid;
 
@@ -65,6 +69,7 @@ static int shm_share_id;
 static int shm_size;
 char * pathname="/tmp";
 
+//int proc_tcm_GetRandom(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller);
 enum tsmd_context_init_state
 {
 	TSMD_CONTEXT_INIT_START=0x01,
@@ -174,84 +179,6 @@ TSMD_CONTEXT * Build_TsmdContext(int count, UINT32 tsmd_nonce)
   record->record=new_context;
   List_add_tail(&record->list,&server_context.contexts_list.list);
   return new_context;	
-}
-
-
-
-TCM_SESSION_DATA * Create_AuthSession_Data(TCM_ENT_TYPE * type,BYTE * auth,BYTE * nonce)
-{
-  TCM_SESSION_DATA * authdata=Dalloc0(sizeof(*authdata),NULL);
-  if(authdata==NULL)
-    return NULL;
-  authdata->entityTypeByte=*type;
-  Memcpy(authdata->nonceEven,nonce,TCM_HASH_SIZE);
-  Memcpy(authdata->sharedSecret,auth,TCM_HASH_SIZE);
-  return authdata;	
-}
-
-TCM_AUTHHANDLE Build_AuthSession(TCM_SESSION_DATA * authdata,void * tcm_out_data)
-{
-  BYTE auth[TCM_HASH_SIZE];
-  struct tcm_out_APCreate * apcreate_out = tcm_out_data;
-  authdata->SERIAL=apcreate_out->sernum;
-
-  // Build shareSecret
-  Memcpy(Buf,authdata->nonceEven,TCM_HASH_SIZE);
-  Memcpy(authdata->nonceEven,apcreate_out->nonceEven,TCM_HASH_SIZE);
-  Memcpy(Buf+TCM_HASH_SIZE,apcreate_out->nonceEven,TCM_HASH_SIZE);
-  Memcpy(auth,authdata->sharedSecret,TCM_HASH_SIZE);
-  sm3_hmac(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
-
-  if(authdata->entityTypeByte!=TCM_ET_NONE)
-  {
-    //	check the authcode
-
-  }
-  authdata->handle=apcreate_out->authHandle;
-  // add authdata to the session_list
-
-  Record_List * record = Calloc0(sizeof(*record));
-  if(record==NULL)
-    return -EINVAL;
-  INIT_LIST_HEAD(&record->list);
-  record->record=authdata;
-  List_add_tail(&record->list,&sessions_list.list);
-  return authdata->handle;	
-}
-
-
-TCM_SESSION_DATA * Find_AuthSession(TCM_ENT_TYPE type, TCM_AUTHHANDLE authhandle)
-{
-  Record_List * record;
-  Record_List * head;
-  struct List_head * curr;
-  TCM_SESSION_DATA * authdata;
-
-  head=&(sessions_list.list);
-  curr=head->list.next;
-
-  while(curr!=head)
-  {
-    record=List_entry(curr,Record_List,list);
-    authdata=record->record;
-    if(authdata==NULL)
-      return NULL;
-    if(type==0)
-    {
-      if(authdata->handle==authhandle)
-        return authdata;
-    }
-
-    if(authdata->entityTypeByte==type)
-    {
-      if(type==TCM_ET_NONE)
-        return authdata;
-      if(authdata->handle==authhandle)
-        return authdata;
-    }
-    curr=curr->next;
-  }
-  return NULL;
 }
 
 struct context_init * share_init_context;
@@ -454,6 +381,10 @@ int proc_each_tspicalls(void * sub_proc)
 					output_len=proc_tsmd_GetTcmObject(sub_proc,tsmd_context->tsmd_send_buf,
 						tsmd_context->tsmd_recv_buf);	
 					break;
+				case SUBTYPE(TSPI_IN,GETRANDOM):
+					output_len=proc_tsmd_GetRandom(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
 				default:
 					return -EINVAL;
 			}
@@ -501,62 +432,44 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	return ret;
 }
 
-int proc_tcm_GetRandom(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
+int proc_tsmd_GetRandom(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 {
-  int outlen;
-  int i=0;
-  int ret=0;
-  struct tcm_in_GetRandom *vtcm_input=tcm_in;
-  struct tcm_out_GetRandom *vtcm_output=tcm_out;
-  void * vtcm_template;
-  vtcm_input = Talloc0(sizeof(*vtcm_input));
-  if(vtcm_input==NULL)
-    return -ENOMEM;
-  vtcm_output = Talloc0(sizeof(*vtcm_output));
-  if(vtcm_output==NULL)
-    return -ENOMEM;
-  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
-  vtcm_input->ordinal = SUBTYPE_GETRANDOM_IN;
-  vtcm_input->bytesRequested=0x10;
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_GETRANDOM_IN);
-  if(vtcm_template==NULL)
-    return -EINVAL;
-  vtcm_input->paramSize=sizeof(*vtcm_input);
-  ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
-  if(ret<0)
-    return ret;
-  printf("Send command for getRandom:\n");
-  print_bin_data(Buf,ret,8);
-  ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
-  if(ret<0)
-    return ret; 
-  printf("Receive  output is:\n");
-  print_bin_data(Buf,outlen,8);
+	int ret;
+	RECORD(TSPI_IN, GETRANDOM) tspi_in;	
+	RECORD(TSPI_OUT, GETRANDOM) tspi_out;
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETRANDOM));
+        if(tspi_in_template == NULL)
+        {
+                return -EINVAL;
+        }
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,GETRANDOM));
+        if(tspi_out_template == NULL)
+        {
+                return -EINVAL;
+        }
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_GETRANDOM_OUT);
-  if(vtcm_template==NULL)
-    return -EINVAL;
-  ret = blob_2_struct(Buf,vtcm_output,vtcm_template);
-  return ret;
-}
-int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
-{
-  	int ret;
-        ret=channel_write(vtcm_caller,in,in_len);
-	if(ret!=in_len)
-		return -EINVAL;
-	for(;;)
-	{
-        	usleep(time_val.tv_usec);
-		ret=channel_read(vtcm_caller,out,DIGEST_SIZE*32);
-		if(ret<0)
-			return ret;
-		if(ret>0)
-		{
-			*out_len=ret;
-			break;
-		}	
-	}	
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
+	if(ret<0)
+		return ret;
+
+  	struct tcm_in_GetRandom tcm_in;
+  	struct tcm_out_GetRandom tcm_out;
+
+	tcm_in.bytesRequested=tspi_in.ulRandomDataLength;
+
+	ret=proc_tcm_GetRandom(&tcm_in,&tcm_out,vtcm_caller);
 	
-  	return ret;
+	if(ret>0)
+		tspi_out.returncode=0;
+	else
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+	
+	tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulRandomDataLength;
+	tspi_out.ulRandomDataLength=tspi_in.ulRandomDataLength;
+	tspi_out.rgbRandomData=Talloc0(tspi_out.ulRandomDataLength);
+	if(tspi_out.rgbRandomData==NULL)
+		return -ENOMEM;
+	Memcpy(tspi_out.rgbRandomData,tcm_out.randomBytes,tspi_out.ulRandomDataLength);
+	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
+	return ret;
 }

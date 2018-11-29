@@ -58,6 +58,20 @@ int main(int argc,char **argv)
 	return ret;
     }
     printf("hTCM is %x!\n",hTCM);
+
+    BYTE * RandomData;
+
+    ret= Tspi_TCM_GetRandom(hTCM,16,&RandomData);
+    if(ret!=TSM_SUCCESS)
+    {
+	printf("Tspi_Context_GetRandom Error!\n");
+	return ret;
+    }
+
+    printf("Random Data is :");
+    for(int i=0;i<16;i++)
+    	printf("%2.2x ",RandomData[i]);
+    printf("\n");
 /*
     ret=Tspi_TCM_PcrRead(hTCM,0,&PcrLength,&PcrValue);
     if(ret!=TSM_SUCCESS)

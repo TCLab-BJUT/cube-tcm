@@ -343,3 +343,57 @@ UINT32 Tspi_Context_GetTcmObject(TSM_HCONTEXT hContext, TSM_HTCM * phTCM)
 	
 	return TSM_SUCCESS;		
 }
+
+UINT32 Tspi_TCM_GetRandom(TSM_HTCM hTCM,UINT32 ulRandomDataLength, BYTE ** prgbRandomData)
+{
+	int ret;
+
+	RECORD(TSPI_IN,GETRANDOM) tspi_in;
+	RECORD(TSPI_OUT,GETRANDOM) tspi_out;
+
+	tspi_in.apino=SUBTYPE(TSPI_IN,GETRANDOM);
+	tspi_in.paramSize=sizeof(tspi_in);
+	tspi_in.hTCM=hTCM;
+	tspi_in.ulRandomDataLength=ulRandomDataLength;
+	
+
+	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETRANDOM));
+	if(tspi_in_template == NULL)
+	{
+		return -EINVAL;
+	}
+	void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,GETRANDOM));
+	if(tspi_out_template == NULL)
+	{
+		return -EINVAL;
+	}			
+	
+	ret=struct_2_blob(&tspi_in,Buf,tspi_in_template);
+	if(ret<0)
+		return -EINVAL;
+
+	ret=channel_write(this_context.tsmd_API_channel,Buf,ret);
+	if(ret<0)
+		return TSM_E_CONNECTION_BROKEN;
+	while(1)
+	{
+		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
+		if(ret<0)
+			return TSM_E_CONNECTION_BROKEN;
+		if(ret>0)
+			break;
+		usleep(time_val.tv_usec);
+	}
+
+	ret=blob_2_struct(Buf,&tspi_out,tspi_out_template);
+	if(ret<0)
+		return TSM_E_INVALID_ATTRIB_DATA;
+	*prgbRandomData=malloc(ulRandomDataLength);
+	if(*prgbRandomData == NULL)
+		return -ENOMEM;
+
+	Memcpy(*prgbRandomData,tspi_out.rgbRandomData,ulRandomDataLength);
+
+	Free(tspi_out.rgbRandomData);
+	return TSM_SUCCESS;		
+}
