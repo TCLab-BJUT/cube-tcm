@@ -385,6 +385,14 @@ int proc_each_tspicalls(void * sub_proc)
 					output_len=proc_tsmd_GetRandom(sub_proc,tsmd_context->tsmd_send_buf,
 						tsmd_context->tsmd_recv_buf);	
 					break;
+				case SUBTYPE(TSPI_IN,PCREXTEND):
+					output_len=proc_tsmd_PcrExtend(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
+				case SUBTYPE(TSPI_IN,PCRREAD):
+					output_len=proc_tsmd_PcrRead(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
 				default:
 					return -EINVAL;
 			}
@@ -470,6 +478,97 @@ int proc_tsmd_GetRandom(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	if(tspi_out.rgbRandomData==NULL)
 		return -ENOMEM;
 	Memcpy(tspi_out.rgbRandomData,tcm_out.randomBytes,tspi_out.ulRandomDataLength);
+	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
+	return ret;
+}
+
+int proc_tsmd_PcrExtend(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
+{
+	int ret;
+	RECORD(TSPI_IN, PCREXTEND) tspi_in;	
+	RECORD(TSPI_OUT, PCREXTEND) tspi_out;
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCREXTEND));
+	BYTE msghash[DIGEST_SIZE];
+        if(tspi_in_template == NULL)
+        {
+                return -EINVAL;
+        }
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,PCREXTEND));
+        if(tspi_out_template == NULL)
+        {
+                return -EINVAL;
+        }
+
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
+	if(ret<0)
+		return ret;
+
+  	struct tcm_in_extend tcm_in;
+  	struct tcm_out_extend tcm_out;
+
+	tcm_in.tag=htons(TCM_TAG_RQU_COMMAND);
+	tcm_in.ordinal=SUBTYPE_EXTEND_IN;
+	tcm_in.pcrNum=tspi_in.ulPcrIndex;
+	calculate_context_sm3(tspi_in.pbPcrData,tspi_in.ulPcrDataLength,tcm_in.inDigest);
+
+	ret=proc_tcm_Extend(&tcm_in,&tcm_out,vtcm_caller);
+	
+	if(ret>0)
+		tspi_out.returncode=0;
+	else
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+	
+	tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength;
+	tspi_out.ulPcrValueLength=DIGEST_SIZE;
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength);
+	if(tspi_out.rgbPcrValue==NULL)
+		return -ENOMEM;
+	Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength);
+	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
+	return ret;
+}
+
+int proc_tsmd_PcrRead(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
+{
+	int ret;
+	RECORD(TSPI_IN, PCRREAD) tspi_in;	
+	RECORD(TSPI_OUT, PCRREAD) tspi_out;
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCRREAD));
+	BYTE msghash[DIGEST_SIZE];
+        if(tspi_in_template == NULL)
+        {
+                return -EINVAL;
+        }
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,PCRREAD));
+        if(tspi_out_template == NULL)
+        {
+                return -EINVAL;
+        }
+
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
+	if(ret<0)
+		return ret;
+
+  	struct tcm_in_pcrread tcm_in;
+  	struct tcm_out_pcrread tcm_out;
+
+	tcm_in.tag=htons(TCM_TAG_RQU_COMMAND);
+	tcm_in.ordinal=SUBTYPE_PCRREAD_IN;
+	tcm_in.pcrIndex=tspi_in.ulPcrIndex;
+
+	ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller);
+	
+	if(ret>0)
+		tspi_out.returncode=0;
+	else
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+	
+	tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength;
+	tspi_out.ulPcrValueLength=DIGEST_SIZE;
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength);
+	if(tspi_out.rgbPcrValue==NULL)
+		return -ENOMEM;
+	Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength);
 	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
 	return ret;
 }

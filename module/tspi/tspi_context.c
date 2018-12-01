@@ -397,3 +397,117 @@ UINT32 Tspi_TCM_GetRandom(TSM_HTCM hTCM,UINT32 ulRandomDataLength, BYTE ** prgbR
 	Free(tspi_out.rgbRandomData);
 	return TSM_SUCCESS;		
 }
+
+UINT32 Tspi_TCM_PcrRead(TSM_HTCM hTCM,UINT32 ulPcrIndex, UINT32 * pulPcrValueLength, BYTE ** prgbPcrValue)
+{
+	int ret;
+
+	RECORD(TSPI_IN,PCRREAD) tspi_in;
+	RECORD(TSPI_OUT,PCRREAD) tspi_out;
+
+	tspi_in.apino=SUBTYPE(TSPI_IN,PCRREAD);
+	tspi_in.paramSize=sizeof(tspi_in);
+	tspi_in.hTCM=hTCM;
+	tspi_in.ulPcrIndex=ulPcrIndex;
+	
+	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCRREAD));
+	if(tspi_in_template == NULL)
+	{
+		return -EINVAL;
+	}
+	void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,PCRREAD));
+	if(tspi_out_template == NULL)
+	{
+		return -EINVAL;
+	}			
+	
+	ret=struct_2_blob(&tspi_in,Buf,tspi_in_template);
+	if(ret<0)
+		return -EINVAL;
+
+	ret=channel_write(this_context.tsmd_API_channel,Buf,ret);
+	if(ret<0)
+		return TSM_E_CONNECTION_BROKEN;
+	while(1)
+	{
+		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
+		if(ret<0)
+			return TSM_E_CONNECTION_BROKEN;
+		if(ret>0)
+			break;
+		usleep(time_val.tv_usec);
+	}
+
+	ret=blob_2_struct(Buf,&tspi_out,tspi_out_template);
+	if(ret<0)
+		return TSM_E_INVALID_ATTRIB_DATA;
+	*pulPcrValueLength=tspi_out.ulPcrValueLength;
+	*prgbPcrValue=malloc(*pulPcrValueLength);
+	if(*prgbPcrValue == NULL)
+		return -ENOMEM;
+
+	Memcpy(*prgbPcrValue,tspi_out.rgbPcrValue,*pulPcrValueLength);
+
+	Free(tspi_out.rgbPcrValue);
+	return TSM_SUCCESS;		
+}
+
+UINT32 Tspi_TCM_PcrExtend(TSM_HTCM hTCM,UINT32 ulPcrIndex, UINT32 ulPcrDataLength,BYTE * pbPcrData,
+	TSM_PCR_EVENT * pPcrEvent, UINT32 * pulPcrValueLength, BYTE ** prgbPcrValue)
+{
+	int ret;
+
+	RECORD(TSPI_IN,PCREXTEND) tspi_in;
+	RECORD(TSPI_OUT,PCREXTEND) tspi_out;
+
+	if(pPcrEvent!=NULL)
+		return -TSM_E_INVALID_OBJECT_TYPE;
+
+	tspi_in.apino=SUBTYPE(TSPI_IN,PCREXTEND);
+	tspi_in.paramSize=sizeof(tspi_in)-sizeof(BYTE *)+ulPcrDataLength;
+	tspi_in.hTCM=hTCM;
+	tspi_in.ulPcrIndex=ulPcrIndex;
+	tspi_in.ulPcrDataLength=ulPcrDataLength;
+	tspi_in.pbPcrData=pbPcrData;
+	
+	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCREXTEND));
+	if(tspi_in_template == NULL)
+	{
+		return -EINVAL;
+	}
+	void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,PCREXTEND));
+	if(tspi_out_template == NULL)
+	{
+		return -EINVAL;
+	}			
+	
+	ret=struct_2_blob(&tspi_in,Buf,tspi_in_template);
+	if(ret<0)
+		return -EINVAL;
+
+	ret=channel_write(this_context.tsmd_API_channel,Buf,ret);
+	if(ret<0)
+		return TSM_E_CONNECTION_BROKEN;
+	while(1)
+	{
+		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
+		if(ret<0)
+			return TSM_E_CONNECTION_BROKEN;
+		if(ret>0)
+			break;
+		usleep(time_val.tv_usec);
+	}
+
+	ret=blob_2_struct(Buf,&tspi_out,tspi_out_template);
+	if(ret<0)
+		return TSM_E_INVALID_ATTRIB_DATA;
+	*pulPcrValueLength=tspi_out.ulPcrValueLength;
+	*prgbPcrValue=malloc(*pulPcrValueLength);
+	if(*prgbPcrValue == NULL)
+		return -ENOMEM;
+
+	Memcpy(*prgbPcrValue,tspi_out.rgbPcrValue,*pulPcrValueLength);
+
+	Free(tspi_out.rgbPcrValue);
+	return TSM_SUCCESS;		
+}

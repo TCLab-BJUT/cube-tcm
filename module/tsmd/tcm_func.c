@@ -165,8 +165,6 @@ int proc_tcm_Extend(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
   struct tcm_out_extend *vtcm_output=tcm_out;
   void * vtcm_template;
 
-  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
-  vtcm_input->ordinal = SUBTYPE_EXTEND_IN;
   vtcm_input->paramSize=sizeof(*vtcm_input);
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_EXTEND_IN);
   if(vtcm_template==NULL)
@@ -190,6 +188,57 @@ int proc_tcm_Extend(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
   return ret;
 }
 
+int proc_tcm_General(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
+{
+  int i=0;
+  int ret=0;
+  struct vtcm_external_input_command *vtcm_input=tcm_in;
+  struct vtcm_external_output_command *vtcm_output=tcm_out;
+  void * vtcm_template;
+  int cmd_type,out_type;
+  int inlen,outlen;
+
+  if(vtcm_input->tag == htons(TCM_TAG_RQU_COMMAND))
+  {	
+	cmd_type=DTYPE_VTCM_IN;	
+	out_type=DTYPE_VTCM_OUT;
+  }
+  else if(vtcm_input->tag == htons(TCM_TAG_RQU_AUTH1_COMMAND))
+  {
+	cmd_type=DTYPE_VTCM_IN_AUTH1;	
+	out_type=DTYPE_VTCM_OUT_AUTH1;	
+  }
+  else if(vtcm_input->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
+  {
+	cmd_type=DTYPE_VTCM_IN_AUTH2;	
+	out_type=DTYPE_VTCM_IN_AUTH2;	
+  }
+  else
+  {	
+	return -TSM_E_INVALID_HANDLE;
+		
+  }	
+
+  vtcm_input->ordinal = SUBTYPE_PCRREAD_IN;
+  vtcm_input->paramSize=sizeof(*vtcm_input);
+  ret = vtcm_Build_CmdBlob(vtcm_input,cmd_type,vtcm_input->ordinal,Buf);
+  if(ret<0)
+     return -TSM_E_INVALID_HANDLE;
+  printf("Send command for getRandom:\n");
+  print_bin_data(Buf,ret,8);
+  inlen=ret;
+  ret = vtcmutils_transmit(inlen,Buf,&outlen,Buf,vtcm_caller);
+  if(ret<0)
+    return ret; 
+  printf("Receive  output is:\n");
+  print_bin_data(Buf,outlen,8);
+
+  vtcm_template=memdb_get_template(out_type,vtcm_input->ordinal);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  ret = blob_2_struct(Buf,vtcm_output,vtcm_template);
+  return ret;
+}
 int proc_tcm_PcrRead(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
 {
   int outlen;
@@ -223,6 +272,7 @@ int proc_tcm_PcrRead(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
   ret = blob_2_struct(Buf,vtcm_output,vtcm_template);
   return ret;
 }
+
 
 int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out,CHANNEL * vtcm_caller)
 {

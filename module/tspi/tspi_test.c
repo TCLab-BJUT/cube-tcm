@@ -72,14 +72,28 @@ int main(int argc,char **argv)
     for(int i=0;i<16;i++)
     	printf("%2.2x ",RandomData[i]);
     printf("\n");
-/*
+
     ret=Tspi_TCM_PcrRead(hTCM,0,&PcrLength,&PcrValue);
     if(ret!=TSM_SUCCESS)
     {
 	printf("Tspi_TCM_PcrRead Error!\n");
 	return ret;
     }
-*/
+    for(int i=0;i<32;i++)
+    	printf("%2.2x ",PcrValue[i]);
+    printf("\n");
+
+    char * ExtendValue="AAAAAAAAAAAAAAAA";
+
+    ret=Tspi_TCM_PcrExtend(hTCM,0,Strlen(ExtendValue),ExtendValue,NULL,&PcrLength,&PcrValue);
+    if(ret!=TSM_SUCCESS)
+    {
+	printf("Tspi_TCM_PcrRead Error!\n");
+	return ret;
+    }
+    for(int i=0;i<32;i++)
+    	printf("%2.2x ",PcrValue[i]);
+    printf("\n");
     return ret;
 }
 
