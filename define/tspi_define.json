@@ -18,6 +18,24 @@
 {
 	"head":
 	{
+		"name":"subtype_tspi_general",
+		"type":"SUBTYPELIST"
+	},
+	"record":
+	{
+		"type":"TSPI_GENERAL",
+		"elem_no":3,
+		"elemlist":
+		[
+            		"TSM_PCR_EVENT=0x01",
+            		"TSM_EVENT_CERT",
+            		"TSM_UUID"
+		]
+	}
+}
+{
+	"head":
+	{
 		"name":"subtype_tspi_in",
 		"type":"SUBTYPELIST"
 	},
@@ -52,6 +70,83 @@
             		"PCRREAD"
 		]
 	}
+}
+{
+        "head":
+        {
+                "name":"_tdTSM_PCR_EVENT",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_GENERAL",
+                "subtype":"TSM_PCR_EVENT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"versionInfo","type":"SUBSTRUCT","ref_name":"tcm_struct_ver"},
+                                {"name":"ulPcrIndex","type":"INT"},
+                                {"name":"eventType","type":"INT"},
+                                {"name":"ulPcrValueLength","type":"INT"},
+                                {"name":"rgbPcrValue","type":"DEFINE","def":"ulPcrValueLength"},
+                                {"name":"ulEventLength","type":"INT"},
+                                {"name":"rgbEvent","type":"DEFINE","def":"ulEventLength"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"_tdTSM_UUID",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_GENERAL",
+                "subtype":"TSM_UUID",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"ulTimeLow","type":"INT"},
+                                {"name":"ulTimeMid","type":"USHORT"},
+                                {"name":"ulTimeHigh","type":"USHORT"},
+                                {"name":"bClockSeqHigh","type":"UCHAR"},
+                                {"name":"bClockSeqLow","type":"UCHAR"},
+                                {"name":"rgbNode","type":"BINDATA","size":6}
+                         ]
+                }
+        }
+}
+{
+{
+        "head":
+        {
+                "name":"_tdTSM_EVENT_CERT",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_GENERAL",
+                "subtype":"TSM_EVENT_CERT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"versionInfo","type":"SUBSTRUCT","ref_name":"tcm_struct_ver"},
+                                {"name":"ulCertificateHashLength","type":"INT"},
+                                {"name":"rgbCertificateHash","type":"DEFINE","def":"ulCertificateHashLength"},
+                                {"name":"ulEntityDigestLength","type":"INT"},
+                                {"name":"rgbEntityDigest","type":"DEFINE","def":"ulEntityDigestLength"},
+                                {"name":"fDigestChecked","type":"UCHAR"},
+                                {"name":"fDigestVerified","type":"UCHAR"},
+                                {"name":"ulIssuerLength","type":"INT"},
+                                {"name":"rgbIssuer","type":"DEFINE","def":"ulIssuerLength"}
+                         ]
+                }
+        }
 }
 {
         "head":

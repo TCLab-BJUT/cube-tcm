@@ -31,6 +31,8 @@
 #include "sm3.h"
 #include "sm4.h"
 
+#include "tsm_typedef.h"
+#include "tsm_structs.h"
 #include "tspi.h"
 #include "tsmd.h"
 #include "tspi_internal.h"

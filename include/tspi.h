@@ -1,6 +1,14 @@
 #if !defined(_TSPI_H_)
 #define _TSPI_H_
 
+#define TSM_UUID_SMK  {0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 1}} // Storage root key
+//
+// TCM well-known secret
+//
+#define TSM_WELL_KNOWN_SECRET \
+        {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00\
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+
 #define   TSM_OBJECT_TYPE_POLICY    (0x01)      // Policy object
 #define   TSM_OBJECT_TYPE_KEY       (0x02)      // RSA-Key object
 #define   TSM_OBJECT_TYPE_ENCDATA   (0x03)      // Encrypted data object
@@ -9,6 +17,33 @@
 #define   TSM_OBJECT_TYPE_NV        (0x06)      // NV object
 #define   TSM_OBJECT_TYPE_MIGDATA   (0x07)      // CMK Migration data object
 #define   TSM_OBJECT_TYPE_EXCHANGE  (0x08)      // Key exchange object
+
+#define TSM_KEY_KEYTYPE_MASK    (UINT32)(0x000000FF) // indicate a 128-bit key
+#define TSM_KEY_SIZEVAL_MASK    (UINT32)(0x00000F00) // indicate a 128-bit key
+#define TSM_KEY_VOLATILE_MASK   (UINT32)(0x0000F000) // indicate a 128-bit key
+#define TSM_KEY_AUTH_MASK       (UINT32)(0x000F0000) // indicate a 128-bit key
+#define TSM_KEY_MIG_MASK        (UINT32)(0x00F00000) // indicate a 128-bit key
+
+#define TSM_KEY_SIZEVAL_128BIT  (UINT32)(0x00000100) // indicate a 128-bit key
+#define TSM_KEY_SIZEVAL_256BIT  (UINT32)(0x00000200) // indicate a 256-bit key
+#define TSM_KEY_SIZEVAL_512BIT  (UINT32)(0x00000300) // indicate a 512-bit key
+
+//   Non Volatile                                             |0|
+//   Volatile                                                 |1|
+//
+#define    TSM_KEY_NON_VOLATILE      (0x00000000)   // Key is non-volatile
+#define    TSM_KEYFLAG_VOLATILEKEY   (0x00004000)   // Key is volatile
+//   Never                                                      |0 0|
+//   Always                                                     |0 1|
+//   Private key always                                         |1 0|
+//
+#define   TSM_KEYAUTH_AUTH_NEVER              (0x00000000) // no auth needed
+                                                           // for this key
+#define   TSM_KEYAUTH_AUTH_ALWAYS             (0x00010000) // key needs auth
+                                                           // for all ops
+#define   TSM_KEYAUTH_AUTH_PRIV_USE_ONLY      (0x00020000) // key needs auth
+
+#define    TSM_KEYFLAG_MIGRATABLE             (0x00100000)   // Key is volatile
 
 #include "tsm_typedef.h"
 #include "tsm_error.h"

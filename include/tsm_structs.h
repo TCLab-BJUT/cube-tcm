@@ -30,14 +30,13 @@ typedef struct tdTSM_EVENT_CERT
     UINT32    ulCertificateHashLength;
     BYTE*     rgbCertificateHash;
     UINT32    ulEntityDigestLength;
-    BYTE*     rgbentityDigest;
+    BYTE*     rgbEntityDigest;
     TSM_BOOL  fDigestChecked;
     TSM_BOOL  fDigestVerified;
     UINT32    ulIssuerLength;
     BYTE*     rgbIssuer;
 } TSM_EVENT_CERT;
 
-/*
 typedef struct tdTSM_UUID 
 {
     UINT32  ulTimeLow;
@@ -48,6 +47,7 @@ typedef struct tdTSM_UUID
     BYTE   rgbNode[6];
 } TSM_UUID;
 
+/*
 typedef struct tdTSM_KM_KEYINFO 
 {
     TSM_VERSION  versionInfo;
