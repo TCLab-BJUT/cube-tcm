@@ -30,6 +30,9 @@
 #include "pik_struct.h"
 #include "sm3.h"
 #include "sm4.h"
+
+#include "tsm_typedef.h"
+#include "tsm_structs.h"
 #include "tspi.h"
 #include "tspi_context.h"
 #include "tspi_internal.h"
