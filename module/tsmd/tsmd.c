@@ -38,6 +38,7 @@
 #include "tspi_internal.h"
 #include "tcm_func.h"
 
+#include "tsmd_object.h"
 
 BYTE Buf[DIGEST_SIZE*32];
 BYTE Output[DIGEST_SIZE*32];
@@ -110,6 +111,14 @@ typedef struct tsmd_context_struct
 	CHANNEL * tsmd_API_channel;
 }__attribute__((packed)) TSMD_CONTEXT;
 
+typedef struct tsmd_object_struct
+{
+	TSM_HANDLE handle;
+	TSM_HCONTEXT hContext;
+	TSM_FLAG   object_type;
+	TSM_FLAG   object_flag;
+	void * object_struct;
+}__attribute__((packed)) TSMD_OBJECT;
 
 struct tsmd_server_struct
 {
@@ -156,6 +165,7 @@ TSMD_CONTEXT * Build_TsmdContext(int count, UINT32 tsmd_nonce)
 		continue; 
 	if(new_handle==tsmd_nonce)
 		continue;
+	new_context=Find_TsmdContext(new_handle);
   }while(new_context!=NULL);
 
   new_context=Dalloc0(sizeof(*new_context),NULL);
@@ -183,6 +193,81 @@ TSMD_CONTEXT * Build_TsmdContext(int count, UINT32 tsmd_nonce)
   return new_context;	
 }
 
+
+TSMD_OBJECT * Find_TsmdObject(UINT32 tsmd_handle)
+{
+  Record_List * record;
+  Record_List * head;
+  struct List_head * curr;
+  TSMD_OBJECT * tsmd_object;
+
+  head=&(entitys_list.list);
+  curr=head->list.next;
+
+  while(curr!=head)
+  {
+    record=List_entry(curr,Record_List,list);
+    tsmd_object=record->record;
+    if(tsmd_object==NULL)
+       return NULL;
+    if(tsmd_object->handle==tsmd_handle)
+        return tsmd_context;
+    curr=curr->next;
+  }
+  return NULL;
+}
+
+TSMD_OBJECT * Build_TsmdObject(UINT32 hContext, TSM_FLAG objectType,TSM_FLAG initFlags)
+{
+
+  TSMD_OBJECT * new_object=NULL;
+  TSMD_CONTEXT * old_context;
+  UINT32 new_handle;
+ 
+  do{
+	RAND_bytes(&new_handle,sizeof(new_handle));
+	if(new_handle==0)
+		continue; 
+	old_context=Find_TsmdContext(new_handle);
+	if(old_context!=NULL)
+		continue;
+	new_object=Find_TsmdObject(new_handle);	
+  }while(new_object!=NULL);
+
+  new_object=Dalloc0(sizeof(*new_object),NULL);
+  if(new_object==NULL)
+    return NULL;
+  new_object->handle=new_handle;
+  new_obeject->hContext=hContext;
+  new_object->object_type=objectType;
+  new_object->object_flag=initFlags;
+
+  switch(new_object->object_type)
+  {
+	case TSM_OBJECT_TYPE_KEY:
+		new_object->object_structs=Dalloc0(sizeof(struct tsmd_object_policy),new_object);	
+		break;
+	case TSM_OBJECT_TYPE_POLICY:
+		new_object->object_structs=Dalloc0(sizeof(struct tsmd_object_key),new_object);	
+		break;
+	default:
+		Free0(new_object);		
+		return NULL;	
+  }	
+
+  // add new object to the entitys_list
+
+  Record_List * record = Calloc0(sizeof(*record));
+  if(record==NULL)
+    return -EINVAL;
+  INIT_LIST_HEAD(&record->list);
+  record->record=new_object;
+  List_add_tail(&record->list,&entitys_list.list);
+  return new_object;	
+}
+
+
+
 struct context_init * share_init_context;
 
 int tsmd_init(void * sub_proc,void * para)
@@ -201,6 +286,9 @@ int tsmd_init(void * sub_proc,void * para)
 
    INIT_LIST_HEAD(&sessions_list.list);
    sessions_list.record=NULL;
+
+   INIT_LIST_HEAD(&entitys_list.list);
+   entitys_list.record=NULL;
 
    INIT_LIST_HEAD(&server_context.contexts_list.list);
    server_context.contexts_list.record=NULL;
