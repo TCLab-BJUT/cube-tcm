@@ -211,7 +211,7 @@ TSMD_OBJECT * Find_TsmdObject(UINT32 tsmd_handle)
     if(tsmd_object==NULL)
        return NULL;
     if(tsmd_object->handle==tsmd_handle)
-        return tsmd_context;
+        return tsmd_object;
     curr=curr->next;
   }
   return NULL;
@@ -238,17 +238,20 @@ TSMD_OBJECT * Build_TsmdObject(UINT32 hContext, TSM_FLAG objectType,TSM_FLAG ini
   if(new_object==NULL)
     return NULL;
   new_object->handle=new_handle;
-  new_obeject->hContext=hContext;
+  new_object->hContext=hContext;
   new_object->object_type=objectType;
   new_object->object_flag=initFlags;
 
   switch(new_object->object_type)
   {
+	case TSM_OBJECT_TYPE_TCM:
+		new_object->object_struct=Dalloc0(sizeof(struct tsmd_object_tcm),new_object);	
+		break;
 	case TSM_OBJECT_TYPE_KEY:
-		new_object->object_structs=Dalloc0(sizeof(struct tsmd_object_policy),new_object);	
+		new_object->object_struct=Dalloc0(sizeof(struct tsmd_object_policy),new_object);	
 		break;
 	case TSM_OBJECT_TYPE_POLICY:
-		new_object->object_structs=Dalloc0(sizeof(struct tsmd_object_key),new_object);	
+		new_object->object_struct=Dalloc0(sizeof(struct tsmd_object_key),new_object);	
 		break;
 	default:
 		Free0(new_object);		
@@ -497,6 +500,7 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	int ret;
 	RECORD(TSPI_IN, GETTCMOBJECT) tspi_in;	
 	RECORD(TSPI_OUT, GETTCMOBJECT) tspi_out;
+	TSMD_OBJECT * tcm_object;
         void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETTCMOBJECT));
         if(tspi_in_template == NULL)
         {
@@ -520,12 +524,22 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	ret=proc_tcm_GetRandom(&tcm_in,&tcm_out,vtcm_caller);
 	
 	if(ret>0)
-		tspi_out.returncode=0;
+	{
+		tcm_object=Build_TsmdObject(tspi_in.hContext,TSM_OBJECT_TYPE_TCM,0);
+		if(tcm_object==NULL)
+			tspi_out.returncode=TSM_E_INVALID_HANDLE;
+		else
+		{
+			tspi_out.hTCM=tcm_object->handle;
+			tspi_out.returncode=0;
+		}
+			
+	}
 	else
 		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+
 	
 	tspi_out.paramSize=sizeof(tspi_out);
-	tspi_out.hTCM=tspi_in.hContext;
 	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
 	return ret;
 }
