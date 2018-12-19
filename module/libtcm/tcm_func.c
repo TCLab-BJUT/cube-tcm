@@ -49,6 +49,8 @@ static enum vtcm_trans_type trans_type;
                                          
 char * tcm_devname="/dev/tcm";
 int dev_fd;
+static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
+static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
 
 extern BYTE * CAprikey;
 extern unsigned long * CAprilen;
@@ -128,6 +130,105 @@ TCM_SESSION_DATA * Find_AuthSession(TCM_ENT_TYPE type, TCM_AUTHHANDLE authhandle
     curr=curr->next;
   }
   return NULL;
+}
+
+int _TSMD_Init()
+{
+    int ret;
+    int retval;
+    int i,j;
+    int argv_offset;	
+    char namebuffer[DIGEST_SIZE*4];
+    void * main_proc; // point to the main proc's subject struct
+    char * sys_plugin;		
+    char * app_plugin;		
+    char * base_define;
+
+    int readlen;
+    int json_offset;
+    void * memdb_template ;
+    BYTE uuid[DIGEST_SIZE];
+    char local_uuid[DIGEST_SIZE*2];
+
+    FILE * fp;
+    char audit_text[4096];
+    char buffer[4096];
+    void * root_node;
+    void * temp_node;
+    int fd;	
+
+    char * baseconfig[] =
+    {
+	"namelist.json",
+	"dispatchnamelist.json",
+	"typelist.json",
+	"subtypelist.json",
+	"memdb.json",
+	"msghead.json",
+	"msgrecord.json",
+	"expandrecord.json",
+	"base_msg.json",
+	"dispatchrecord.json",
+	"exmoduledefine.json",
+	 NULL
+    };
+
+    sys_plugin=getenv("CUBE_SYS_PLUGIN");
+    // process the command argument
+
+    int ifmerge=0;
+
+//	alloc_init(alloc_buffer);
+	struct_deal_init();
+	memdb_init();
+
+    	base_define=getenv("CUBE_BASE_DEFINE");
+	for(i=0;baseconfig[i]!=NULL;i++)
+	{
+		Strcpy(namebuffer,base_define);
+		Strcat(namebuffer,"/");
+		Strcat(namebuffer,baseconfig[i]);
+		ret=read_json_file(namebuffer);
+		if(ret<0)
+			return ret;
+		printf("read %d elem from file %s!\n",ret,namebuffer);
+	}
+
+
+	msgfunc_init();
+
+
+    struct lib_para_struct * lib_para=NULL;
+    fd=open(sys_config_file,O_RDONLY);
+    if(fd>0)
+    {
+
+   	 ret=read_json_node(fd,&root_node);
+  	 if(ret<0)
+		return ret;	
+    	 close(fd);
+	
+
+    	 ret=read_sys_cfg(&lib_para,root_node,NULL);
+    	 if(ret<0)
+		return ret;
+    }	 		
+    fd=open(main_config_file,O_RDONLY);
+    if(fd<0)
+	return -EINVAL;
+
+    ret=read_json_node(fd,&root_node);
+    if(ret<0)
+	return ret;	
+    close(fd);
+	
+    ret=read_main_cfg(lib_para,root_node);
+    if(ret<0)
+	return ret; 		
+
+    ret=get_local_uuid(local_uuid);
+    printf("this machine's local uuid is %s\n",local_uuid);
+    return 0;	
 }
 
 UINT32 TCM_LibInit(void)

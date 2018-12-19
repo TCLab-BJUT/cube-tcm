@@ -42,6 +42,8 @@ int main(int argc,char **argv)
     BYTE Buf[DIGEST_SIZE*64];
     int  Buflen;
 
+    ret=_TSMD_Init();
+
     ret= TCM_LibInit(); 
 
     ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
