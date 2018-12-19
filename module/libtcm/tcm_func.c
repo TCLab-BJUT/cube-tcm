@@ -45,7 +45,7 @@ enum vtcm_trans_type
         DRV_IOCTL=1,
         DRV_RW
 };
-static enum vtcm_trans_type trans_type;
+static enum vtcm_trans_type trans_type=DRV_IOCTL;
                                          
 char * tcm_devname="/dev/tcm";
 int dev_fd;
