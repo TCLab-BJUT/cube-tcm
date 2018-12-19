@@ -42,13 +42,18 @@
 	"record":
 	{
 		"type":"TSPI_IN",
-		"elem_no":4,
+		"elem_no":9,
 		"elemlist":
 		[
             		"GETTCMOBJECT=0x01",
             		"GETRANDOM",
             		"PCREXTEND",
-            		"PCRREAD"
+            		"PCRREAD",
+            		"GETPOLICYOBJECT",
+            		"SETSECRET",
+            		"GETPUBENDORSEMENTKEY",
+            		"CREATEOBJECT",
+            		"TAKEOWNERSHIP"
 		]
 	}
 }
@@ -61,13 +66,18 @@
 	"record":
 	{
 		"type":"TSPI_OUT",
-		"elem_no":4,
+		"elem_no":9,
 		"elemlist":
 		[
             		"GETTCMOBJECT=0x01",
             		"GETRANDOM",
             		"PCREXTEND",
-            		"PCRREAD"
+            		"PCRREAD",
+            		"GETPOLICYOBJECT",
+            		"SETSECRET",
+            		"GETPUBENDORSEMENTKEY",
+            		"CREATEOBJECT",
+            		"TAKEOWNERSHIP"
 		]
 	}
 }

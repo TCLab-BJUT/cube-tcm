@@ -501,6 +501,8 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	RECORD(TSPI_IN, GETTCMOBJECT) tspi_in;	
 	RECORD(TSPI_OUT, GETTCMOBJECT) tspi_out;
 	TSMD_OBJECT * tcm_object;
+	TSMD_OBJECT * policy_object;
+	struct tsmd_object_tcm * tcm_struct;
         void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETTCMOBJECT));
         if(tspi_in_template == NULL)
         {
@@ -530,8 +532,16 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 			tspi_out.returncode=TSM_E_INVALID_HANDLE;
 		else
 		{
-			tspi_out.hTCM=tcm_object->handle;
-			tspi_out.returncode=0;
+			policy_object=Build_TsmdObject(tspi_in.hContext,TSM_OBJECT_TYPE_POLICY,0);
+			if(policy_object==NULL)
+				tspi_out.returncode=TSM_E_INVALID_HANDLE;
+			else
+			{
+				tcm_struct=tcm_object->object_struct;
+				tcm_struct->policy=policy_object->handle;
+				tspi_out.hTCM=tcm_object->handle;
+				tspi_out.returncode=0;
+			}
 		}
 			
 	}
