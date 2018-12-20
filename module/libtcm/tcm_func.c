@@ -332,7 +332,6 @@ int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
 UINT32 TCM_CreateEndorsementKeyPair(BYTE * pubkeybuf,UINT32 * pubkeybuflen)
 {
   int outlen;
-  int i=1;
   int ret = 0;
   struct tcm_in_CreateEKPair * vtcm_input;
   struct tcm_out_CreateEKPair * vtcm_output;
@@ -383,3 +382,61 @@ UINT32 TCM_CreateEndorsementKeyPair(BYTE * pubkeybuf,UINT32 * pubkeybuflen)
   return 0;
 } 
 
+UINT32 TCM_Extend(UINT32 pcrIndex,
+                    BYTE * event,
+                    BYTE * pcrvalue)
+{
+  int ret = 0;
+  struct tcm_in_extend * vtcm_input;
+  struct tcm_out_extend * vtcm_output;
+  void * vtcm_template;
+
+  printf("Begin TCM Extend:\n");
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal=SUBTYPE_EXTEND_IN;
+  Memcpy(vtcm_input->inDigest,event,DIGEST_SIZE); 
+  vtcm_input->pcrNum=pcrIndex;
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
+  return 0;
+}
+
+UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue)
+{
+  int ret = 0;
+  struct tcm_in_pcrread * vtcm_input;
+  struct tcm_out_pcrread * vtcm_output;
+  void * vtcm_template;
+
+  printf("Begin TCM pcrread:\n");
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal=SUBTYPE_PCRREAD_IN;
+  vtcm_input->pcrIndex=pcrindex;
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
+  return 0;
+}

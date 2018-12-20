@@ -42,12 +42,22 @@ int main(int argc,char **argv)
     BYTE Buf[DIGEST_SIZE*64];
     int  Buflen;
 
+    BYTE inDigest[DIGEST_SIZE];
+    BYTE outDigest[DIGEST_SIZE];
+
     ret=_TSMD_Init();
 
     ret= TCM_LibInit(); 
 
-    ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
+//    ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
 
-    return ret;
+    Memset(inDigest,'A',DIGEST_SIZE);
+
+    ret=TCM_Extend(0,inDigest,outDigest);
+
+    if(ret==0)
+    	ret=TCM_PcrRead(0,outDigest);
+    return ret;	
+
 }
 
