@@ -35,7 +35,7 @@
 #define TCMIOC_TRANSMIT _IO('T', 0x01)
 
 Record_List sessions_list;
-TCM_PUBKEY * pubEK;
+TCM_PUBKEY * pubEK=NULL;
 TCM_SECRET ownerAuth;
 TCM_SECRET smkAuth;
 BYTE Buf[DIGEST_SIZE*32];
@@ -438,5 +438,48 @@ UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue)
   if(vtcm_output->returnCode!=0)
 	return vtcm_output->returnCode;
   Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
+  return 0;
+}
+
+UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
+{
+  int outlen;
+  int ret = 0;
+  struct tcm_in_ReadPubek * vtcm_input;
+  struct tcm_out_ReadPubek * vtcm_output;
+  void * vtcm_template;
+
+  printf("Begin ReadPubek:\n");
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal=SUBTYPE_READPUBEK_IN;
+  RAND_bytes(vtcm_input->antiReplay,DIGEST_SIZE);
+ 
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
+  ret = struct_clone(key,&vtcm_output->pubEndorsementKey,vtcm_template);
+  if(ret<0)
+     return -EINVAL;
+
+  if(pubEK==NULL)
+  {
+	pubEK=Dalloc0(sizeof(*pubEK),NULL);
+	if(pubEK==NULL)
+		return -ENOMEM;
+  	ret = struct_clone(pubEK,&vtcm_output->pubEndorsementKey,vtcm_template);
+ 	 if(ret<0)
+		return -EINVAL;
+  }
   return 0;
 }

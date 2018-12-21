@@ -57,6 +57,10 @@ int main(int argc,char **argv)
 
     if(ret==0)
     	ret=TCM_PcrRead(0,outDigest);
+
+    TCM_PUBKEY pubek;
+
+//    ret=TCM_ReadPubek(&pubek);
     return ret;	
 
 }
