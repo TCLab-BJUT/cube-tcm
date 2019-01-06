@@ -16,8 +16,4 @@ in: apterminate -ih $ownerHandle
 in:  apcreate -it 04 -pwd sss
 out: 1:$smkHandle
 
-in:  pcrread -ix 1
-out: 1:$pcrValue
-
-in:  extend -ix 1 -ic aaaa
-out: 1:$pcrValue
+in: apterminate -ih $smkHandle
