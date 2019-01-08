@@ -7,7 +7,7 @@ TSM error return codes
 #ifndef __TSM_ERROR_H__
 #define __TSM_ERROR_H__
 
-#include <tss/platform.h>
+//#include <tss/platform.h>
 
 //
 // error coding scheme for a Microsoft Windows platform -
