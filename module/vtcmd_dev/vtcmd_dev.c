@@ -147,7 +147,7 @@ static int tcmd_connect(char *socket_name,int port)
   int res;
   struct sockaddr_in * tcm_addr;
 //   res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
-   res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
+   res = sock_create_kern(AF_INET, SOCK_STREAM, 0, &tcmd_sock);
   if (res != 0) {
     error("sock_create_kern() failed: %d\n", res);
     tcmd_sock = NULL;
@@ -505,10 +505,12 @@ static int vtcm_io_process(void * data)
 		{
 			int ret;
 			if(clock%50==0)
-  				ret = tcmd_connect(vtcmd_socket_name,vtcmd_port);
-			if(ret == 0)
 			{
-   				printk("connect succeed!\n");
+  				ret = tcmd_connect(vtcmd_socket_name,vtcmd_port);
+				if(ret == 0)
+				{
+   					printk("connect succeed!\n");
+				}
 			}
 		}
 
