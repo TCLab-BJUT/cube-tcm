@@ -1,0 +1,23 @@
+{
+	"head":
+	{
+		"name":"tsm_object_type",
+		"type":"NAMELIST"
+	},
+	"record":
+	{
+		"elem_no":8,
+		"elemlist":
+		[
+			"POLICY=0x01",
+			"KEY",
+			"ENCDATA",
+			"PCRS",
+			"HASH",
+			"NV",
+			"MIGDATA",
+			"EXCHANGE"
+			
+		]
+	}
+}

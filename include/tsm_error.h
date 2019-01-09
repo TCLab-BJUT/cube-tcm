@@ -7,7 +7,7 @@ TSM error return codes
 #ifndef __TSM_ERROR_H__
 #define __TSM_ERROR_H__
 
-#include <tss/platform.h>
+//#include <tss/platform.h>
 
 //
 // error coding scheme for a Microsoft Windows platform -
@@ -55,6 +55,8 @@ TSM error return codes
 //  Successful completion of the operation.
 //
 #define TSM_SUCCESS     (UINT32)(0x00000000L)
+
+#define TSM_E_BASE      (UINT32)(0x00000000L)
 
 //
 // MessageId: TSM_E_INVALID_OBJECT_TYPE
@@ -195,6 +197,162 @@ TSM error return codes
 //
 #define TSM_E_KEY_NOT_LOADED    (UINT32)(0x10EL)
 
+//
+// MessageId: TSM_E_KEY_NOT_SET
+//
+// MessageText:
+//
+// No key information is currently available.
+//
+#define TSM_E_KEY_NOT_SET    (UINT32)(TSM_E_BASE + 0x10FL)
+      
+//
+// MessageId: TSM_E_VALIDATION_FAILED
+//
+// MessageText:
+//
+// Internal validation of data failed.
+//
+#define TSM_E_VALIDATION_FAILED   (UINT32)(TSM_E_BASE + 0x110L)
+
+//
+// MessageId: TSM_E_TSP_AUTHREQUIRED
+//
+// MessageText:
+//
+// Authorization is required.
+//
+#define TSM_E_TSP_AUTHREQUIRED   (UINT32)(TSM_E_BASE + 0x111L)
+
+//
+// MessageId: TSM_E_TSP_AUTH2REQUIRED
+//
+// MessageText:
+//
+// Multiple authorization is required.
+//
+#define TSM_E_TSP_AUTH2REQUIRED   (UINT32)(TSM_E_BASE + 0x112L)
+
+// MessageId: TSM_E_TSP_AUTHFAIL
+//
+// MessageText:
+//
+// Authorization failed.
+//
+#define TSM_E_TSP_AUTHFAIL    (UINT32)(TSM_E_BASE + 0x113L)
+
+//
+// MessageId: TSM_E_TSP_AUTH2FAIL
+//
+// MessageText:
+//
+// Multiple authorization failed.
+//
+#define TSM_E_TSP_AUTH2FAIL    (UINT32)(TSM_E_BASE + 0x114L)
+ 
+//
+// MessageId: TSM_E_KEY_NO_MIGRATION_POLICY
+//
+//
+// MessageText:
+//
+// There's no migration policy object set for the addressed key.
+//
+#define TSM_E_KEY_NO_MIGRATION_POLICY  (UINT32)(TSM_E_BASE + 0x115L) 
+
+//
+// MessageId: TSM_E_POLICY_NO_SECRET
+//
+// MessageText:
+//
+// No secret information is currently available for the addressed policy object.
+//
+#define TSM_E_POLICY_NO_SECRET   (UINT32)(TSM_E_BASE + 0x116L)
+
+//
+// MessageId: TSM_E_INVALID_OBJ_ACCESS
+//
+// MessageText:
+//
+// The operation failed due to an invalid object status.
+//
+#define TSM_E_INVALID_OBJ_ACCESS   (UINT32)(TSM_E_BASE + 0x117L)
+
+//
+// MessageId: TSM_E_INVALID_ENCSCHEME
+//
+// MessageText:
+//
+// 
+//
+#define TSM_E_INVALID_ENCSCHEME   (UINT32)(TSM_E_BASE + 0x118L)
+
+
+//
+// MessageId: TSM_E_INVALID_SIGSCHEME
+//
+// MessageText:
+//
+// 
+//
+#define TSM_E_INVALID_SIGSCHEME   (UINT32)(TSM_E_BASE + 0x119L)
+
+//
+// MessageId: TSM_E_ENC_INVALID_LENGTH
+//
+// MessageText:
+//
+// 
+//
+#define TSM_E_ENC_INVALID_LENGTH   (UINT32)(TSM_E_BASE + 0x120L)
+
+
+//
+// MessageId: TSM_E_ENC_NO_DATA
+//
+// MessageText:
+//
+// 
+//
+#define TSM_E_ENC_NO_DATA    (UINT32)(TSM_E_BASE + 0x121L)
+
+//
+// MessageId: TSM_E_ENC_INVALID_TYPE
+//
+// MessageText:
+//
+// 
+//
+#define TSM_E_ENC_INVALID_TYPE   (UINT32)(TSM_E_BASE + 0x122L)
+
+
+//
+// MessageId: TSM_E_INVALID_KEYUSAGE
+//
+// MessageText:
+//
+// 
+//
+#define TSM_E_INVALID_KEYUSAGE   (UINT32)(TSM_E_BASE + 0x123L)
+
+//
+// MessageId: TSM_E_VERIFICATION_FAILED
+//
+// MessageText:
+//
+// 
+//
+#define TSM_E_VERIFICATION_FAILED   (UINT32)(TSM_E_BASE + 0x124L)
+
+//
+// MessageId: TSM_E_HASH_NO_IDENTIFIER
+//
+// MessageText:
+//
+// Hash algorithm identifier not set.
+//
+#define TSM_E_HASH_NO_IDENTIFIER   (UINT32)(TSM_E_BASE + 0x125L)
+
 /*
 //
 // MessageId: TSM_E_FAIL
@@ -204,6 +362,7 @@ TSM error return codes
 //  An internal error has been detected, but the source is unknown.
 //
 #define TSM_E_FAIL     (UINT32)(TSM_E_BASE + 0x002L)
+*/
 
 //
 // MessageId: TSM_E_BAD_PARAMETER
@@ -329,161 +488,6 @@ TSM error return codes
 //
 
  
-//
-// MessageId: TSM_E_KEY_NOT_SET
-//
-// MessageText:
-//
-// No key information is currently available.
-//
-#define TSM_E_KEY_NOT_SET    (UINT32)(TSM_E_BASE + 0x10FL)
-      
-//
-// MessageId: TSM_E_VALIDATION_FAILED
-//
-// MessageText:
-//
-// Internal validation of data failed.
-//
-#define TSM_E_VALIDATION_FAILED   (UINT32)(TSM_E_BASE + 0x110L)
-
-//
-// MessageId: TSM_E_TSP_AUTHREQUIRED
-//
-// MessageText:
-//
-// Authorization is required.
-//
-#define TSM_E_TSP_AUTHREQUIRED   (UINT32)(TSM_E_BASE + 0x111L)
-
-//
-// MessageId: TSM_E_TSP_AUTH2REQUIRED
-//
-// MessageText:
-//
-// Multiple authorization is required.
-//
-#define TSM_E_TSP_AUTH2REQUIRED   (UINT32)(TSM_E_BASE + 0x112L)
-
-//
-// MessageId: TSM_E_TSP_AUTHFAIL
-//
-// MessageText:
-//
-// Authorization failed.
-//
-#define TSM_E_TSP_AUTHFAIL    (UINT32)(TSM_E_BASE + 0x113L)
-
-//
-// MessageId: TSM_E_TSP_AUTH2FAIL
-//
-// MessageText:
-//
-// Multiple authorization failed.
-//
-#define TSM_E_TSP_AUTH2FAIL    (UINT32)(TSM_E_BASE + 0x114L)
- 
-//
-// MessageId: TSM_E_KEY_NO_MIGRATION_POLICY
-//
-// MessageText:
-//
-// There's no migration policy object set for the addressed key.
-//
-#define TSM_E_KEY_NO_MIGRATION_POLICY  (UINT32)(TSM_E_BASE + 0x115L) 
-
-//
-// MessageId: TSM_E_POLICY_NO_SECRET
-//
-// MessageText:
-//
-// No secret information is currently available for the addressed policy object.
-//
-#define TSM_E_POLICY_NO_SECRET   (UINT32)(TSM_E_BASE + 0x116L)
-
-//
-// MessageId: TSM_E_INVALID_OBJ_ACCESS
-//
-// MessageText:
-//
-// The operation failed due to an invalid object status.
-//
-#define TSM_E_INVALID_OBJ_ACCESS   (UINT32)(TSM_E_BASE + 0x117L)
-
-//
-// MessageId: TSM_E_INVALID_ENCSCHEME
-//
-// MessageText:
-//
-// 
-//
-#define TSM_E_INVALID_ENCSCHEME   (UINT32)(TSM_E_BASE + 0x118L)
-
-
-//
-// MessageId: TSM_E_INVALID_SIGSCHEME
-//
-// MessageText:
-//
-// 
-//
-#define TSM_E_INVALID_SIGSCHEME   (UINT32)(TSM_E_BASE + 0x119L)
-
-//
-// MessageId: TSM_E_ENC_INVALID_LENGTH
-//
-// MessageText:
-//
-// 
-//
-#define TSM_E_ENC_INVALID_LENGTH   (UINT32)(TSM_E_BASE + 0x120L)
-
-
-//
-// MessageId: TSM_E_ENC_NO_DATA
-//
-// MessageText:
-//
-// 
-//
-#define TSM_E_ENC_NO_DATA    (UINT32)(TSM_E_BASE + 0x121L)
-
-//
-// MessageId: TSM_E_ENC_INVALID_TYPE
-//
-// MessageText:
-//
-// 
-//
-#define TSM_E_ENC_INVALID_TYPE   (UINT32)(TSM_E_BASE + 0x122L)
-
-
-//
-// MessageId: TSM_E_INVALID_KEYUSAGE
-//
-// MessageText:
-//
-// 
-//
-#define TSM_E_INVALID_KEYUSAGE   (UINT32)(TSM_E_BASE + 0x123L)
-
-//
-// MessageId: TSM_E_VERIFICATION_FAILED
-//
-// MessageText:
-//
-// 
-//
-#define TSM_E_VERIFICATION_FAILED   (UINT32)(TSM_E_BASE + 0x124L)
-
-//
-// MessageId: TSM_E_HASH_NO_IDENTIFIER
-//
-// MessageText:
-//
-// Hash algorithm identifier not set.
-//
-#define TSM_E_HASH_NO_IDENTIFIER   (UINT32)(TSM_E_BASE + 0x125L)
 
 //
 // MessageId: TSM_E_EK_CHECKSUM
@@ -653,6 +657,5 @@ TSM error return codes
 //  The TPM active counter has not been set yet.
 //
 #define TSM_E_NO_ACTIVE_COUNTER                  (UINT32)(TSM_E_BASE + 0x142L)
-*/
 
 #endif // __TSM_ERROR_H__
