@@ -74,7 +74,7 @@ MODULE_PARM_DESC(vtcmd_port, " Sets the port number of the TCM daemon socket.");
 static int major;
 
 enum vtcm_state {
-	VTCM_STATE_WAIT,
+	VTCM_STATE_WAIT=1,
 	VTCM_STATE_SEND,
 	VTCM_STATE_RECV,
 	VTCM_STATE_RET,
@@ -82,7 +82,7 @@ enum vtcm_state {
 };
 
 enum vtcm_action{
-	VTCM_ACTION_NONE,
+	VTCM_ACTION_NONE=1,
 	VTCM_ACTION_IOCTL,
 	VTCM_ACTION_RW
 	
@@ -523,7 +523,7 @@ static int vtcm_io_process(void * data)
 				int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
 				if(outtime > maxwaittime)
 				{	
-					debug("cmd timeout %d ms!\n",outtime);
+					debug("cmd timeout %d ms! state is %d\n",outtime,vtcm_dev->state);
 					vtcm_dev->state=VTCM_STATE_ERR;
 					vtcm_dev->timeout=0;
 					complete(&vtcm_dev->vtcm_notice);
