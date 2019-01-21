@@ -211,5 +211,6 @@ struct vtcm_export_cmd_out
     	BYTE * data;
 }__attribute__((packed));
 
+extern int  vtcm_no;
 
 #endif

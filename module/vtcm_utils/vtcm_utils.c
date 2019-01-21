@@ -29,7 +29,6 @@
 #include "vtcm_utils.h"
 #include "app_struct.h"
 #include "pik_struct.h"
-#include "sm3.h"
 #include "sm4.h"
 
 static  BYTE Buf[DIGEST_SIZE*32];
@@ -127,7 +126,7 @@ TCM_AUTHHANDLE Build_AuthSession(TCM_SESSION_DATA * authdata,void * tcm_out_data
   Memcpy(authdata->nonceEven,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(Buf+TCM_HASH_SIZE,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(auth,authdata->sharedSecret,TCM_HASH_SIZE);
-  sm3_hmac(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
+  SM3_hmac(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
 
   if(authdata->entityTypeByte!=TCM_ET_NONE)
   {
@@ -237,7 +236,7 @@ int proc_vtcmutils_EvictKey(void *sub_proc,void *para);
 //int proc_vtcmutils_ExCaSign(void * sub_proc,void * para);
 //int proc_vtcmutils_Ex
 int proc_vtcmutils_WrapKey(void *sub_proc,void *para);
-
+/*
 int vtcm_SM3(BYTE* checksum, unsigned char *buffer, int size)                                                       
 {
   printf("vtcm_SM3: Start\n");
@@ -247,58 +246,17 @@ int vtcm_SM3(BYTE* checksum, unsigned char *buffer, int size)
   sm3_update(&ctx, buffer, size);
   sm3_finish(&ctx, checksum);
   return ret;
-
 }
+*/
 int vtcm_SM3_1(BYTE* checksum, unsigned char* buffer,int size, unsigned char* buffer1,int size1)                                                       
 {
   printf("vtcm_SM3: Start\n");
   int ret = 0;
   sm3_context ctx; 
-  sm3_starts(&ctx);
-  sm3_update(&ctx, buffer, size);
-  sm3_update(&ctx,buffer1,size1);
-  sm3_finish(&ctx, checksum);
-  return ret;
-}
-int vtcm_SM3_2(BYTE* checksum, unsigned char* buffer1,int size1, unsigned char* buffer2,int size2,unsigned char* buffer3,int size3,unsigned char* buffer4,int size4)                                                       
-{
-  int ret = 0;
-  sm3_context ctx; 
-  sm3_starts(&ctx);
-  sm3_update(&ctx, buffer1, size1);
-  sm3_update(&ctx,buffer2,size2);
-  sm3_update(&ctx,buffer3,size3);
-  sm3_update(&ctx,buffer4,size4);
-  sm3_finish(&ctx, checksum);
-  return ret;
-}
-int vtcm_SM3_3(BYTE* checksum, unsigned char* buffer1,int size1, unsigned char* buffer2,int size2,unsigned char *buffer3,int size3)
-{
-  printf("vtcm_SM3: Start\n");
-  int ret = 0;
-  sm3_context ctx; 
-  sm3_starts(&ctx);
-  sm3_update(&ctx, buffer1, size1);
-  sm3_update(&ctx,buffer2,size2);
-  sm3_update(&ctx,buffer3,size3);
-  sm3_finish(&ctx, checksum);
-  return ret;
-}
-
-int vtcm_SM3_4(BYTE* checksum, unsigned char* buffer1,int size1, unsigned char* buffer2,int size2,unsigned char *buffer3,int size3,unsigned char *buffer4,int size4,unsigned char *buffer5,
-               int size5,unsigned char *buffer6,int size6)
-{
-  printf("vtcm_SM3: Start\n");
-  int ret = 0;
-  sm3_context ctx; 
-  sm3_starts(&ctx);
-  sm3_update(&ctx, buffer1, size1);
-  sm3_update(&ctx,buffer2,size2);
-  sm3_update(&ctx,buffer3,size3);
-  sm3_update(&ctx,buffer4,size4);
-  sm3_update(&ctx,buffer5,size5);
-  sm3_update(&ctx,buffer6,size6);
-  sm3_finish(&ctx, checksum);
+  SM3_init(&ctx);
+  SM3_update(&ctx, buffer, size);
+  SM3_update(&ctx,buffer1,size1);
+  SM3_final(&ctx, checksum);
   return ret;
 }
 
@@ -307,10 +265,10 @@ int vtcm_SM3_hmac(BYTE* checksum , unsigned char* key,int klen,unsigned char* hm
   printf("vtcm_SM3_HMAC: Start\n");
   int ret = 0;
   sm3_context ctx; 
-  sm3_hmac_starts(&ctx,key,klen);
-  sm3_hmac_update(&ctx, hmac1, size1);
-  sm3_hmac_update(&ctx,hmac2,size2);
-  sm3_hmac_finish(&ctx, checksum);
+  SM3_hmac_init(&ctx,key,klen);
+  SM3_hmac_update(&ctx, hmac1, size1);
+  SM3_hmac_update(&ctx,hmac2,size2);
+  SM3_hmac_finish(&ctx, checksum);
   return ret;
 }
 /*int print_error(char * str, int result)
@@ -654,7 +612,7 @@ int proc_vtcmutils_input(void * sub_proc,void * recv_msg)
   TCM_SESSION_DATA * authdata;
   unsigned char encryptauthdata[TCM_HASH_SIZE];
   char * newauthdata = "ddd";
-  sm3(newauthdata,strlen(newauthdata),encryptauthdata);
+  calculate_context_sm3(newauthdata,strlen(newauthdata),encryptauthdata);
   vtcm_input = Talloc0(sizeof(*vtcm_input));
   if(vtcm_input==NULL)
   return -ENOMEM;
@@ -1436,7 +1394,7 @@ int proc_vtcmutils_Seal(void * sub_proc, void * para){
   //           vtcm_input->InData,vtcm_input->InDataSize );
   authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
 
-  sm3(dataauth,strlen(dataauth),auData);
+  calculate_context_sm3(dataauth,strlen(dataauth),auData);
   vtcm_AuthSessionData_Encrypt(vtcm_input->encAuth,authdata,auData);
 
   // int serial = htonl(authdata->SERIAL);
@@ -1557,7 +1515,7 @@ int proc_vtcmutils_Sign(void * sub_proc, void * para){
 		}
       } 
   }
-  //    sm3(sign,strlen(sign),signeddata);
+  //    calculate_context_sm3(sign,strlen(sign),signeddata);
 
   int fd;
   int datasize;
@@ -3248,8 +3206,8 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
 		}
 	}	
 
-  sm3(pwdo,Strlen(pwdo),ownerauth);
-  sm3(pwds,Strlen(pwds),smkauth);
+  calculate_context_sm3(pwdo,Strlen(pwdo),ownerauth);
+  calculate_context_sm3(pwds,Strlen(pwds),smkauth);
 
   // compute ownerAuth
   enclen=512;
@@ -3677,8 +3635,8 @@ int proc_vtcmutils_EvictKey(void * sub_proc, void * para)
    i++;
    }
 //compute ownerauthdata and migrationauthdata
-sm3(pwdo,strlen(pwdo),ownerauth);
-sm3(pwdm.strlen(pwdm),migrationauth);
+calculate_context_sm3(pwdo,strlen(pwdo),ownerauth);
+calculate_context_sm3(pwdm.strlen(pwdm),migrationauth);
 Memcpy(vtcm_input->dataUsageAuth,ownerauth,TCM_HASH_SIZE);	
 Memcpy(vtcm_input->dataMigrationAuth,migrationauth,TCM_HASH_SIZE); 
 int fd;
@@ -3981,7 +3939,7 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
   // compute ownerauth and migrationauth
   if(pwdk!=NULL)
   {
-	sm3(pwdk,Strlen(pwdk),ownerauth);
+	calculate_context_sm3(pwdk,Strlen(pwdk),ownerauth);
   }
   else
   {
@@ -3989,7 +3947,7 @@ int proc_vtcmutils_CreateWrapKey(void * sub_proc, void * para){
   }
   if(pwdm!=NULL)
   {
-	sm3(pwdm,Strlen(pwdm),migrationauth);
+	calculate_context_sm3(pwdm,Strlen(pwdm),migrationauth);
   }
   else
   {
@@ -4266,7 +4224,7 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
 			else if(!Strcmp("-pwd",index_para))
 			{
 				pwd=value_para;
-      				sm3(pwd,strlen(pwd),auth);
+      				calculate_context_sm3(pwd,strlen(pwd),auth);
 			}
 			else
 			{
@@ -4287,7 +4245,7 @@ int proc_vtcmutils_APCreate(void * sub_proc, void * para){
 
   // let the entity's authdata template be the authcode	
 
-  //sm3(pwds,Strlen(pwds),vtcm_input->authCode);
+  //calculate_context_sm3(pwds,Strlen(pwds),vtcm_input->authCode);
   Memcpy(vtcm_input->authCode, auth, TCM_HASH_SIZE);
 //  puts("Start\n");
 //  for(i = 0 ;i < TCM_NONCE_SIZE; ++i) 
@@ -4429,7 +4387,7 @@ int proc_vtcmutils_readPubek(void * sub_proc, void * para){
   if(ret<0)
     return -EINVAL;
   Memcpy(Buf+ret,vtcm_input->antiReplay,DIGEST_SIZE);
-  sm3(Buf,ret+DIGEST_SIZE,checksum);
+  calculate_context_sm3(Buf,ret+DIGEST_SIZE,checksum);
 
   if(Memcmp(checksum,&vtcm_output->checksum,DIGEST_SIZE)==0)
   {
@@ -4983,7 +4941,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
 
   // compute the three auth value
 
-  sm3(pwdk,Strlen(pwdk),pikauth);
+  calculate_context_sm3(pwdk,Strlen(pwdk),pikauth);
 
   // compute crypt pik auth
   for(i=0;i<TCM_HASH_SIZE;i++)
@@ -5017,7 +4975,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
     return -EINVAL;
   }
   Memcpy(Buf+ret,CApubkey,64);
-  sm3(Buf,ret+64,vtcm_input->pubDigest); 	
+  calculate_context_sm3(Buf,ret+64,vtcm_input->pubDigest); 	
 
   //  add vtcm_input's pikParams
 
@@ -5070,7 +5028,7 @@ int proc_vtcmutils_MakeIdentity(void * sub_proc, void * para)
 
   uint32_t temp_int;
   // compute smkauthCode
-  //sm3(Buf+6,offset-6-36*2,smkauth);
+  //calculate_context_sm3(Buf+6,offset-6-36*2,smkauth);
 
   //Memcpy(Buf,smkauth,DIGEST_SIZE);
   //temp_int=htonl(vtcm_input->smkHandle);
@@ -5256,9 +5214,9 @@ int proc_vtcmutils_ActivateIdentity(void * sub_proc, void * para)
 
   // compute the three auth value
 
-  sm3(pwdo,Strlen(pwdo),ownerauth);
-  sm3(pwds,Strlen(pwds),smkauth);
-  sm3(pwdk,Strlen(pwdk),pikauth);
+  calculate_context_sm3(pwdo,Strlen(pwdo),ownerauth);
+  calculate_context_sm3(pwds,Strlen(pwds),smkauth);
+  calculate_context_sm3(pwdk,Strlen(pwdk),pikauth);
 
   // read symmkey data
 
@@ -5528,7 +5486,7 @@ int proc_vtcmutils_Quote(void * sub_proc, void * para)
         	return -EINVAL;
     	ret=struct_2_blob(&vtcm_output->pcrData,Buf,vtcm_template);
 
-        sm3(Buf,ret,&quoteinfo->info.digestAtCreation);
+        calculate_context_sm3(Buf,ret,&quoteinfo->info.digestAtCreation);
 
         quoteinfo->tag=TCM_TAG_QUOTE_INFO;
         Memcpy(quoteinfo->fixed,"QUOT",4);

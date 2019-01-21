@@ -28,7 +28,6 @@
 #include "tcm_global.h"
 #include "tcm_error.h"
 #include "sm2.h"
-#include "sm3.h"
 #include "sm4.h"
 #include "tcm_authlib.h"
 
@@ -463,7 +462,7 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
 		returnCode=-TCM_BAD_DATASIZE;
 		goto makeidentity_out;
 	}
-	sm3(Buf,ret,&privpik->pubDataDigest);
+	calculate_context_sm3(Buf,ret,&privpik->pubDataDigest);
 	privpik->privKey.keyLength=pik->encDataSize;
 	privpik->privKey.key=pik->encData;
 
@@ -737,7 +736,7 @@ static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
 		goto activateidentity_out;
 	}
 
-	sm3(Buf,ret,pubDigest);
+	calculate_context_sm3(Buf,ret,pubDigest);
 
 	if(Memcmp(pubDigest,&ca_conts.idDigest,DIGEST_SIZE)!=0)
 	{
@@ -924,7 +923,7 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
     	return -EINVAL;
     ret=struct_2_blob(&vtcm_out->pcrData,Buf,vtcm_template);	
 
-    sm3(Buf,ret,&quoteinfo.info.digestAtCreation);
+    calculate_context_sm3(Buf,ret,&quoteinfo.info.digestAtCreation);
 
     quoteinfo.tag=TCM_TAG_QUOTE_INFO;
     Memcpy(quoteinfo.fixed,"QUOT",4);
@@ -1130,7 +1129,7 @@ int proc_vtcm_CertifyKey(void* sub_proc, void* recv_msg)
            returnCode=-TCM_BAD_DATASIZE;
            goto certifykey_out;
     }
-    sm3(Buf,ret,&vtcm_out->certifyInfo.pubkeyDigest);
+    calculate_context_sm3(Buf,ret,&vtcm_out->certifyInfo.pubkeyDigest);
 
     Memcpy(vtcm_out->certifyInfo.data,vtcm_in->externalData,DIGEST_SIZE);
 

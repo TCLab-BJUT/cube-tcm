@@ -30,7 +30,6 @@
 #include "tcm_constants.h"
 #include "tcm_error.h"
 #include "sm2.h"
-#include "sm3.h"
 #include "sm4.h"
 #include "tcm_authlib.h"
 
@@ -157,10 +156,10 @@ int vtcm_SM3_2_Buffer(BYTE* checksum, unsigned char* buffer_1, int size_1, unsig
     printf("vtcm_SM3_2_Buffer: Start\n");
     int ret = 0;
     sm3_context ctx;
-    sm3_starts(&ctx);
-    sm3_update(&ctx, buffer_1, size_1);
-    sm3_update(&ctx, buffer_2, size_2);
-    sm3_finish(&ctx, checksum);
+    SM3_init(&ctx);
+    SM3_update(&ctx, buffer_1, size_1);
+    SM3_update(&ctx, buffer_2, size_2);
+    SM3_final(&ctx, checksum);
     return ret;
 }
 
@@ -171,9 +170,9 @@ int vtcm_HMAC_SM3(BYTE *key, int keylen, BYTE *buffer, int size, BYTE *output)
     printf("vtcm_HMAC_SM3 : Start\n");
     int ret = 0;
     sm3_context ctx;
-    sm3_hmac_starts(&ctx, key, keylen);
-    sm3_hmac_update(&ctx, buffer, size);
-    sm3_hmac_finish(&ctx, output);
+    SM3_hmac_init(&ctx, key, keylen);
+    SM3_hmac_update(&ctx, buffer, size);
+    SM3_hmac_finish(&ctx, output);
     return ret;
 }
 
@@ -420,7 +419,7 @@ int proc_vtcm_ReadPubek(void* sub_proc, void* recv_msg)
     int plain_len=1000;
     int cipher_len=512;
     int output_len;
-    sm3(pwdo,Strlen(pwdo),ownerauth);
+    calculate_context_sm3(pwdo,Strlen(pwdo),ownerauth);
 
     ret=GM_SM2Encrypt(cipher,&cipher_len,ownerauth,TCM_HASH_SIZE,endorsementKey->pubKey.key,endorsementKey->pubKey.keyLength);
     output_len=512;
@@ -1354,7 +1353,7 @@ int proc_vtcm_Sm3Start(void* sub_proc, void* recv_msg)
      * Processing
     */
     tcm_state->sm3_context = malloc(sizeof(sm3_context));
-    sm3_starts(tcm_state->sm3_context);
+    SM3_init(tcm_state->sm3_context);
 
     tcm_Sm3Start_out->tag = 0xC400;
     tcm_Sm3Start_out->paramSize = 0x0E;
@@ -1394,7 +1393,7 @@ int proc_vtcm_Sm3Update(void* sub_proc, void* recv_msg)
     /*
      * Processing
     */
-    sm3_update(tcm_state->sm3_context, tcm_Sm3Update_in->dataBlock, tcm_Sm3Update_in->dataBlockSize );
+    SM3_update(tcm_state->sm3_context, tcm_Sm3Update_in->dataBlock, tcm_Sm3Update_in->dataBlockSize );
 
     tcm_Sm3Update_out->tag = 0xC400;
     tcm_Sm3Update_out->paramSize = 0x0A;
@@ -1433,8 +1432,8 @@ int proc_vtcm_Sm3Complete(void* sub_proc, void* recv_msg)
     /*
      * Processing
     */
-    sm3_update(tcm_state->sm3_context, tcm_Sm3Complete_in->dataBlock, tcm_Sm3Complete_in->dataBlockSize);
-    sm3_finish(tcm_state->sm3_context, tcm_Sm3Complete_out->calResult);
+    SM3_update(tcm_state->sm3_context, tcm_Sm3Complete_in->dataBlock, tcm_Sm3Complete_in->dataBlockSize);
+    SM3_final(tcm_state->sm3_context, tcm_Sm3Complete_out->calResult);
 
     tcm_Sm3Complete_out->tag = 0xC400;
     tcm_Sm3Complete_out->returnCode = 0;
@@ -1876,7 +1875,7 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
             {
                 ret = -TCM_BAD_DATASIZE;
             }
-            sm3(Str_pub, ret, &(tcm_store_asymkey->pubDataDigest));
+            calculate_context_sm3(Str_pub, ret, &(tcm_store_asymkey->pubDataDigest));
             tcm_store_asymkey->privKey.keyLength=WrapKey->encDataSize;
             tcm_store_asymkey->privKey.key=WrapKey->encData;
             
