@@ -27,7 +27,6 @@
 #include "tcm_global.h"
 #include "tcm_error.h"
 #include "sm2.h"
-#include "sm3.h"
 #include "vtcm_struct.h"
 
 static BYTE Buf[DIGEST_SIZE*64];
@@ -450,9 +449,9 @@ int vtcm_SM3(BYTE* checksum, unsigned char* buffer, int size)
     printf("vtcm_SM3: Start\n");
     int ret = 0;
     sm3_context ctx;
-    sm3_starts(&ctx);
-    sm3_update(&ctx, buffer, size);
-    sm3_finish(&ctx, checksum);
+    SM3_init(&ctx);
+    SM3_update(&ctx, buffer, size);
+    SM3_final(&ctx, checksum);
     return ret;
 }
 
@@ -461,9 +460,9 @@ int vtcm_HMAC_SM3(BYTE *key, int keylen, BYTE *buffer, int size, BYTE *output)
     printf("vtcm_HMAC_SM3 : Start\n");
     int ret = 0;
     sm3_context ctx;
-    sm3_hmac_starts(&ctx, key, keylen);
-    sm3_hmac_update(&ctx, buffer, size);
-    sm3_hmac_finish(&ctx, output);
+    SM3_hmac_init(&ctx, key, keylen);
+    SM3_hmac_update(&ctx, buffer, size);
+    SM3_hmac_finish(&ctx, output);
     return ret;
 }
 
@@ -1944,7 +1943,7 @@ int vtcm_Add_PCRComposite(TCM_PCR_COMPOSITE * pcr_comp,int index,BYTE * value)
 		// do the pcr extend
 		Memcpy(Buf,pcr_set->pcrValue+pcr_value_offset,DIGEST_SIZE);
 		Memcpy(Buf+DIGEST_SIZE,value,DIGEST_SIZE);
-		sm3(Buf,DIGEST_SIZE*2,pcr_set->pcrValue+pcr_value_offset);
+		calculate_context_sm3(Buf,DIGEST_SIZE*2,pcr_set->pcrValue+pcr_value_offset);
 	}
 	else
 	{
@@ -1972,13 +1971,13 @@ int vtcm_Add_PCRComposite(TCM_PCR_COMPOSITE * pcr_comp,int index,BYTE * value)
 				{
 					Memcpy(Buf,buffer+pcr_value_offset,DIGEST_SIZE);
 					Memcpy(Buf+DIGEST_SIZE,value,DIGEST_SIZE);
-					sm3(Buf,DIGEST_SIZE*2,buffer+pcr_value_offset);
+					calculate_context_sm3(Buf,DIGEST_SIZE*2,buffer+pcr_value_offset);
 				}
 				else
 				{
 					Memset(Buf,0,DIGEST_SIZE);
 					Memcpy(Buf+DIGEST_SIZE,value,DIGEST_SIZE);
-					sm3(Buf,DIGEST_SIZE*2,buffer+pcr_value_offset);
+					calculate_context_sm3(Buf,DIGEST_SIZE*2,buffer+pcr_value_offset);
 					pcr_select->pcrSelect[pcr_select_offset]|=select_value;
 				}
 	
@@ -2142,7 +2141,7 @@ int vtcm_Comp_PcrsDigest(TCM_PCR_COMPOSITE * pcrs, BYTE * digest)
 		Free(buffer);
 		return -EINVAL;
 	}
-	sm3(buffer,blobsize,digest);
+	calculate_context_sm3(buffer,blobsize,digest);
 	Free(buffer);
 	return 0;
 }
@@ -2186,7 +2185,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
 	else
 		return -EINVAL;
 
-	sm3(Buf,offset,AuthBuf);
+	calculate_context_sm3(Buf,offset,AuthBuf);
 	offset=TCM_HASH_SIZE;
 
 	if(cmd_head->tag== htons(TCM_TAG_RQU_AUTH1_COMMAND))
@@ -2197,7 +2196,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
     				ret = struct_2_part_blob(vtcm_data,AuthBuf+offset,vtcm_template,CUBE_ELEM_FLAG_INPUT);
     				if(ret<0)
     					return ret;
-    				sm3_hmac(AuthCode,TCM_HASH_SIZE,
+    				SM3_hmac(AuthCode,TCM_HASH_SIZE,
 					AuthBuf,DIGEST_SIZE+ret,
 					AuthCode);
 				break;			
@@ -2214,12 +2213,12 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
             case SUBTYPE_QUOTE_IN:
                     sernum = htonl(authsession->SERIAL);
                     Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
-    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+    				SM3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
 					         AuthCode);
 				break;	
             case SUBTYPE_TAKEOWNERSHIP_IN:
-    				sm3_hmac(AuthCode,TCM_HASH_SIZE,
+    				SM3_hmac(AuthCode,TCM_HASH_SIZE,
 					AuthBuf,DIGEST_SIZE,
 					AuthCode);
                     break;
@@ -2236,7 +2235,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
     				ret = struct_2_part_blob(vtcm_data,AuthBuf+offset,vtcm_template,CUBE_ELEM_FLAG_INPUT);
     				if(ret<0)
     					return ret;
-    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+    				SM3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 					AuthBuf,DIGEST_SIZE+ret,AuthCode);
 				break;			
 			case SUBTYPE_SM4ENCRYPT_OUT:
@@ -2253,12 +2252,12 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
             case SUBTYPE_UNSEAL_OUT:
                     sernum = htonl(authsession->SERIAL);
                     Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
-    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+    				SM3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
 					         AuthCode);
 				break;
             case SUBTYPE_TAKEOWNERSHIP_OUT:
-                sm3_hmac(AuthCode, TCM_HASH_SIZE,
+                SM3_hmac(AuthCode, TCM_HASH_SIZE,
                          AuthBuf,DIGEST_SIZE,AuthCode);
                 break;
 			default:
@@ -2276,7 +2275,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
       case SUBTYPE_ACTIVATEIDENTITY_IN:
                     sernum = htonl(authsession->SERIAL);
                     Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
-    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+    				SM3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
 					         AuthCode);
         break;
@@ -2293,7 +2292,7 @@ int vtcm_Compute_AuthCode(void * vtcm_data,
       	case SUBTYPE_ACTIVATEIDENTITY_OUT:
                     sernum = htonl(authsession->SERIAL);
                     Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
-    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+    				SM3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 					         AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
 					         AuthCode);
         break;
@@ -2347,7 +2346,7 @@ int vtcm_Compute_AuthCode2(void * vtcm_data,
 	else
 		return -EINVAL;
 
-	sm3(Buf,offset,AuthBuf);
+	calculate_context_sm3(Buf,offset,AuthBuf);
 	offset=TCM_HASH_SIZE;
 
 	if(cmd_head->tag== htons(TCM_TAG_RQU_AUTH1_COMMAND))
@@ -2363,7 +2362,7 @@ int vtcm_Compute_AuthCode2(void * vtcm_data,
             case SUBTYPE_ACTIVATEIDENTITY_IN:
                     sernum = htonl(authsession->SERIAL);
                     Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
-    		    sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+    		    SM3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 				AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
 				AuthCode);
         		break;
@@ -2381,7 +2380,7 @@ int vtcm_Compute_AuthCode2(void * vtcm_data,
       	  case SUBTYPE_ACTIVATEIDENTITY_OUT:
                   sernum = htonl(authsession->SERIAL);
                   Memcpy(AuthBuf+offset, &sernum, sizeof(uint32_t));
-    				sm3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
+    				SM3_hmac(authsession->sharedSecret,TCM_HASH_SIZE,
 					    AuthBuf,DIGEST_SIZE+sizeof(uint32_t),
 					    AuthCode);
 				break;			

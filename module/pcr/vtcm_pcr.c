@@ -29,8 +29,10 @@
 #include "tcm_global.h"
 #include "tcm_error.h"
 
-#include "sm3.h"
 #include "vtcm_struct.h"
+
+
+int vtcm_dev_no=8;
 
 static struct timeval time_val={0,50*1000};
 struct vtcm_pcr_scene * pcr_scenes;
@@ -42,13 +44,13 @@ static int proc_vtcm_pcrreset(sub_proc, recv_msg);
 int vtcm_pcr_init(void * sub_proc,void * para)
 {
     int i,j;
-    pcr_scenes = malloc(sizeof(struct vtcm_pcr_scene )*3);//相当于申请了一个数组
+    pcr_scenes = malloc(sizeof(struct vtcm_pcr_scene )*(vtcm_dev_no+1));//相当于申请了一个数组
     if(pcr_scenes==NULL)
         return -ENOMEM;
     tcm_state_t * tcm_instances = proc_share_data_getpointer();
 
 
-    for(i=0;i<3;i++)//分配存储空间
+    for(i=0;i<vtcm_dev_no+1;i++)//分配存储空间
     {
         pcr_scenes[i].index_num=TCM_NUM_PCR;
         pcr_scenes[i].pcr_size=sizeof(TCM_DIGEST);
@@ -140,9 +142,9 @@ int vtcm_SM3(BYTE* checksum, unsigned char* buffer, int size)
     printf("vtcm_SM3: Start\n");
     int ret = 0; 
     sm3_context ctx; 
-    sm3_starts(&ctx);
-    sm3_update(&ctx, buffer, size);
-    sm3_finish(&ctx, checksum);
+    SM3_init(&ctx);
+    SM3_update(&ctx, buffer, size);
+    SM3_final(&ctx, checksum);
     return ret; 
 }
 
@@ -433,7 +435,7 @@ int proc_vtcm_Sm3CompleteExtend(void* sub_proc, void* recv_msg)
     vtcm_SM3(pcr, buffer, pcr_size*2);
 
     Memcpy(tcm_Sm3CompleteExtend_out->pcrResult, pcr, pcr_size);
-    sm3_finish(tcm_state->sm3_context, tcm_Sm3CompleteExtend_out->calResult);
+    SM3_final(tcm_state->sm3_context, tcm_Sm3CompleteExtend_out->calResult);
     tcm_Sm3CompleteExtend_out->tag = 0xC400;
     tcm_Sm3CompleteExtend_out->returnCode = 0;
 

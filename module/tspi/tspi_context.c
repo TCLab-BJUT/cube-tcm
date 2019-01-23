@@ -166,7 +166,10 @@ int _TSMD_Init()
 	return ret; 		
 
     ret=get_local_uuid(local_uuid);
-    printf("this machine's local uuid is %s\n",local_uuid);
+    digest_to_uuid(local_uuid,Buf);
+    Buf[64]=0;
+
+    printf("this machine's local uuid is %s\n",Buf);
     return 0;	
 
 }

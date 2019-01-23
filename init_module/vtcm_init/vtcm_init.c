@@ -17,6 +17,7 @@
 #include "connector.h"
 #include "tcm_global.h"
 #include "tcm_error.h"
+#include "vtcm_struct.h"
 
 struct init_struct
 {
@@ -24,7 +25,8 @@ struct init_struct
 };
 
 tcm_state_t * tcm_instances;
-const int tcm_num=3;
+const int tcm_num=8;
+static int vtcm_num=8;
 
 int vtcm_init(void * main_proc,void * init_para)
 {

@@ -28,7 +28,6 @@
 #include "app_struct.h"
 #include "pik_struct.h"
 #include "sm2.h"
-#include "sm3.h"
 #include "sm4.h"
 
 static BYTE Buf[DIGEST_SIZE*32];
@@ -343,7 +342,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
 		printf("user info too long!\n");
 		return -EINVAL;
     	}
-    	sm3(Buf,ret,pik_cert->userDigest); 	
+    	calculate_context_sm3(Buf,ret,pik_cert->userDigest); 	
 
 	// read pik file 
     	fd=open(pik_file,O_RDONLY);
@@ -381,7 +380,7 @@ int proc_vtcmutils_ExCaSign(void * sub_proc,void * para)
        ret=struct_2_blob(&pik.pubKey,Buf,vtcm_template);
        if(ret<0)
 		return ret;
-	sm3(Buf,ret,pik_cert->pubDigest);		
+	calculate_context_sm3(Buf,ret,pik_cert->pubDigest);		
 	Memcpy(&ca_conts.idDigest,pik_cert->pubDigest,DIGEST_SIZE);
    
        // Read ek's pubkey
@@ -1038,7 +1037,7 @@ int proc_vtcmutils_ExCheckQuotePCR(void * sub_proc, void * para){
   ret=blob_2_struct(Buf,&pcrinfo,vtcm_template);
   if(ret<0)
 	return ret;
-  sm3(Buf,ret,checkdata);
+  calculate_context_sm3(Buf,ret,checkdata);
 
   // read report data
   fd=open(quoteinfofile,O_RDONLY);
