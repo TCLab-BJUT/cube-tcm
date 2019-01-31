@@ -237,7 +237,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
     int offset=0;
 
 
-    for (;;)
+    while(1)
     {
         usleep(time_val.tv_usec);
 	// read ex_channel 
