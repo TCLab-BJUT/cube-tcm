@@ -163,7 +163,7 @@ int vtcm_tcp_channel_start(void * sub_proc,void * para)
     conn_val.tv_sec=time_val.tv_sec;
     conn_val.tv_usec=time_val.tv_usec;
 
-    for (;;)
+    while(1)
     {
         ret = conn_hub->hub_ops->select(conn_hub, &conn_val);
         usleep(conn_val.tv_usec);

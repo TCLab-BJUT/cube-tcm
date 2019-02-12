@@ -70,7 +70,7 @@ int vtcm_tcp_client_start(void * sub_proc,void * para)
     conn_val.tv_sec=time_val.tv_sec;
     conn_val.tv_usec=time_val.tv_usec;
 
-    for (;;)
+    while(1)
     {
         usleep(conn_val.tv_usec);
         len=channel_inner_read(vtcm_tcp_client,ReadBuf,1024);

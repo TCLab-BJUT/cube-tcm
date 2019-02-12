@@ -113,7 +113,7 @@ int vtcm_drv_client_start(void * sub_proc,void * para)
     dev_fd=open(dev_name,O_RDWR);
     if(dev_fd<0)
 	    return -EIO;	
-    for (;;)
+    while(1)
     {
         usleep(conn_val.tv_usec);
 	if(drv_channel_type==ACTIVE)
