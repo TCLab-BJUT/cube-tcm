@@ -26,7 +26,8 @@
 #include "tcm_constants.h"
 #include "app_struct.h"
 #include "pik_struct.h"
-#include "sm3.h"
+#include "tcm_global.h"
+#include "tcm_authlib.h"
 #include "sm4.h"
 
 #include "tcmfunc.h"
@@ -78,7 +79,7 @@ TCM_AUTHHANDLE Build_AuthSession(TCM_SESSION_DATA * authdata,void * tcm_out_data
   Memcpy(authdata->nonceEven,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(Buf+TCM_HASH_SIZE,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(auth,authdata->sharedSecret,TCM_HASH_SIZE);
-  sm3_hmac(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
+  vtcm_Ex_HMAC_SM3(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
 
   if(authdata->entityTypeByte!=TCM_ET_NONE)
   {
@@ -481,5 +482,267 @@ UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
  	 if(ret<0)
 		return -EINVAL;
   }
+  return 0;
+}
+UINT32 TCM_APCreate(UINT32 entityType, UINT32 entityValue, char * pwd, UINT32 * authHandle)
+{
+  int ret = 0;
+  struct tcm_in_APCreate * vtcm_input;
+  struct tcm_out_APCreate * vtcm_output;
+  void * vtcm_template;
+  TCM_AUTHHANDLE authhandle;
+  int outlen;
+  int i=1;
+  unsigned char nonce[TCM_HASH_SIZE];
+  unsigned char nonce1[TCM_HASH_SIZE];
+  unsigned char key[TCM_HASH_SIZE];
+  unsigned char auth[TCM_HASH_SIZE];
+  TCM_SESSION_DATA * authdata;
+
+  printf("Begin TCM APCreate:\n");
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_APCREATE_IN;
+  vtcm_input->entityType=entityType;
+  vtcm_input->entityValue=entityValue;
+  RAND_bytes(vtcm_input->nonce,TCM_HASH_SIZE);
+  vtcm_Ex_SM3(auth,pwd,strlen(pwd));
+  Memcpy(vtcm_input->authCode, auth, TCM_HASH_SIZE);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_APCREATE_IN,NULL,vtcm_input->authCode);
+  authdata=Create_AuthSession_Data(&(vtcm_input->entityType),vtcm_input->authCode,vtcm_input->nonce);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  memcpy(authdata->sharedSecret, auth, TCM_NONCE_SIZE);
+  authhandle=Build_AuthSession(authdata,vtcm_output);
+  if(vtcm_input->entityType==0x12){
+    memset(authdata->sharedSecret,0,TCM_HASH_SIZE);
+  }
+  if(authhandle==0)
+    return -EINVAL;	
+  // check authdata
+
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_APCREATE_OUT,authdata,CheckData);
+  if(ret<0)
+    return -EINVAL;
+  if(Memcmp(CheckData,vtcm_output->authCode,DIGEST_SIZE)!=0)
+  {
+    printf("APCreate check output authCode failed!\n");
+    return -EINVAL;
+  }	
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  *authHandle=vtcm_output->authHandle;
+  printf("Output para: %d %x\n\n",vtcm_output->returnCode,vtcm_output->authHandle);
+  return 0;
+}
+
+UINT32 TCM_APTerminate(UINT32 authHandle)
+{
+  int outlen;
+  int i=1;
+  int ret=0;
+  void *vtcm_template;
+  struct tcm_in_APTerminate *vtcm_input;
+  struct tcm_out_APTerminate *vtcm_output;
+  unsigned char key[TCM_HASH_SIZE];
+  unsigned char checknum[TCM_HASH_SIZE];
+  unsigned char hashout[TCM_HASH_SIZE];
+  TCM_SESSION_DATA * authdata;
+  printf("Begin TCM APTerminate:\n");
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_APTERMINATE_IN;
+  vtcm_input->authHandle=authHandle;
+  int ordinal = htonl(vtcm_input->ordinal);
+  vtcm_SM3(checknum,&ordinal,4);
+  authdata=Find_AuthSession(0x00,vtcm_input->authHandle);
+  int serial = htonl(authdata->SERIAL);
+  Memcpy(Buf,checknum,32);
+  Memcpy(Buf+32,&serial,4); 
+
+  vtcm_Ex_HMAC_SM3(hashout,authdata->sharedSecret,32,Buf,32+4);
+  memcpy(vtcm_input->authCode,hashout,TCM_HASH_SIZE);
+  vtcm_input->paramSize=sizeof(*vtcm_input);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  printf("Output para: %d\n",vtcm_output->returnCode);
+  return 0;
+}
+
+UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * keyfile,char *pwdk)
+{
+  int outlen;
+  int i=1;
+  int fd;
+  int ret = 0;
+  int offset=0;
+  void * vtcm_template;
+  TCM_AUTHHANDLE authhandle;
+  unsigned char ownerauth[TCM_HASH_SIZE];
+  unsigned char migrationauth[TCM_HASH_SIZE];
+  unsigned char nonce[TCM_HASH_SIZE];
+  unsigned char hashout[TCM_HASH_SIZE];
+  unsigned char pubAuth[TCM_HASH_SIZE];
+  unsigned char APKey[TCM_HASH_SIZE];
+  unsigned char hmacout[TCM_HASH_SIZE];
+  unsigned char authdata1[TCM_HASH_SIZE];
+  unsigned char migrationdata[TCM_HASH_SIZE];
+  TCM_SESSION_DATA * authdata;
+  struct tcm_in_CreateWrapKey *vtcm_input;
+  struct tcm_out_CreateWrapKey *vtcm_output;
+  char * index_para;
+  char * value_para;
+
+  TCM_SYMMETRIC_KEY_PARMS *sm4_parms;
+  TCM_SM2_ASYMKEY_PARAMETERS *sm2_parms;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_CREATEWRAPKEY_IN;
+  vtcm_input->parentHandle=parentHandle;
+  vtcm_input->authHandle=authHandle;
+//Fill keyInfo information
+  vtcm_input->keyInfo.tag=htons(TCM_TAG_KEY);
+  vtcm_input->keyInfo.keyFlags=0;
+  vtcm_input->keyInfo.authDataUsage=TCM_AUTH_ALWAYS;
+
+  if(!strcmp("sm4",select))
+  {
+    if(vtcm_input->keyInfo.keyUsage==0)
+    	vtcm_input->keyInfo.keyUsage=TCM_SM4KEY_STORAGE;
+    vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM4;
+    vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM4_CBC;
+    vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_NONE;
+    printf("this is sm4\n");
+    // add smkparms's sm4 key parms
+    sm4_parms=Talloc0(sizeof(*sm4_parms));
+    if(sm4_parms==NULL)
+      return -ENOMEM;
+    sm4_parms->keyLength=0x80;
+    sm4_parms->blockSize=0x80;
+    sm4_parms->ivSize=0x10;
+    sm4_parms->IV=Talloc0(sm4_parms->ivSize);
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
+    if(vtcm_template==NULL)
+      return -EINVAL;
+    ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
+    if(ret<0)
+      return ret; 
+    vtcm_input->keyInfo.algorithmParms.parmSize=ret;
+    vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
+    if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
+      return -ENOMEM;
+    Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
+  }else
+  {
+    if(vtcm_input->keyInfo.keyUsage==0)
+    	vtcm_input->keyInfo.keyUsage=TCM_SM2KEY_SIGNING;
+    //add smkparms's sm2 key parms
+    sm2_parms=Talloc0(sizeof(*sm2_parms));
+    if(sm2_parms==NULL)
+      return -ENOMEM;
+    sm2_parms->keyLength=0x80;
+    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SM2_ASYMKEY_PARAMETERS);
+    if(vtcm_template==NULL)
+      return -EINVAL;
+    ret=struct_2_blob(sm2_parms,Buf,vtcm_template);
+    if(ret<0)
+      return ret;
+    vtcm_input->keyInfo.algorithmParms.parmSize=ret;
+    vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
+    if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
+      return -ENOMEM;
+    Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
+    vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM2;
+    vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM2;
+    vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_SM2;
+    printf("this is sm2\n");
+  }
+  BYTE *Buffer=(BYTE*)malloc(sizeof(BYTE)*256);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  int ret1=0;
+  ret1=struct_2_blob(&(vtcm_input->keyInfo),Buffer,vtcm_template);
+  if(ret1<0)
+    return ret1;
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_CREATEWRAPKEY_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
+  printf("%d\n",offset);
+   if(pwdk!=NULL)
+  {
+	vtcm_Ex_SM3(ownerauth,pwdk,Strlen(pwdk));
+  }
+  else
+  {
+	Memset(ownerauth,0,TCM_HASH_SIZE);		
+  }		
+
+  authdata=Find_AuthSession(0x04,vtcm_input->authHandle);
+  vtcm_AuthSessionData_Encrypt(vtcm_input->dataUsageAuth,authdata,ownerauth);
+  vtcm_AuthSessionData_Encrypt(vtcm_input->dataMigrationAuth,authdata,migrationauth);
+  
+  // compute authcode
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_CREATEWRAPKEY_IN,authdata,vtcm_input->pubAuth);
+
+  vtcm_input->paramSize=offset;
+  printf("Begin input for CreateWrapKey\n");
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_CREATEWRAPKEY_OUT,authdata,CheckData);
+
+  if(ret<0)
+    return -EINVAL;
+  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+  {
+    printf("createwrapkey check output authCode failed!\n");
+    return -EINVAL;
+  }	
+   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  if(vtcm_template==NULL)
+    return -EINVAL;	
+
+  // write keyfile	
+
+  ret=struct_2_blob(&vtcm_output->wrappedKey,Buf,vtcm_template);
+  if(ret<0)
+    return -EINVAL;
+  fd=open(keyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+  if(fd<0)
+    return -EIO;
+  write(fd,Buf,ret);
+  close(fd);
+  printf("Output para: %d \n\n",vtcm_output->returnCode);
   return 0;
 }

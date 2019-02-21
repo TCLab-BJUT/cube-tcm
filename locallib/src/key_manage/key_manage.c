@@ -24,7 +24,6 @@
 #include "tcm_error.h"
 #include "key_manage.h"
 #include "sm2.h"
-#include "sm3.h"
 #include "key_struct.h"
 
 static BYTE Buf[DIGEST_SIZE*64];

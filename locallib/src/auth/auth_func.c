@@ -466,6 +466,28 @@ int vtcm_HMAC_SM3(BYTE *key, int keylen, BYTE *buffer, int size, BYTE *output)
     return ret;
 }
 
+int vtcm_Ex_SM3(BYTE* checksum, unsigned char* buffer, int size)
+{
+    printf("vtcm_Ex_SM3: Start\n");
+    int ret = 0;
+    sm3_context ctx;
+    SM3_init(&ctx);
+    SM3_update(&ctx, buffer, size);
+    SM3_final(&ctx, checksum);
+    return ret;
+}
+
+int vtcm_Ex_HMAC_SM3(BYTE *key, int keylen, BYTE *buffer, int size, BYTE *output)
+{
+    printf("vtcm_Ex_HMAC_SM3 : Start\n");
+    int ret = 0;
+    sm3_context ctx;
+    SM3_hmac_init(&ctx, key, keylen);
+    SM3_hmac_update(&ctx, buffer, size);
+    SM3_hmac_finish(&ctx, output);
+    return ret;
+}
+
 int vtcm_Create_Checksum(BYTE* checksum, TCM_PUBKEY* pubEndorsementKey,
     BYTE* antiReplay)
 {

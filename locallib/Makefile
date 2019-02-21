@@ -1,4 +1,4 @@
-dirs= src/auth src/io
+dirs= src/auth src/io src/key_manage src/vtcm_alg src/vtcm_ex_alg
 all:
 	$(foreach N,$(dirs),make -C $(N);)
 clean:
