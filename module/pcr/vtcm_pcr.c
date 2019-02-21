@@ -32,7 +32,7 @@
 #include "vtcm_struct.h"
 
 
-int vtcm_dev_no=8;
+int vtcm_dev_no;
 
 static struct timeval time_val={0,50*1000};
 struct vtcm_pcr_scene * pcr_scenes;
@@ -44,6 +44,7 @@ static int proc_vtcm_pcrreset(sub_proc, recv_msg);
 int vtcm_pcr_init(void * sub_proc,void * para)
 {
     int i,j;
+    vtcm_dev_no=vtcm_num;
     pcr_scenes = malloc(sizeof(struct vtcm_pcr_scene )*(vtcm_dev_no+1));//相当于申请了一个数组
     if(pcr_scenes==NULL)
         return -ENOMEM;

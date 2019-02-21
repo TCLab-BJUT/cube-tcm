@@ -25,11 +25,12 @@ struct init_struct
 };
 
 tcm_state_t * tcm_instances;
-const int tcm_num=8;
-static int vtcm_num=8;
+static int tcm_num;
+//static int vtcm_num=8;
 
 int vtcm_init(void * main_proc,void * init_para)
 {
+    tcm_num=vtcm_num;	
     printf("vtcm init !\n");
     if (init_para) {
         struct init_struct * para=(struct init_struct *)init_para;

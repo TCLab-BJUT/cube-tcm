@@ -29,7 +29,7 @@
 #define VTCM_DEVICE_NAME  "/dev/vtcm"
 #define VTCM_LOG_FILE     "/var/log/vtcmd.log"
 #define VTCM_CMD_BUF_SIZE 4096
-#define VTCM_DEFAULT_NUM  8
+#define VTCM_DEFAULT_NUM  16
 #define DIGEST_SIZE       32
 #define BYTE              unsigned char
 #define VTCM_CHANNEL_BUF_SIZE 8192
