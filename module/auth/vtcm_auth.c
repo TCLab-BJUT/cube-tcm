@@ -147,6 +147,8 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
   	eKey=&curr_tcm->tcm_permanent_data.endorsementKey;
    	datalen=DIGEST_SIZE*16;
 	// decrypt the ownerAuth data
+			// decrypt the smkAuth data
+   	datalen=DIGEST_SIZE*16;
 	ret=GM_SM2Decrypt(Buf,&datalen, vtcm_in->encOwnerAuth,vtcm_in->encOwnerAuthSize,
 		eKey->encData,eKey->encDataSize);
   	if(ret<0)

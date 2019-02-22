@@ -56,9 +56,6 @@ int main(int argc,char **argv)
 
     Memset(inDigest,'A',DIGEST_SIZE);
 
-    vtcm_ex_sm3(outDigest,1,inDigest,32);
-    calculate_context_sm3(inDigest,32,outDigest);
-
     ret=TCM_Extend(0,inDigest,outDigest);
 
     if(ret==0)

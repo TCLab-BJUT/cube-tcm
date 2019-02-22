@@ -889,7 +889,7 @@ typedef struct tdTCM_PUBKEY {
 /* Set the default to 3 so that there can be one owner evict key */
 
 #ifndef TCM_KEY_HANDLES 
-#define TCM_KEY_HANDLES 3     /* entries in global TCM_KEY_HANDLE_ENTRY array */
+#define TCM_KEY_HANDLES 10     /* entries in global TCM_KEY_HANDLE_ENTRY array */
 #endif
 
 /* TCM_GetCapability uses a uint_16 for the number of key slots */
@@ -1940,7 +1940,7 @@ typedef struct tdTCM_PERMANENT_DATA {
 #endif
 
 #ifndef TCM_MIN_AUTH_SESSIONS 
-#define TCM_MIN_AUTH_SESSIONS 3
+#define TCM_MIN_AUTH_SESSIONS 10
 #endif
 
 /* NOTE: Vendor specific */
