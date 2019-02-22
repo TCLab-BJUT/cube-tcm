@@ -29,6 +29,7 @@
 #include "pik_struct.h"
 #include "sm4.h"
 #include "tcmfunc.h"
+#include "vtcm_alg.h"
 
 int main(int argc,char **argv)
 {
@@ -51,9 +52,12 @@ int main(int argc,char **argv)
 
     ret= TCM_LibInit(); 
 
-   ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
+//   ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
 
     Memset(inDigest,'A',DIGEST_SIZE);
+
+    vtcm_ex_sm3(outDigest,1,inDigest,32);
+    calculate_context_sm3(inDigest,32,outDigest);
 
     ret=TCM_Extend(0,inDigest,outDigest);
 

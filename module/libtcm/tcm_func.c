@@ -29,6 +29,7 @@
 #include "tcm_global.h"
 #include "tcm_authlib.h"
 #include "sm4.h"
+#include "vtcm_alg.h"
 
 #include "tcmfunc.h"
 
@@ -79,7 +80,7 @@ TCM_AUTHHANDLE Build_AuthSession(TCM_SESSION_DATA * authdata,void * tcm_out_data
   Memcpy(authdata->nonceEven,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(Buf+TCM_HASH_SIZE,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(auth,authdata->sharedSecret,TCM_HASH_SIZE);
-  vtcm_Ex_HMAC_SM3(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
+  vtcm_ex_hmac_sm3(authdata->sharedSecret,auth,TCM_HASH_SIZE,1,Buf,TCM_HASH_SIZE*2);
 
   if(authdata->entityTypeByte!=TCM_ET_NONE)
   {
@@ -511,7 +512,7 @@ UINT32 TCM_APCreate(UINT32 entityType, UINT32 entityValue, char * pwd, UINT32 * 
   vtcm_input->entityType=entityType;
   vtcm_input->entityValue=entityValue;
   RAND_bytes(vtcm_input->nonce,TCM_HASH_SIZE);
-  vtcm_Ex_SM3(auth,pwd,strlen(pwd));
+  vtcm_ex_sm3(auth,1,pwd,strlen(pwd));
   Memcpy(vtcm_input->authCode, auth, TCM_HASH_SIZE);
   ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_APCREATE_IN,NULL,vtcm_input->authCode);
   authdata=Create_AuthSession_Data(&(vtcm_input->entityType),vtcm_input->authCode,vtcm_input->nonce);
@@ -568,13 +569,11 @@ UINT32 TCM_APTerminate(UINT32 authHandle)
   vtcm_input->ordinal = SUBTYPE_APTERMINATE_IN;
   vtcm_input->authHandle=authHandle;
   int ordinal = htonl(vtcm_input->ordinal);
-  vtcm_SM3(checknum,&ordinal,4);
+  vtcm_ex_sm3(checknum,1,&ordinal,4);
   authdata=Find_AuthSession(0x00,vtcm_input->authHandle);
   int serial = htonl(authdata->SERIAL);
-  Memcpy(Buf,checknum,32);
-  Memcpy(Buf+32,&serial,4); 
 
-  vtcm_Ex_HMAC_SM3(hashout,authdata->sharedSecret,32,Buf,32+4);
+  vtcm_ex_hmac_sm3(hashout,authdata->sharedSecret,32,1,checknum,32,&serial,4);
   memcpy(vtcm_input->authCode,hashout,TCM_HASH_SIZE);
   vtcm_input->paramSize=sizeof(*vtcm_input);
 
@@ -696,7 +695,7 @@ UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * ke
   printf("%d\n",offset);
    if(pwdk!=NULL)
   {
-	vtcm_Ex_SM3(ownerauth,pwdk,Strlen(pwdk));
+	vtcm_ex_sm3(ownerauth,1,pwdk,Strlen(pwdk));
   }
   else
   {

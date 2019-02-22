@@ -136,8 +136,6 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
     smk = &(curr_tcm->tcm_permanent_data.smk);
     ret=vtcm_AuthSessions_GetEntry(&authSession,curr_tcm->tcm_stany_data.sessions,vtcm_in->authHandle);
  
-
-
    if(curr_tcm->tcm_permanent_flags.ownership!=0)
    {
 	print_cubeerr("TAKEOWNERSHIP:This tcm already has the ownership!\n");
@@ -216,6 +214,7 @@ static int proc_vtcm_TakeOwnership(void* sub_proc, void* recv_msg)
 			if(ret<0)
 				return ret;
 			// decrypt the smkAuth data
+   			datalen=DIGEST_SIZE*16;
 			ret=GM_SM2Decrypt(Buf,&datalen, vtcm_in->encSmkAuth,vtcm_in->encSmkAuthSize,
 				eKey->encData,eKey->encDataSize);
   			if(ret<0)

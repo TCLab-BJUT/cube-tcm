@@ -44,7 +44,7 @@ int vtcm_sm3(char * hashout,...)
 
     while (ap != 0 && argno < MAX_SM3_ARGS)
     {
-        hash_buf = va_arg(ap, BYTE *);
+        hash_elem = va_arg(ap, BYTE *);
 	argno++;
 	if(ap==0)
 	{
@@ -97,7 +97,7 @@ int vtcm_hmac_sm3(char * hashout,BYTE * key, int keylen,...)
 
     while (ap != 0 && argno < MAX_SM3_ARGS)
     {
-        hash_buf = va_arg(ap, BYTE *);
+        hash_elem = va_arg(ap, BYTE *);
 	argno++;
 	if(ap==0)
 	{

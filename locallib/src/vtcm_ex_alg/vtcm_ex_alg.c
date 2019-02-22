@@ -25,26 +25,29 @@
 
 #define MAX_SM3_ARGS 30
 #define MAX_SM3_LEN  1024
-static BYTE Buf[DIGEST_SIZE*64];
 
-int vtcm_ex_sm3(char * hashout,...)
+int vtcm_ex_sm3(char * hashout,int elem_no,...)
 {
    BYTE *hash_buf;
    int hash_len;
    int total_len=0;
    int argno=0;
-   BYTE * hash_elem;	
-
+   BYTE * hash_elem;
+   int i;	
+   
+   if((elem_no<0)||(elem_no>=MAX_SM3_ARGS))
+	return -EINVAL;
    hash_buf=Talloc0(MAX_SM3_LEN);
    if(hash_buf==NULL)
 	return -EINVAL; 	   
 
    va_list ap ;
-   va_start(ap,hashout);
+   va_start(ap,elem_no);
+   
 
-    while (ap != 0 && argno < MAX_SM3_ARGS)
+    for(i=0;i<elem_no;i++)
     {
-        hash_buf = va_arg(ap, BYTE *);
+        hash_elem = va_arg(ap, BYTE *);
 	argno++;
 	if(ap==0)
 	{
@@ -80,24 +83,28 @@ int vtcm_ex_Random(BYTE* buffer, size_t bytes)
     return ret;
 }
 
-int vtcm_ex_hmac_sm3(char * hashout,BYTE * key, int keylen,...)
+int vtcm_ex_hmac_sm3(char * hashout,BYTE * key, int keylen,int elem_no,...)
 {
    BYTE *hash_buf;
    int hash_len;
    int total_len=0;
    int argno=0;
    BYTE * hash_elem;	
+   int i;
+
+   if((elem_no<0)||(elem_no>=MAX_SM3_ARGS))
+	return -EINVAL;
 
    hash_buf=Talloc0(MAX_SM3_LEN);
    if(hash_buf==NULL)
 	return -EINVAL; 	   
 
    va_list ap ;
-   va_start(ap,keylen);
+   va_start(ap,elem_no);
 
-    while (ap != 0 && argno < MAX_SM3_ARGS)
+    for(i=0;i<elem_no;i++)
     {
-        hash_buf = va_arg(ap, BYTE *);
+        hash_elem = va_arg(ap, BYTE *);
 	argno++;
 	if(ap==0)
 	{

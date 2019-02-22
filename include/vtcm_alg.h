@@ -8,10 +8,10 @@ int vtcm_Random(BYTE* buffer, size_t bytes);
 int vtcm_hmac_sm3(char * hashout,BYTE * key, int keylen,...);
 
 
-int vtcm_ex_sm3(char * hashout,...);
+int vtcm_ex_sm3(char * hashout,int elem_no,...);
 
 int vtcm_ex_Random(BYTE* buffer, size_t bytes);
 
-int vtcm_ex_hmac_sm3(char * hashout,BYTE * key, int keylen,...);
+int vtcm_ex_hmac_sm3(char * hashout,BYTE * key, int keylen,int elem_no,...);
 
 #endif
