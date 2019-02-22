@@ -30,6 +30,7 @@
 #include "app_struct.h"
 #include "pik_struct.h"
 #include "sm4.h"
+#include "vtcm_alg.h"
 
 static  BYTE Buf[DIGEST_SIZE*32];
 static  BYTE Output[DIGEST_SIZE*32];
@@ -237,16 +238,6 @@ int proc_vtcmutils_EvictKey(void *sub_proc,void *para);
 //int proc_vtcmutils_Ex
 int proc_vtcmutils_WrapKey(void *sub_proc,void *para);
 /*
-int vtcm_SM3(BYTE* checksum, unsigned char *buffer, int size)                                                       
-{
-  printf("vtcm_SM3: Start\n");
-  int ret = 0;
-  sm3_context ctx; 
-  sm3_starts(&ctx);
-  sm3_update(&ctx, buffer, size);
-  sm3_finish(&ctx, checksum);
-  return ret;
-}
 */
 int vtcm_SM3_1(BYTE* checksum, unsigned char* buffer,int size, unsigned char* buffer1,int size1)                                                       
 {
@@ -2249,7 +2240,7 @@ int proc_vtcmutils_SM3CompleteExtend(void * sub_proc, void * para){
     i++;
   }
   if(datablock!=NULL){
-    vtcm_SM3(nonce,datablock,strlen(datablock));
+    vtcm_ex_sm3(nonce,datablock,strlen(datablock));
   }
   vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
   vtcm_input->ordinal = SUBTYPE_SM3COMPLETEEXTEND_IN;
@@ -2615,8 +2606,6 @@ int proc_vtcmutils_OwnerReadInternalPub(void * sub_proc, void * para){
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_OWNERREADINTERNALPUB_IN;
 
-
-
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_OWNERREADINTERNALPUB_IN);
   int offset=0;
   offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
@@ -2631,7 +2620,9 @@ int proc_vtcmutils_OwnerReadInternalPub(void * sub_proc, void * para){
   TCM_SESSION_DATA * authdata;
   authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
   int serial = htonl(authdata->SERIAL);
-  vtcm_SM3_hmac(hmacout,authdata->sharedSecret,TCM_HASH_SIZE,hashout,TCM_HASH_SIZE,&serial,sizeof(int));
+
+//  vtcm_Ex_HMAC_SM3(hmacout,authdata->sharedSecret,TCM_HASH_SIZE,hashout,TCM_HASH_SIZE,&serial,sizeof(int));
+  vtcm_ex_hmac_sm3(hmacout,authdata->sharedSecret,TCM_HASH_SIZE,hashout,TCM_HASH_SIZE,&serial,sizeof(int));
   memcpy(vtcm_input->ownerAuth,hmacout,TCM_HASH_SIZE);
   if(vtcm_template==NULL)
     return -EINVAL;
@@ -2886,7 +2877,7 @@ int proc_vtcmutils_SM3Complete(void * sub_proc, void * para){
     i++;
   }
   if(datablock!=NULL){
-    vtcm_SM3(nonce,datablock,strlen(datablock));
+    vtcm_ex_sm3(nonce,datablock,strlen(datablock));
   }
   vtcm_input->dataBlock=nonce;
   vtcm_input->dataBlockSize=0x20;
@@ -2939,7 +2930,7 @@ int proc_vtcmutils_SM3Update(void * sub_proc, void * para){
     i++;
   }
   if(datablock!=NULL){
-    vtcm_SM3(nonce,datablock,strlen(datablock));
+    vtcm_ex_sm3(nonce,datablock,strlen(datablock));
   }
   vtcm_input->dataBlock=nonce;
   // memcpy(vtcm_input->dataBlock,nonce,TCM_HASH_SIZE);
@@ -3467,10 +3458,10 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
     printf("authhandle is error\n");
   }
   int ordinal = htonl(vtcm_input->ordinal);
-  vtcm_SM3(checknum,&ordinal,4);
+  vtcm_ex_sm3(checknum,&ordinal,4);
   authdata=Find_AuthSession(0x00,vtcm_input->authHandle);
   int serial = htonl(authdata->SERIAL);
-  vtcm_SM3_hmac(hashout,authdata->sharedSecret,32,checknum,32,&serial,4);
+  vtcm_ex_hmac_sm3(authdata->sharedSecret,32,checknum,32,&serial,4);
   memcpy(vtcm_input->authCode,hashout,TCM_HASH_SIZE);
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_APTERMINATE_IN);
   if(vtcm_template==NULL)
@@ -4566,7 +4557,7 @@ int proc_vtcmutils_Extend(void * sub_proc, void * para){
     i++;
   }
   if(message != NULL){
-    vtcm_SM3(msghash, message,strlen(message));
+    vtcm_ex_sm3(msghash, message,strlen(message));
   }
   for(j=0;j<32;j++){
     vtcm_input->inDigest[j] = (BYTE)msghash[j];

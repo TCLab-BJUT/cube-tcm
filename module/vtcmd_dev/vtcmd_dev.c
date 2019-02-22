@@ -632,11 +632,30 @@ static void char_reg_setup_cdev (struct cdev *cdev, dev_t devno)
         printk (KERN_NOTICE "Error %d adding char_reg_setup_cdev", error);
 }
 
+int _set_name_no(int no,char * name)
+{
+	int offset=0;
+	if(no<0)
+		return -EINVAL;
+	if(no>=100)
+		return -EINVAL;
+	if(no>9)
+	{
+		*(name+offset)='0'+no/10;
+		offset++;
+		no%=10;
+	}
+	*(name+offset)='0'+no;
+	offset++;
+	return offset;
+}
+
 int __init init_tcm_module(void)
 {
   int i;
   int ret;
   dev_t devno;
+  int name_offset=0;
 /*
   int res = misc_register(&tcm_dev);
   if (res != 0) {
@@ -658,10 +677,10 @@ int __init init_tcm_module(void)
   major=MAJOR(devno);
 
   printk("vtcm major devno is %d!\n",major);
-  vtcm_device[0].name=kmalloc(8*VTCM_DEFAULT_NUM,GFP_KERNEL);
+  vtcm_device[0].name=kmalloc(9*VTCM_DEFAULT_NUM,GFP_KERNEL);
   if(vtcm_device[0].name==NULL)
 	return -ENOMEM;
-  memset(vtcm_device[0].name,0,8*VTCM_DEFAULT_NUM);
+  memset(vtcm_device[0].name,0,9*VTCM_DEFAULT_NUM);
 
 
   vtcm_class = class_create(THIS_MODULE,"vtcm_dev_class");
@@ -674,9 +693,9 @@ int __init init_tcm_module(void)
   for(i=0;i<VTCM_DEFAULT_NUM;i++)
   {
 	// init each vtcm_device struct
-	vtcm_device[i].name=vtcm_device[0].name+8*i;
+	vtcm_device[i].name=vtcm_device[0].name+name_offset;
 	memcpy(vtcm_device[i].name,VTCM_DEVICE_ID,4);
-	vtcm_device[i].name[4]='0'+i;
+	name_offset=4+1+_set_name_no(i,vtcm_device[i].name+4);
 	vtcm_device[i].devno=MKDEV(major,i);	
 	memset(vtcm_device[i].uuid,0,DIGEST_SIZE);
 	vtcm_device[i].data_buf=kmalloc(VTCM_CMD_BUF_SIZE,GFP_KERNEL);

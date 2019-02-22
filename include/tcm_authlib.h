@@ -38,6 +38,9 @@ int vtcm_Random(BYTE* buffer, size_t bytes);
 int vtcm_SHA1(void* input, unsigned int len, unsigned char* output);
 int vtcm_SM3(BYTE* checksum, unsigned char* buffer, int size);
 int vtcm_HMAC_SM3(BYTE *key, int keylen, BYTE *buffer, int size, BYTE *output);
+int vtcm_Ex_SM3(BYTE* checksum, unsigned char* buffer, int size);
+int vtcm_Ex_HMAC_SM3(BYTE *key, int keylen, BYTE *buffer, int size, BYTE *output);
+
 int vtcm_Create_Checksum(BYTE* checksum, TCM_PUBKEY* pubEndorsementKey,
     BYTE* antiReplay);
 int vtcm_PubKey_Copy(TCM_SIZED_BUFFER* pubkey_des, TCM_STORE_PUBKEY* pubkey_src);

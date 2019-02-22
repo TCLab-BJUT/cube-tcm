@@ -27,9 +27,9 @@
 #include "tcm_constants.h"
 #include "app_struct.h"
 #include "pik_struct.h"
-#include "sm3.h"
 #include "sm4.h"
 #include "tcmfunc.h"
+#include "vtcm_alg.h"
 
 int main(int argc,char **argv)
 {
@@ -41,6 +41,9 @@ int main(int argc,char **argv)
     BYTE * PcrValue;
     BYTE Buf[DIGEST_SIZE*64];
     int  Buflen;
+    UINT32 authHandle;
+    UINT32 KeyHandle;
+    UINT32 keyAuthHandle;
 
     BYTE inDigest[DIGEST_SIZE];
     BYTE outDigest[DIGEST_SIZE];
@@ -49,9 +52,12 @@ int main(int argc,char **argv)
 
     ret= TCM_LibInit(); 
 
-//    ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
+//   ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
 
     Memset(inDigest,'A',DIGEST_SIZE);
+
+    vtcm_ex_sm3(outDigest,1,inDigest,32);
+    calculate_context_sm3(inDigest,32,outDigest);
 
     ret=TCM_Extend(0,inDigest,outDigest);
 
@@ -60,7 +66,10 @@ int main(int argc,char **argv)
 
     TCM_PUBKEY pubek;
 
-//    ret=TCM_ReadPubek(&pubek);
+    ret=TCM_ReadPubek(&pubek);
+
+    ret=TCM_APCreate(04, NULL, "sss", &authHandle);
+    printf("authHandle is : %x\n",authHandle);
     return ret;	
 
 }
