@@ -3461,7 +3461,7 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
   vtcm_ex_sm3(checknum,&ordinal,4);
   authdata=Find_AuthSession(0x00,vtcm_input->authHandle);
   int serial = htonl(authdata->SERIAL);
-  vtcm_ex_hmac_sm3(authdata->sharedSecret,32,checknum,32,&serial,4);
+  vtcm_ex_hmac_sm3(hashout,authdata->sharedSecret,32,2,checknum,32,&serial,4);
   memcpy(vtcm_input->authCode,hashout,TCM_HASH_SIZE);
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_APTERMINATE_IN);
   if(vtcm_template==NULL)
