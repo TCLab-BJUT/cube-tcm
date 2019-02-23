@@ -3149,8 +3149,8 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
   struct tcm_out_TakeOwnership * vtcm_output;
   char * pwdo;
   char * pwds;
-  BYTE ownerauth[TCM_HASH_SIZE];
-  BYTE smkauth[TCM_HASH_SIZE];
+  BYTE ownerauth[TCM_HASH_SIZE+8];
+  BYTE smkauth[TCM_HASH_SIZE+8];
   int  enclen=512;
   TCM_SYMMETRIC_KEY_PARMS * sm4_parms;
   TCM_SESSION_DATA * authdata;
@@ -3197,10 +3197,9 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
 		}
 	}	
 
-  calculate_context_sm3(pwdo,Strlen(pwdo),ownerauth);
-  calculate_context_sm3(pwds,Strlen(pwds),smkauth);
 
   // compute ownerAuth
+  calculate_context_sm3(pwdo,Strlen(pwdo),ownerauth);
   enclen=512;
   ret=GM_SM2Encrypt(Buf,&enclen,ownerauth,TCM_HASH_SIZE,pubEK->pubKey.key,pubEK->pubKey.keyLength);
   if(ret!=0)
@@ -3212,6 +3211,7 @@ int proc_vtcmutils_takeownership(void * sub_proc, void * para)
   Memcpy(vtcm_input->encOwnerAuth,Buf,enclen);
 
   // compute smkAuth
+  calculate_context_sm3(pwds,Strlen(pwds),smkauth);
   enclen=512;
   ret=GM_SM2Encrypt(Buf,&enclen,smkauth,TCM_HASH_SIZE,pubEK->pubKey.key,pubEK->pubKey.keyLength);
   if(ret!=0)
@@ -3461,7 +3461,7 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
   vtcm_ex_sm3(checknum,&ordinal,4);
   authdata=Find_AuthSession(0x00,vtcm_input->authHandle);
   int serial = htonl(authdata->SERIAL);
-  vtcm_ex_hmac_sm3(authdata->sharedSecret,32,checknum,32,&serial,4);
+  vtcm_ex_hmac_sm3(hashout,authdata->sharedSecret,32,2,checknum,32,&serial,4);
   memcpy(vtcm_input->authCode,hashout,TCM_HASH_SIZE);
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_APTERMINATE_IN);
   if(vtcm_template==NULL)
