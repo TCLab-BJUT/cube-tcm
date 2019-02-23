@@ -283,13 +283,11 @@ int proc_tcm_General(void * tcm_in, void * tcm_out)
   if(ret<0)
      return -EINVAL;
   printf("Send command for getRandom:\n");
-  print_bin_data(Buf,ret,8);
   inlen=ret;
   ret = vtcmutils_transmit(inlen,Buf,&outlen,Buf);
   if(ret<0)
     return ret; 
   printf("Receive  output is:\n");
-  print_bin_data(Buf,outlen,8);
 
   vtcm_template=memdb_get_template(out_type,vtcm_input->ordinal);
   if(vtcm_template==NULL)
@@ -743,5 +741,228 @@ UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * ke
   write(fd,Buf,ret);
   close(fd);
   printf("Output para: %d \n\n",vtcm_output->returnCode);
+  return 0;
+}
+
+UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen )
+{
+  TCM_KEY *keyOut;
+  int ret=0;
+  int keyLength=0;
+  void * vtcm_template;
+  int fd;
+  int datasize;
+
+  // read file
+  fd=open(keyfile,O_RDONLY);
+  if(fd<0)
+      return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+      return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+      printf("key file too large!\n");
+      return -EINVAL;
+  }
+  close(fd);
+  int length=512;
+  BYTE * keyFile=(BYTE*)malloc(sizeof(BYTE)*keyLength);
+
+  //  load key
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  if(vtcm_template==NULL)
+      return -EINVAL;
+
+  datasize=ret;
+
+  keyOut=Talloc0(sizeof(*keyOut));
+  if(keyOut==NULL)
+    return -ENOMEM;
+
+  ret=blob_2_struct(Buf,keyOut,vtcm_template);
+  if(ret<0||ret>datasize){
+       printf("read key file error!\n");
+       return -EINVAL;
+  }
+
+  *keylen=keyOut->pubKey.keyLength;
+  Memcpy(key,keyOut->pubKey.key,*keylen);
+  return 0;
+}
+
+UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,BYTE * in ,int in_len)
+{
+  int i=1;
+  int ret=0;
+  int fd;
+  int datasize;
+
+  //  load key
+
+  // proc_vtcmutils_ReadFile(keyLength,keyFile);
+  // read data
+
+  *out_len=in_len+65+32+4;
+  ret = GM_SM2Encrypt(out,out_len,in,in_len,pubkey,pubkey_len);
+  if(ret!=0){
+      printf("SM2Encrypt is fail\n");
+      return -EINVAL;
+  }
+  return 0;
+}
+
+UINT32 TCM_LoadKey(UINT32 authHandle,char * keyfile,UINT32 *KeyHandle)
+{
+  int outlen;
+  int i=1;
+  int ret = 0;
+  int offset=0;
+  void * vtcm_template;
+  unsigned char loadkey[TCM_HASH_SIZE];
+  unsigned char nonce[TCM_HASH_SIZE];
+  unsigned char hashout[TCM_HASH_SIZE];
+  unsigned char pubAuth[TCM_HASH_SIZE];
+  unsigned char APKey[TCM_HASH_SIZE];
+  unsigned char hmacout[TCM_HASH_SIZE];
+  TCM_SESSION_DATA * authdata;
+  struct tcm_in_LoadKey * vtcm_input;
+  struct tcm_out_LoadKey * vtcm_output;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_LOADKEY_IN;
+  vtcm_input->parentHandle=0x40;
+  vtcm_input->authHandle=authHandle;
+  int fd;
+  int datasize;
+  fd=open(keyfile,O_RDONLY);
+  if(fd<0)
+    return -EIO;
+  ret=read(fd,Buf,DIGEST_SIZE*32+1);
+  if(ret<0)
+    return -EIO;
+  if(ret>DIGEST_SIZE*32)
+  {
+    printf("key file too large!\n");
+    return -EINVAL;
+  }
+  datasize=ret;
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  if(vtcm_template==NULL)
+  {
+    return -EINVAL;
+  }
+  ret=blob_2_struct(Buf,&vtcm_input->inKey,vtcm_template);
+  if((ret<0)||(ret>datasize))
+  {
+    printf("read key file error!\n");
+    return -EINVAL;
+  }
+  authdata=Find_AuthSession(0x04,vtcm_input->authHandle);
+  ret = vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_LOADKEY_IN,authdata,vtcm_input->parentAuth);
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_LOADKEY_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+    return offset;
+  vtcm_input->paramSize=offset;
+
+  offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
+
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret = vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_LOADKEY_OUT,authdata,CheckData);
+  if(ret<0)
+    return -EINVAL;
+  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+  {
+    printf("Loadkey check output authcode failed!\n");
+    return -EINVAL;
+  }
+  *KeyHandle=vtcm_output->inKeyHandle;
+  printf("KeyHandle: %x\n",vtcm_output->inKeyHandle);
+  printf("Output para: %d %x\n\n",vtcm_output->returnCode,vtcm_output->inKeyHandle);
+  return 0;
+}
+
+UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len)
+{
+  unsigned char *encData=NULL;
+  int i=1;
+  int outlen;
+  int ret=0;
+  void * vtcm_template;
+  unsigned char hashout[TCM_HASH_SIZE];
+  unsigned char hmacout[TCM_HASH_SIZE];
+  struct tcm_in_Sm2Decrypt *vtcm_input;
+  struct tcm_out_Sm2Decrypt *vtcm_output;
+  TCM_SESSION_DATA * authdata;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_SM2DECRYPT_IN;
+  vtcm_input->keyHandle=keyHandle;
+  vtcm_input->DecryptAuthHandle=DecryptAuthHandle;
+  int datasize;
+  authdata=Find_AuthSession(0x01,vtcm_input->DecryptAuthHandle);
+  if(authdata==NULL)
+  {
+	printf("can't find decrypt session!\n");
+	return -EINVAL;
+  }
+  if(in_len>DIGEST_SIZE*24)
+  {
+    printf("decrypt data too large!\n");
+    return -EINVAL;     
+  }
+  vtcm_input->DecryptDataSize =in_len ; 
+  vtcm_input->paramSize = in_len+54;
+  vtcm_input->DecryptData = Talloc0(vtcm_input->DecryptDataSize);
+  if(vtcm_input->DecryptData==NULL)
+    return -EINVAL;
+  Memcpy(vtcm_input->DecryptData,in,vtcm_input->DecryptDataSize); 
+  //
+  //compute DecryptAuthVerfication
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM2DECRYPT_IN,authdata,vtcm_input->DecryptAuthVerfication);
+ 
+  printf("Begin Input for SM2Decrypt:\n");
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  // Check authdata
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SM2DECRYPT_OUT,authdata,CheckData);
+  if(ret<0)
+  {
+    	return -EINVAL;
+  }
+  if(Memcmp(CheckData,vtcm_output->DecryptedAuthVerfication,DIGEST_SIZE)!=0)
+  {
+    	printf("SM2Decrypt check output failed!\n");
+    	return -EINVAL;
+  }
+
+  *out_len=vtcm_output->DecryptedDataSize;
+  Memcpy(out,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
   return 0;
 }

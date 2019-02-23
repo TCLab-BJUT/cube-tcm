@@ -40,9 +40,13 @@ int main(int argc,char **argv)
     int PcrLength;
     BYTE * PcrValue;
     BYTE Buf[DIGEST_SIZE*64];
+    BYTE CryptBuf[DIGEST_SIZE*64];
+    BYTE OutBuf[DIGEST_SIZE*64];
     int  Buflen;
+    int CryptBuflen;	
+    int  OutBuflen;
     UINT32 authHandle;
-    UINT32 KeyHandle;
+    UINT32 keyHandle;
     UINT32 keyAuthHandle;
 
     BYTE inDigest[DIGEST_SIZE];
@@ -65,8 +69,38 @@ int main(int argc,char **argv)
 
     ret=TCM_ReadPubek(&pubek);
 
-    ret=TCM_APCreate(04, NULL, "sss", &authHandle);
+    BYTE pubkey[DIGEST_SIZE*8];
+    int pubkey_len;    
+ 
+    ret=TCM_SM2LoadPubkey("sm2.key",pubkey, &pubkey_len);
+
+    Memset(Buf,DIGEST_SIZE*16,'A');
+
+    ret=TCM_SM2Encrypt(pubkey,pubkey_len,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*9);
+
+    ret=TCM_APCreate(TCM_ET_SMK, NULL, "sss", &authHandle);
     printf("authHandle is : %x\n",authHandle);
+    if(ret<0)
+    {
+	printf("TCM_APCreate failed!\n");
+	return -EINVAL;	
+    }	
+    ret=TCM_LoadKey(authHandle,"sm2.key",&keyHandle);
+    if(ret<0)
+    {
+	printf("TCM_LoadKey failed!\n");
+	return -EINVAL;	
+    }	
+    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sm2", &keyAuthHandle);
+    if(ret<0)
+    {
+	printf("TCM_APCreate %dfailed!\n",12);
+	return -EINVAL;	
+    }	
+    printf("keyAuthHandle is : %x\n",keyAuthHandle);
+    	
+    ret=TCM_SM2Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
+
     return ret;	
 
 }
