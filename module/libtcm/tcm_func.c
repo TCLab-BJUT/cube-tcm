@@ -287,7 +287,7 @@ int proc_tcm_General(void * tcm_in, void * tcm_out)
   ret = vtcmutils_transmit(inlen,Buf,&outlen,Buf);
   if(ret<0)
     return ret; 
-  printf("Receive  output is:\n");
+  printf("Receive  output lentgh %d:\n",outlen);
 
   vtcm_template=memdb_get_template(out_type,vtcm_input->ordinal);
   if(vtcm_template==NULL)
