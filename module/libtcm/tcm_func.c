@@ -47,9 +47,9 @@ enum vtcm_trans_type
         DRV_IOCTL=1,
         DRV_RW
 };
-static enum vtcm_trans_type trans_type=DRV_IOCTL;
+static enum vtcm_trans_type trans_type=DRV_RW;
                                          
-char * tcm_devname="/dev/tcm";
+char * tcm_devname="/dev/vtcm1";
 int dev_fd;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -322,7 +322,6 @@ int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
                         	return len;
                 	}
 		}
-		return ret;
         }
 	Memcpy(out,TransBuf,len);
 	*out_len=len;
@@ -460,8 +459,9 @@ UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
   vtcm_input->ordinal=SUBTYPE_READPUBEK_IN;
   RAND_bytes(vtcm_input->antiReplay,DIGEST_SIZE);
  
+  deep_debug=1;
   ret=proc_tcm_General(vtcm_input,vtcm_output);
-
+  deep_debug=0;
   if(ret<0)
 	return ret;
   if(vtcm_output->returnCode!=0)
@@ -471,6 +471,7 @@ UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
   ret = struct_clone(key,&vtcm_output->pubEndorsementKey,vtcm_template);
   if(ret<0)
      return -EINVAL;
+  printf("finish struct clone!\n");
 
   if(pubEK==NULL)
   {
@@ -481,6 +482,7 @@ UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
  	 if(ret<0)
 		return -EINVAL;
   }
+  printf("Read Pubek finish!\n");
   return 0;
 }
 UINT32 TCM_APCreate(UINT32 entityType, UINT32 entityValue, char * pwd, UINT32 * authHandle)

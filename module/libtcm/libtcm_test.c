@@ -65,9 +65,12 @@ int main(int argc,char **argv)
     if(ret==0)
     	ret=TCM_PcrRead(0,outDigest);
 
-    TCM_PUBKEY pubek;
+    TCM_PUBKEY * pubek;
+    pubek=malloc(sizeof(*pubek));
+    if(pubek==NULL)
+	return -ENOMEM;
 
-    ret=TCM_ReadPubek(&pubek);
+    ret=TCM_ReadPubek(pubek);
 
     BYTE pubkey[DIGEST_SIZE*8];
     int pubkey_len;    

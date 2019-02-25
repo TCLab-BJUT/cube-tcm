@@ -39,6 +39,7 @@
 #define DEBUG
 #define VTCM_DEVICE_MINOR  224
 #define VTCM_DEVICE_ID     "vtcm"
+#define TCM_DEVICE_ID     "tcm"
 #define TCM_MODULE_NAME   "vtcmd_dev"
 
 #define TCM_STATE_IS_OPEN 0
@@ -117,6 +118,26 @@ static struct socket *tcmd_sock;
 //static struct sockaddr_un addr;
 static struct sockaddr addr;
 
+/* TCM_TAG (Command and Response Tags) rev 100
+
+   These tags indicate to the TCM the construction of the command either as input or as output. The
+   AUTH indicates that there are one or more AuthData values that follow the command
+   parameters.
+*/
+
+#define TCM_TAG_RQU_COMMAND             0xC100 /* A command with no authentication.  */
+#define TCM_TAG_RQU_AUTH1_COMMAND       0xC200 /* An authenticated command with one authentication
+                                                  handle */
+#define TCM_TAG_RQU_AUTH2_COMMAND       0xC300 /* An authenticated command with two authentication
+                                                  handles */
+#define TCM_TAG_RSP_COMMAND             0xC400 /* A response from a command with no authentication
+                                                */
+#define TCM_TAG_RSP_AUTH1_COMMAND       0xC500 /* An authenticated response with one authentication
+                                                  handle */
+#define TCM_TAG_RSP_AUTH2_COMMAND       0xC600 /* An authenticated response with two authentication
+                                                  handles */
+
+// vtcm special TAG
 #define TCM_TAG_RQU_VTCM_COMMAND        0xD100 /* An authenticated response with two authentication
                                                   handles */
 #define TCM_TAG_RSP_VTCM_COMMAND       	0xD400 /* An authenticated response with two authentication
@@ -296,11 +317,13 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 		if(vtcm_dev->state==VTCM_STATE_ERR)
 		{
         		debug("%s meets error state!\n", __FUNCTION__);
+			// reset vtcm_dev 
+			vtcm_dev->state=VTCM_STATE_WAIT;
 			return -EINVAL;
 		}
 		if(vtcm_dev->action!=VTCM_ACTION_RW)
 		{
-        		debug("%s no write cmd", __FUNCTION__);
+        		debug("%s no read cmd", __FUNCTION__);
 			return 0;
 		}	
 		if((vtcm_dev->state==VTCM_STATE_SEND)
@@ -475,6 +498,7 @@ struct class *vtcm_class;
 static int vtcm_io_process(void * data)
 {
 	int i;
+	int ret;
 	struct vtcm_device * device_list = (struct vtcm_device *)data;
 //	const int max_time=3000;  // max delay time limit (ms)
 	struct vtcm_device * vtcm_dev;
@@ -535,20 +559,28 @@ static int vtcm_io_process(void * data)
 				count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
 				response_size=VTCM_CMD_BUF_SIZE/2;
 				printk("vtcm %d has command len %d!\n",i,count);		
+		
+				if(i!=0)
+				{
+					vtcm_cmd_head=(struct vtcm_manage_cmd_head *)(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head));
+					vtcm_cmd_head->tag=TCM_TAG_RQU_VTCM_COMMAND;
+					vtcm_cmd_head->paramSize=ntohl(count+sizeof(*vtcm_cmd_head));
+					vtcm_cmd_head->vtcm_no=ntohs(i+1);
+					vtcm_cmd_head->cmd=0;
+					ret=tcmd_send_comm(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head),count+sizeof(*vtcm_cmd_head));
+				}
+				else
+				{
+					ret=tcmd_send_comm(vtcm_dev->cmd_buf,count);
 
-				vtcm_cmd_head=(struct vtcm_manage_cmd_head *)(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head));
-				vtcm_cmd_head->tag=TCM_TAG_RQU_VTCM_COMMAND;
-				vtcm_cmd_head->paramSize=ntohl(count+sizeof(*vtcm_cmd_head));
-				vtcm_cmd_head->vtcm_no=ntohs(i+1);
-				vtcm_cmd_head->cmd=0;
-				if (tcmd_send_comm(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head),
-					 count+sizeof(*vtcm_cmd_head)) == 0) {
-					printk("vtcm %d send command succeed! %p\n",i,tcmd_sock);		
+				}
+				if(ret == 0) {
+					debug("vtcm %d send command succeed! %lld\n",i,vtcm_dev->timeout);		
 					vtcm_dev->state=VTCM_STATE_RECV;
 				}
 				else
 				{
-					printk("vtcm %d send command error!\n",i);
+					debug("vtcm %d send command error %d!\n",i,ret);
 					vtcm_dev->state	=VTCM_STATE_ERR;	
 					vtcm_dev->timeout=0;
 					tcmd_sock=NULL;
@@ -563,7 +595,6 @@ static int vtcm_io_process(void * data)
 			
 			if(tcmd_sock!=NULL)
 			{
-
 				if (tcmd_recv_comm(recv_buf,&response_size)==0)
 				{
 					if(response_size==0)
@@ -577,39 +608,69 @@ static int vtcm_io_process(void * data)
 						continue;
 					}				
 					vtcm_return_head=(struct vtcm_manage_return_head *)recv_buf;
-					if(vtcm_return_head->tag != TCM_TAG_RSP_VTCM_COMMAND)
+					switch(vtcm_return_head->tag)
 					{
-						printk("vtcm return head format error!\n");
-						tcmd_sock=NULL;
-						continue;
-					}
-					vtcm_no=htons(vtcm_return_head->vtcm_no);	
-					if((vtcm_no<=0) || (vtcm_no>VTCM_DEFAULT_NUM))
-					{
-						printk("Invaild vtcm no %d!\n",vtcm_no);
-						tcmd_sock=NULL;
-						continue;
-					}
-					vtcm_dev=&device_list[vtcm_no-1];
 
-					if(vtcm_dev->state!=VTCM_STATE_RECV)
-					{
-						printk("vtcm %d's state error! not in recv state!\n",vtcm_no-1);
-						tcmd_sock=NULL;
-						continue;
+						case TCM_TAG_RSP_COMMAND:
+						case TCM_TAG_RSP_AUTH1_COMMAND:
+						case TCM_TAG_RSP_AUTH2_COMMAND:
+							vtcm_no=0;
+							vtcm_dev=&device_list[0];
+							if(vtcm_dev->state!=VTCM_STATE_RECV)
+							{
+								debug("vtcm %d's state error! not in recv state!\n",vtcm_no-1);
+								tcmd_sock=NULL;
+								break;
+							}
+							count=htonl(vtcm_return_head->paramSize);
+							if(count>response_size)
+							{
+								debug("vtcm %d get cmd size error!\n",count);
+								tcmd_sock=NULL;
+								break;
+							}
+							vtcm_dev->state=VTCM_STATE_RET;
+							vtcm_dev->timeout=0;
+							memcpy(vtcm_dev->res_buf,recv_buf,count);
+							if(vtcm_dev->action==VTCM_ACTION_IOCTL)
+								complete(&vtcm_dev->vtcm_notice);
+
+							break;	
+						case TCM_TAG_RSP_VTCM_COMMAND:
+							vtcm_no=htons(vtcm_return_head->vtcm_no);	
+							if((vtcm_no<=0) || (vtcm_no>VTCM_DEFAULT_NUM))
+							{
+								debug("Invaild vtcm no %d!\n",vtcm_no);
+								tcmd_sock=NULL;
+								break;
+							}
+							vtcm_dev=&device_list[vtcm_no-1];
+
+							if(vtcm_dev->state!=VTCM_STATE_RECV)
+							{
+								debug("vtcm %d's state error! not in recv state!\n",vtcm_no-1);
+								tcmd_sock=NULL;
+								break;
+							}
+							count=htonl(vtcm_return_head->paramSize);
+							if(count>response_size)
+							{
+								printk("vtcm %d get cmd size error!\n",count);
+								tcmd_sock=NULL;
+								break;
+							}
+							vtcm_dev->state=VTCM_STATE_RET;
+							vtcm_dev->timeout=0;
+							memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
+							if(vtcm_dev->action==VTCM_ACTION_IOCTL)
+								complete(&vtcm_dev->vtcm_notice);
+
+							break;
+						default:
+							debug("vtcm return head format error! \n");
+							tcmd_sock=NULL;
+							break;
 					}
-					count=htonl(vtcm_return_head->paramSize);
-					if(count>response_size)
-					{
-						printk("vtcm %d get cmd size error!\n",count);
-						tcmd_sock=NULL;
-						continue;
-					}
-					vtcm_dev->state=VTCM_STATE_RET;
-					vtcm_dev->timeout=0;
-					memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
-					if(vtcm_dev->action==VTCM_ACTION_IOCTL)
-						complete(&vtcm_dev->vtcm_notice);
 				
 				}
 			}
@@ -693,9 +754,18 @@ int __init init_tcm_module(void)
   for(i=0;i<VTCM_DEFAULT_NUM;i++)
   {
 	// init each vtcm_device struct
+	
 	vtcm_device[i].name=vtcm_device[0].name+name_offset;
-	memcpy(vtcm_device[i].name,VTCM_DEVICE_ID,4);
-	name_offset=4+1+_set_name_no(i,vtcm_device[i].name+4);
+	if(i==0)
+	{
+		memcpy(vtcm_device[i].name,TCM_DEVICE_ID,4);
+		name_offset=4+1;
+	}
+	else
+	{
+		memcpy(vtcm_device[i].name,VTCM_DEVICE_ID,4);
+		name_offset=4+1+_set_name_no(i,vtcm_device[i].name+4);
+	}
 	vtcm_device[i].devno=MKDEV(major,i);	
 	memset(vtcm_device[i].uuid,0,DIGEST_SIZE);
 	vtcm_device[i].data_buf=kmalloc(VTCM_CMD_BUF_SIZE,GFP_KERNEL);

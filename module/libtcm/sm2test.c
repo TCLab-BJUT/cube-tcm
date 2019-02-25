@@ -39,9 +39,9 @@ int main(int argc,char **argv)
     UINT32 handle;
     int PcrLength;
     BYTE * PcrValue;
-    BYTE Buf[DIGEST_SIZE*64];
-    BYTE CryptBuf[DIGEST_SIZE*64];
-    BYTE OutBuf[DIGEST_SIZE*64];
+    BYTE *Buf;
+    BYTE *CryptBuf;
+    BYTE *OutBuf;
     int  Buflen;
     int CryptBuflen;	
     int  OutBuflen;
@@ -64,14 +64,24 @@ int main(int argc,char **argv)
 
     Memset(inDigest,'A',DIGEST_SIZE);
 
+    Buf=malloc(DIGEST_SIZE*256);
+    if(Buf==NULL)
+	return -ENOMEM;
+    CryptBuf=Buf+DIGEST_SIZE*72;
+    OutBuf=CryptBuf+DIGEST_SIZE*72;  
+
     ret=TCM_Extend(0,inDigest,outDigest);
 
     if(ret==0)
     	ret=TCM_PcrRead(0,outDigest);
 
-    TCM_PUBKEY pubek;
+    TCM_PUBKEY * pubek;
+    pubek=malloc(sizeof(*pubek));
+    if(pubek==NULL)
+	return -EINVAL;
 
-    ret=TCM_ReadPubek(&pubek);
+
+    ret=TCM_ReadPubek(pubek);
 
     BYTE pubkey[DIGEST_SIZE*8];
     int pubkey_len;    

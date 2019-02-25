@@ -263,6 +263,11 @@ int vtcm_channel_start(void * sub_proc,void * para)
 	
             void * record;
             void * out_msg_template=memdb_get_template(message_head->record_type,message_head->record_subtype);
+	    if(out_msg_template==NULL)
+	    {
+		  printf("get record (%d %d)'s template error!\n",message_head->record_type,message_head->record_subtype);
+		  return -EINVAL;
+	    }	
             int  blob_size;
 	    int  offset;
 

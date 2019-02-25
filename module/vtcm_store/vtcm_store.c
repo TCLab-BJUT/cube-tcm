@@ -72,7 +72,7 @@ int vtcm_store_init(void * sub_proc ,void * para)
     tcm_state_t * tcm_instances = proc_share_data_getpointer();
 
 
-    for(i = 0 ;i < 3 ; i++)//分配存储空间
+    for(i = 0 ;i < vtcm_num ; i++)//分配存储空间
     {
         tcm_instances[i].tcm_number = i;
 //      tcm_instances[i].key = tcm_instances[i].tcm_stclear_data.PCRS ;
