@@ -49,7 +49,7 @@ enum vtcm_trans_type
 };
 static enum vtcm_trans_type trans_type=DRV_RW;
                                          
-char * tcm_devname="/dev/tcm";
+char * tcm_devname="/dev/tpm0";
 int dev_fd;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";

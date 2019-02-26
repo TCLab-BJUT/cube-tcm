@@ -62,41 +62,13 @@ int main(int argc,char **argv)
 
 //   ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
 
-    Memset(inDigest,'A',DIGEST_SIZE);
-
     Buf=malloc(DIGEST_SIZE*256);
     if(Buf==NULL)
 	return -ENOMEM;
     CryptBuf=Buf+DIGEST_SIZE*72;
     OutBuf=CryptBuf+DIGEST_SIZE*72;  
 
-    ret=TCM_Extend(0,inDigest,outDigest);
-
-    if(ret==0)
-    	ret=TCM_PcrRead(0,outDigest);
-
-    TCM_PUBKEY * pubek;
-    pubek=malloc(sizeof(*pubek));
-    if(pubek==NULL)
-	return -EINVAL;
-
-
-    ret=TCM_ReadPubek(pubek);
-
-    BYTE pubkey[DIGEST_SIZE*8];
-    int pubkey_len;    
- 
-    ret=TCM_SM2LoadPubkey("sm2.key",pubkey, &pubkey_len);
-
     Memset(Buf,'A',DIGEST_SIZE*16);
-
-   
-    gettimeofday( &start, NULL );
-   
-    for(i=0;i<2;i++)
-    	ret=TCM_SM2Encrypt(pubkey,pubkey_len,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*8);
-    gettimeofday( &end, NULL );
-    crypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
 
     ret=TCM_APCreate(TCM_ET_SMK, NULL, "sss", &authHandle);
     printf("authHandle is : %x\n",authHandle);
@@ -105,13 +77,13 @@ int main(int argc,char **argv)
 	printf("TCM_APCreate failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_LoadKey(authHandle,"sm2.key",&keyHandle);
+    ret=TCM_LoadKey(authHandle,"sm4.key",&keyHandle);
     if(ret<0)
     {
 	printf("TCM_LoadKey failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sm2", &keyAuthHandle);
+    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sm4", &keyAuthHandle);
     if(ret<0)
     {
 	printf("TCM_APCreate %dfailed!\n",12);
@@ -121,7 +93,13 @@ int main(int argc,char **argv)
     	
     gettimeofday( &start, NULL );
     for(i=0;i<2;i++)
-    	ret=TCM_SM2Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
+    	ret=TCM_SM1Encrypt(keyHandle,keyAuthHandle,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*8);
+    gettimeofday( &end, NULL );
+    crypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
+
+    gettimeofday( &start, NULL );
+    for(i=0;i<2;i++)
+    	ret=TCM_SM1Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
     gettimeofday( &end, NULL );
     decrypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
     printf("crypt time %d us decrypt time: %d us\n", crypttime,decrypttime);
