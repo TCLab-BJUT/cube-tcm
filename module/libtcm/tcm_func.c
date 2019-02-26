@@ -1009,3 +1009,94 @@ UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   Memcpy(out,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
   return 0;
 }
+
+int TCM_SM3Start(){
+  int outlen;
+  int i=0;
+  int ret=0;
+  void *vtcm_template;
+  struct tcm_in_Sm3Start *vtcm_input;
+  struct tcm_out_Sm3Start *vtcm_output;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_SM3START_IN;
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  return vtcm_output->returnCode;
+}
+
+int TCM_SM3Update(BYTE * data, int data_len){
+  int outlen;
+  int i=1;
+  int ret=0;
+  int offset=0;
+  void *vtcm_template;
+  char *datablock=NULL;
+  unsigned char nonce[TCM_HASH_SIZE];
+  struct tcm_in_Sm3Update *vtcm_input;
+  struct tcm_out_Sm3Update *vtcm_output;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_SM3UPDATE_IN;
+
+  vtcm_input->dataBlockSize=data_len;
+
+  vtcm_input->dataBlock=Talloc0(data_len);
+  if(vtcm_input->dataBlock==NULL)
+	return -ENOMEM;
+  Memcpy(vtcm_input->dataBlock,data,data_len);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  ret=vtcm_output->returnCode;
+  Free(vtcm_input->dataBlock);
+  Free(vtcm_input);
+  Free(vtcm_output);
+  return ret;
+}
+
+int TCM_SM3Complete(BYTE * in, int in_len,BYTE * out){
+
+  int ret=0;
+  void *vtcm_template;
+  struct tcm_in_Sm3Complete *vtcm_input;
+  struct tcm_out_Sm3Complete *vtcm_output;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+  	return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+  	return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_SM3COMPLETE_IN;
+  vtcm_input->dataBlockSize=in_len;
+  vtcm_input->dataBlock=Talloc0(in_len);
+  if(vtcm_input->dataBlock==NULL)
+	return -ENOMEM;
+  Memcpy(vtcm_input->dataBlock,in,in_len);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode ==0)
+  {
+	Memcpy(out,vtcm_output->calResult,DIGEST_SIZE);
+  }	
+  ret=vtcm_output->returnCode;
+  Free(vtcm_input->dataBlock);
+  Free(vtcm_input);
+  Free(vtcm_output);
+  return ret;
+}
