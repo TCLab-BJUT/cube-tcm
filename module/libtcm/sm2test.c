@@ -93,7 +93,7 @@ int main(int argc,char **argv)
    
     gettimeofday( &start, NULL );
    
-    for(i=0;i<40;i++)
+    for(i=0;i<2;i++)
     	ret=TCM_SM2Encrypt(pubkey,pubkey_len,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*8);
     gettimeofday( &end, NULL );
     crypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
@@ -120,7 +120,7 @@ int main(int argc,char **argv)
     printf("keyAuthHandle is : %x\n",keyAuthHandle);
     	
     gettimeofday( &start, NULL );
-    for(i=0;i<40;i++)
+    for(i=0;i<2;i++)
     	ret=TCM_SM2Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
     gettimeofday( &end, NULL );
     decrypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
@@ -135,6 +135,12 @@ int main(int argc,char **argv)
     if(ret<0)
     {
 	printf("TCM_APTerminate %x failed!\n",keyAuthHandle);
+	return -EINVAL;	
+    }	
+    ret=TCM_EvictKey(keyHandle);
+    if(ret<0)
+    {
+	printf("TCM_APTerminate %x failed!\n",keyHandle);
 	return -EINVAL;	
     }	
 

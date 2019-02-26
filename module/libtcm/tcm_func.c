@@ -49,7 +49,7 @@ enum vtcm_trans_type
 };
 static enum vtcm_trans_type trans_type=DRV_RW;
                                          
-char * tcm_devname="/dev/vtcm1";
+char * tcm_devname="/dev/tcm";
 int dev_fd;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -267,7 +267,11 @@ int proc_tcm_General(void * tcm_in, void * tcm_out)
   else if(vtcm_input->tag == htons(TCM_TAG_RQU_AUTH1_COMMAND))
   {
 	cmd_type=DTYPE_VTCM_IN_AUTH1;	
-	out_type=DTYPE_VTCM_OUT_AUTH1;	
+	// deal with special command
+	if(vtcm_input->ordinal==SUBTYPE_APTERMINATE_IN)
+		out_type=DTYPE_VTCM_OUT;
+	else
+		out_type=DTYPE_VTCM_OUT_AUTH1;	
   }
   else if(vtcm_input->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
   {
@@ -586,6 +590,43 @@ UINT32 TCM_APTerminate(UINT32 authHandle)
   printf("Output para: %d\n",vtcm_output->returnCode);
   return 0;
 }
+
+UINT32 TCM_EvictKey(UINT32 keyHandle)
+{
+  int outlen;
+  int i=1;
+  int ret=0;
+  void *vtcm_template;
+  struct tcm_in_EvictKey *vtcm_input;
+  struct tcm_out_EvictKey *vtcm_output;
+
+  unsigned char digest[TCM_HASH_SIZE];
+  TCM_SESSION_DATA * authdata;
+  printf("Begin TCM EvictKey:\n");
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+
+  vtcm_input->evictHandle = keyHandle;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_EVICTKEY_IN;
+  int ordinal = htonl(vtcm_input->ordinal);
+
+  vtcm_input->paramSize=sizeof(*vtcm_input);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  printf("Output para: %d\n",vtcm_output->returnCode);
+  return 0;
+}
+
 
 UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * keyfile,char *pwdk)
 {
