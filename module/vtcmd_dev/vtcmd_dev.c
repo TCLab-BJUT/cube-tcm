@@ -104,7 +104,7 @@ static struct vtcm_device
 }vtcm_device[VTCM_DEFAULT_NUM];
 
 static struct task_struct *vtcm_io_task;
-const int maxwaittime=5000;
+const int maxwaittime=50000;
 
 /* TCM command response */
 static struct {
