@@ -222,7 +222,7 @@ static int tcmd_send_comm(const uint8_t *in, uint32_t in_size)
   send_vec.iov_len = in_size;
 //  msg.msg_iov = &iov;
 //  msg.msg_iovlen = 1;
-  debug("%s(%p %d)", __FUNCTION__,in,in_size);
+//  debug("%s(%p %d)", __FUNCTION__,in,in_size);
   res = kernel_sendmsg(tcmd_sock, &send_msg, &send_vec,1,in_size);
   if (res < 0) {
     error("sock_sendmsg() failed: %d\n", res);
@@ -264,8 +264,8 @@ static int tcmd_recv_comm(uint8_t *out,uint32_t *out_size)
   }
   *out_size = res;
 
-  if(*out_size>0)
-  	debug("%s(%p %d)", __FUNCTION__,out,*out_size);
+//  if(*out_size>0)
+//  	debug("%s(%p %d)", __FUNCTION__,out,*out_size);
 
   return 0;
 }
@@ -309,7 +309,7 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 
 	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
 
-        debug("%s(%zd)", __FUNCTION__, count);
+//      debug("%s(%zd)", __FUNCTION__, count);
 
 
 	while(vtcm_dev->state!=VTCM_STATE_RET)
@@ -359,11 +359,11 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 			return -EINVAL;
 		}
 
-		printk("finish waiting count data %d!\n",read_size);
+//		printk("finish waiting count data %d!\n",read_size);
     	}
 	else
 		read_size=0;
-        debug("%s(return value %d)", __FUNCTION__, read_size);
+//      debug("%s(return value %d)", __FUNCTION__, read_size);
 	vtcm_dev->state=VTCM_STATE_WAIT;
 
         return read_size;
@@ -379,7 +379,7 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
 
 	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
 
-        debug("%s(%zd)", __FUNCTION__, count);
+//      debug("%s(%zd)", __FUNCTION__, count);
         //  down(&vtcm_mutex);
 
 	if(vtcm_dev->state==VTCM_STATE_ERR)
@@ -391,7 +391,6 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
         *ppos = 0;
 	if(count<10)
 		return -EINVAL;
-        debug("%s write begin", __FUNCTION__);
 
 	ret=copy_from_user(vtcm_dev->cmd_buf,buf,6);
 	if(ret!=0)
@@ -413,10 +412,10 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
 		return ret;
 	}
 
-	printk(" write vtcm dev %p\n",vtcm_dev);
+//	printk(" write vtcm dev %p\n",vtcm_dev);
 	vtcm_dev->state=VTCM_STATE_SEND;
 	vtcm_dev->timeout=get_jiffies_64();
-  	debug("%s(%lld, %ld, %d)", __FUNCTION__, vtcm_dev->timeout, count,minor);
+//  	debug("%s(%lld, %ld, %d)", __FUNCTION__, vtcm_dev->timeout, count,minor);
 
 	return count;
 }
@@ -523,7 +522,7 @@ static int vtcm_io_process(void * data)
 	{
 		if(clock==0)
 			printk(" enter the process circle %p!\n",tcmd_sock);
-		msleep(10);
+		msleep(5);
 		clock++;
 		if(tcmd_sock == NULL)
 		{
@@ -547,7 +546,7 @@ static int vtcm_io_process(void * data)
 				int outtime = jiffies_to_msecs(get_jiffies_64()-vtcm_dev->timeout);
 				if(outtime > maxwaittime)
 				{	
-					debug("cmd timeout %d ms! state is %d\n",outtime,vtcm_dev->state);
+					debug("vtcm %d timeout %d ms! state is %d\n",i,outtime,vtcm_dev->state);
 					vtcm_dev->state=VTCM_STATE_ERR;
 					vtcm_dev->timeout=0;
 					complete(&vtcm_dev->vtcm_notice);
@@ -558,7 +557,7 @@ static int vtcm_io_process(void * data)
 			{
 				count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
 				response_size=VTCM_CMD_BUF_SIZE/2;
-				printk("vtcm %d has command len %d!\n",i,count);		
+				//printk("vtcm %d has command len %d!\n",i,count);		
 		
 				if(i!=0)
 				{
@@ -575,7 +574,10 @@ static int vtcm_io_process(void * data)
 
 				}
 				if(ret == 0) {
-					debug("vtcm %d send command succeed! %lld\n",i,vtcm_dev->timeout);		
+
+					printk("send (%d %d %d) ",i,count,jiffies_to_msecs(get_jiffies_64())); 
+					printk(" cmd (%x %x %x %x)", vtcm_dev->cmd_buf[6],vtcm_dev->cmd_buf[7],vtcm_dev->cmd_buf[8],vtcm_dev->cmd_buf[9]);
+					// debug("vtcm %d send command succeed! %lld\n",i,vtcm_dev->timeout);		
 					vtcm_dev->state=VTCM_STATE_RECV;
 				}
 				else
@@ -616,9 +618,10 @@ static int vtcm_io_process(void * data)
 						case TCM_TAG_RSP_AUTH2_COMMAND:
 							vtcm_no=0;
 							vtcm_dev=&device_list[0];
+							printk("recv (%d %d %d)  \n",0,response_size,jiffies_to_msecs(get_jiffies_64())); 
 							if(vtcm_dev->state!=VTCM_STATE_RECV)
 							{
-								debug("vtcm %d's state error! not in recv state!\n",vtcm_no-1);
+								debug("vtcm %d's state %d error! not in recv state!\n",vtcm_no,vtcm_dev->state);
 								tcmd_sock=NULL;
 								break;
 							}
@@ -645,10 +648,11 @@ static int vtcm_io_process(void * data)
 								break;
 							}
 							vtcm_dev=&device_list[vtcm_no-1];
+							printk("recv (%d %d %d) \n",vtcm_no,response_size,jiffies_to_msecs(get_jiffies_64())); 
 
 							if(vtcm_dev->state!=VTCM_STATE_RECV)
 							{
-								debug("vtcm %d's state error! not in recv state!\n",vtcm_no-1);
+								debug("vtcm %d's state error! not in recv state!\n",vtcm_no);
 								tcmd_sock=NULL;
 								break;
 							}

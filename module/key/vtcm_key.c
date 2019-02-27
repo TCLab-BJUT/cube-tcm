@@ -1324,46 +1324,51 @@ int proc_vtcm_APTerminate(void *sub_proc, void* recv_msg)
     return ret;
 }
 
-
-
-
 int proc_vtcm_Sm3Start(void* sub_proc, void* recv_msg)
 {
     printf("proc_vtcm_Sm3Start : start\n");
     int ret = 0;
     int i = 0;
 
-    struct tcm_in_Sm3Start *tcm_Sm3Start_in;
-    ret = message_get_record(recv_msg, (void **)&tcm_Sm3Start_in, 0);                                                            
-    if(ret < 0)
-        return ret;
-    if(tcm_Sm3Start_in == NULL)
-        return -EINVAL;
+    struct tcm_in_Sm3Start *vtcm_in;
+    struct tcm_out_Sm3Start * vtcm_out;
+		
+    ret = message_get_record(recv_msg,(void **)&vtcm_in,0);
+    if(ret<0)
+	return ret;
+    else ret=0;
+    if(vtcm_in==NULL)
+	return -EINVAL;	
+    tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
     //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM3START_OUT);
-    if(command_template == NULL)
-    {
-        printf("can't solve this command!\n");
-    }
-    struct tcm_out_Sm3Start * tcm_Sm3Start_out = malloc(struct_size(command_template));
+    vtcm_out = Talloc0(sizeof(*vtcm_out));
+    if(vtcm_out==NULL)
+	return -ENOMEM;
+    //output process
     
-    tcm_state_t * tcm_state = proc_share_data_getpointer();
-
     /*
      * Processing
     */
     tcm_state->sm3_context = malloc(sizeof(sm3_context));
     SM3_init(tcm_state->sm3_context);
+sm3start_out:
+    printf("proc_vtcm_APCreate : Response \n");
 
-    tcm_Sm3Start_out->tag = 0xC400;
-    tcm_Sm3Start_out->paramSize = 0x0E;
-    tcm_Sm3Start_out->returnCode = 0;
-    tcm_Sm3Start_out->sm3MaxBytes = 512;
+    vtcm_out->tag = 0xC400;
+    vtcm_out->paramSize = 0x0E;
+    vtcm_out->returnCode = 0;
+    vtcm_out->sm3MaxBytes = 512;
 
     void *send_msg = message_create(DTYPE_VTCM_OUT, SUBTYPE_SM3START_OUT, recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
-    message_add_record(send_msg, tcm_Sm3Start_out);
+    message_add_record(send_msg, vtcm_out);
+     // add vtcm's expand info	
+    ret = vtcm_addcmdexpand(send_msg,recv_msg);
+    if(ret < 0)
+    {
+	    printf("fail to add vtcm copy info!\n");
+    }	
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
@@ -1374,35 +1379,40 @@ int proc_vtcm_Sm3Update(void* sub_proc, void* recv_msg)
     int ret = 0;
     int i = 0;
 
-    struct tcm_in_Sm3Update *tcm_Sm3Update_in;
-    ret = message_get_record(recv_msg, (void **)&tcm_Sm3Update_in, 0);                                                            
+    struct tcm_in_Sm3Update *vtcm_in;
+    struct tcm_out_Sm3Update * vtcm_out;
+
+    ret = message_get_record(recv_msg, (void **)&vtcm_in, 0);                                                            
     if(ret < 0)
         return ret;
-    if(tcm_Sm3Update_in == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
+    vtcm_out = Talloc0(sizeof(*vtcm_out));
+    if(vtcm_out==NULL)
+	return -EINVAL;
     //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM3UPDATE_OUT);
-    if(command_template == NULL)
-    {
-        printf("can't solve this command!\n");
-    }
-    struct tcm_out_Sm3Update * tcm_Sm3Update_out = malloc(struct_size(command_template));
     
-    tcm_state_t * tcm_state = proc_share_data_getpointer();
+    tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
     /*
      * Processing
     */
-    SM3_update(tcm_state->sm3_context, tcm_Sm3Update_in->dataBlock, tcm_Sm3Update_in->dataBlockSize );
-
-    tcm_Sm3Update_out->tag = 0xC400;
-    tcm_Sm3Update_out->paramSize = 0x0A;
-    tcm_Sm3Update_out->returnCode = 0;
+    SM3_update(tcm_state->sm3_context, vtcm_in->dataBlock, vtcm_in->dataBlockSize );
+ sm3update_out:   
+    vtcm_out->tag = 0xC400;
+    vtcm_out->returnCode = 0;
+    vtcm_out->paramSize = sizeof(*vtcm_out);
 
     void *send_msg = message_create(DTYPE_VTCM_OUT, SUBTYPE_SM3UPDATE_OUT, recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
-    message_add_record(send_msg, tcm_Sm3Update_out);
+    message_add_record(send_msg, vtcm_out);
+     // add vtcm's expand info	
+    ret = vtcm_addcmdexpand(send_msg,recv_msg);
+    if(ret < 0)
+    {
+	    printf("fail to add vtcm copy info!\n");
+    }	
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
@@ -1413,37 +1423,43 @@ int proc_vtcm_Sm3Complete(void* sub_proc, void* recv_msg)
     int ret = 0;
     int i = 0;
 
-    struct tcm_in_Sm3Complete *tcm_Sm3Complete_in;
-    ret = message_get_record(recv_msg, (void **)&tcm_Sm3Complete_in, 0);                                                            
+    struct tcm_in_Sm3Complete *vtcm_in;
+    struct tcm_out_Sm3Complete *vtcm_out;
+
+    ret = message_get_record(recv_msg,(void **)&vtcm_in,0);
     if(ret < 0)
         return ret;
-    if(tcm_Sm3Complete_in == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
-    //output process
-    void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM3COMPLETE_OUT);
-    if(command_template == NULL)
-    {
-        printf("can't solve this command!\n");
-    }
-    struct tcm_out_Sm3Complete * tcm_Sm3Complete_out = malloc(struct_size(command_template));
-    
-    tcm_state_t * tcm_state = proc_share_data_getpointer();
+
+    vtcm_out = Talloc0(sizeof(*vtcm_out));
+    if(vtcm_out==NULL)
+	return -EINVAL;
+
+    tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
     /*
      * Processing
     */
-    SM3_update(tcm_state->sm3_context, tcm_Sm3Complete_in->dataBlock, tcm_Sm3Complete_in->dataBlockSize);
-    SM3_final(tcm_state->sm3_context, tcm_Sm3Complete_out->calResult);
+    SM3_update(tcm_state->sm3_context, vtcm_in->dataBlock, vtcm_in->dataBlockSize);
+    SM3_final(tcm_state->sm3_context, vtcm_out->calResult);
 
-    tcm_Sm3Complete_out->tag = 0xC400;
-    tcm_Sm3Complete_out->returnCode = 0;
+sm3complete_out_proc:
+    vtcm_out->tag = 0xC400;
+    vtcm_out->returnCode = 0;
 
-    tcm_Sm3Complete_out->paramSize = 0x2A;
+    vtcm_out->paramSize = 0x2A;
 
     void *send_msg = message_create(DTYPE_VTCM_OUT, SUBTYPE_SM3COMPLETE_OUT, recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
-    message_add_record(send_msg, tcm_Sm3Complete_out);
+    message_add_record(send_msg, vtcm_out);
+     // add vtcm's expand info	
+    ret = vtcm_addcmdexpand(send_msg,recv_msg);
+    if(ret < 0)
+    {
+	    printf("fail to add vtcm copy info!\n");
+    }	
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
