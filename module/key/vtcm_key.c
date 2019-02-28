@@ -1326,7 +1326,6 @@ int proc_vtcm_APTerminate(void *sub_proc, void* recv_msg)
 
 int proc_vtcm_Sm3Start(void* sub_proc, void* recv_msg)
 {
-    printf("proc_vtcm_Sm3Start : start\n");
     int ret = 0;
     int i = 0;
 
@@ -1352,7 +1351,6 @@ int proc_vtcm_Sm3Start(void* sub_proc, void* recv_msg)
     tcm_state->sm3_context = malloc(sizeof(sm3_context));
     SM3_init(tcm_state->sm3_context);
 sm3start_out:
-    printf("proc_vtcm_APCreate : Response \n");
 
     vtcm_out->tag = 0xC400;
     vtcm_out->paramSize = 0x0E;
@@ -1375,7 +1373,6 @@ sm3start_out:
 
 int proc_vtcm_Sm3Update(void* sub_proc, void* recv_msg)
 {
-    printf("proc_vtcm_Sm3Update : start\n");
     int ret = 0;
     int i = 0;
 
@@ -1419,7 +1416,6 @@ int proc_vtcm_Sm3Update(void* sub_proc, void* recv_msg)
 
 int proc_vtcm_Sm3Complete(void* sub_proc, void* recv_msg)
 {
-    printf("proc_vtcm_Sm3Complete : start\n");
     int ret = 0;
     int i = 0;
 

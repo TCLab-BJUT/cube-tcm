@@ -253,7 +253,6 @@ int vtcm_channel_start(void * sub_proc,void * para)
 	    type=message_get_type(message_box);
 	    subtype=message_get_subtype(message_box);
 
-            printf("Receive from State :\n");
             MSG_HEAD * message_head;
             message_head=message_get_head(message_box);
 	    MSG_EXPAND * msg_expand;
@@ -325,11 +324,12 @@ int vtcm_channel_start(void * sub_proc,void * para)
 		    *(int *)(sendbuf+2)=htonl(offset+blob_size);
 	    }	
 
-            printf("response cmd size %d\n", blob_size);
+	    if(deep_debug)
+            	printf("response cmd size %d\n", blob_size);
 
 	    int len=channel_write(vtcm_channel,sendbuf,blob_size+offset);
-            if (len == blob_size+offset)
-                printf("write success\n");
+            if (len != blob_size+offset)
+                print_cubeerr("vtcm_channel write failed!\n");
         }
     }
     return 0;

@@ -17,6 +17,7 @@
 #include "crypto_func.h"
 #include "memdb.h"
 #include "message.h"
+#include "sys_func.h"
 #include "ex_module.h"
 //#include "tesi.h"
 
@@ -34,7 +35,6 @@
 
 int vtcm_dev_no;
 
-static struct timeval time_val={0,50*1000};
 struct vtcm_pcr_scene * pcr_scenes;
 
 static int proc_vtcm_pcrread(sub_proc, recv_msg);

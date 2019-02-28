@@ -200,25 +200,25 @@ int tpm_init_channel_init(void * sub_proc,void * para)
     extend_template=memdb_get_template(DTYPE_VTCM_EXTERNAL,SUBTYPE_INPUT_COMMAND_EXTERNAL) ;
     if(extend_template==NULL)
     {
-    	printf("load extend template error!\n");
+    	print_cubeerr("load extend template error!\n");
     	return -EINVAL;
     }
     return_template=memdb_get_template(DTYPE_VTCM_EXTERNAL,SUBTYPE_RETURN_DATA_EXTERNAL) ;
     if(return_template==NULL)
     {
-    	printf("load return template error!\n");
+    	print_cubeerr("load return template error!\n");
     	return -EINVAL;
     }
     vtcm_head_template=memdb_get_template(DTYPE_VTCM_STRUCT,SUBTYPE_VTCM_CMD_HEAD);
     if(vtcm_head_template==NULL)
     {
-    	printf("load vtcm head template error!\n");
+    	print_cubeerr("load vtcm head template error!\n");
     	return -EINVAL;
     }
     vtcm_return_template=memdb_get_template(DTYPE_VTCM_STRUCT,SUBTYPE_VTCM_RETURN_HEAD) ;
     if(return_template==NULL)
     {
-    	printf("load vtcm return template error!\n");
+    	print_cubeerr("load vtcm return template error!\n");
     	return -EINVAL;
     }
 
@@ -292,7 +292,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 				ret=channel_write(ex_channel,sendbuf,out_len+offset);
 				if(ret<0)
 					return -EINVAL;
-				printf("tpm_init_channel return %d data!\n",out_len+offset);
+				print_cubeaudit("tpm_init_channel return %d data!\n",out_len+offset);
 				break;
 			}
 			i++;
@@ -304,7 +304,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 			ret=channel_inner_write(in_channel,ReadBuf,output_data.paramSize+offset);
 			if(ret<output_data.paramSize)
 				return -EINVAL;
-			printf("tpm_init_channel send %d data!\n",ret);
+			print_cubeaudit("tpm_init_channel send %d data!\n",ret);
 		}
 		readbuf_len-=output_data.paramSize+offset;
 		Memcpy(ReadBuf,ReadBuf+output_data.paramSize+offset,readbuf_len);
@@ -315,7 +315,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 	if(ret>0)
 	{
 		channel_write(ex_channel,WriteBuf,ret);
-		printf("tpm_init_channel retuen %d data from in_channel!\n",ret);
+		print_cubeaudit("tpm_init_channel retuen %d data from in_channel!\n",ret);
 	}
     }
     return 0;
@@ -411,13 +411,13 @@ int tpm_ordemu_GetCapability(struct vtcm_external_input_command * input_head,BYT
 	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_GETCAPABILITY_IN);
 	if(tpm_in_template==NULL)
 	{
-		printf("template error!\n");
+		print_cubeerr("template error!\n");
 		return -EINVAL;
 	}
 	tpm_out_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_GETCAPABILITY_OUT);
 	if(tpm_out_template==NULL)
 	{
-		printf("template error!\n");
+		print_cubeerr("template error!\n");
 		return -EINVAL;
 	}
 
@@ -513,7 +513,7 @@ int tpm_ordemu_SHA1Update(struct vtcm_external_input_command * input_head,BYTE *
 	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM3COMPLETE_IN);
 	if(tpm_in_template==NULL)
 	{
-		printf("template error!\n");
+		print_cubeerr("template error!\n");
 		return -EINVAL;
 	}
 	tpm_in=Talloc0(sizeof(*tpm_in));
@@ -541,7 +541,7 @@ int tpm_ordemu_SHA1Complete(struct vtcm_external_input_command * input_head,BYTE
 	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_SM3COMPLETE_IN);
 	if(tpm_in_template==NULL)
 	{
-		printf("template error!\n");
+		print_cubeerr("template error!\n");
 		return -EINVAL;
 	}
 	tpm_in=Talloc0(sizeof(*tpm_in));
@@ -571,7 +571,7 @@ int tpm_ordemu_Extend(struct vtcm_external_input_command * input_head,BYTE * inp
 	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_EXTEND_IN);
 	if(tpm_in_template==NULL)
 	{
-		printf("template error!\n");
+		print_cubeerr("template error!\n");
 		return -EINVAL;
 	}
 	tpm_in=Talloc0(sizeof(*tpm_in));
@@ -599,7 +599,7 @@ int tpm_ordemu_PcrRead(struct vtcm_external_input_command * input_head,BYTE * in
 	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_PCRREAD_IN);
 	if(tpm_in_template==NULL)
 	{
-		printf("template error!\n");
+		print_cubeerr("template error!\n");
 		return -EINVAL;
 	}
 	tpm_in=Talloc0(sizeof(*tpm_in));
@@ -628,7 +628,7 @@ int tpm_ordemu_GetRandom(struct vtcm_external_input_command * input_head,BYTE * 
         tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_GETRANDOM_IN);
         if(tpm_in_template==NULL)
         {
-                printf("template error!\n");
+                print_cubeerr("template error!\n");
                 return -EINVAL;
         }
         tpm_in=Talloc0(sizeof(*tpm_in));
@@ -660,7 +660,7 @@ int tpm_ordemu_PhysicalPresence(struct vtcm_external_input_command * input_head,
 	tpm_in_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_PHYSICALPRESENCE_IN);
 	if(tpm_in_template==NULL)
 	{
-		printf("template error!\n");
+		print_cubeerr("template error!\n");
 		return -EINVAL;
 	}
 	tpm_in=Talloc0(sizeof(*tpm_in));
