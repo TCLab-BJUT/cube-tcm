@@ -114,7 +114,7 @@ int main(int argc,char **argv)
         decrypt_speed = (float)(CryptBuflen*repeattime)*1000/decrypttime;
 
     	printf("decrypt speed %f KB/s \n",decrypt_speed);
-	sleep(20);
+	sleep(2);
     }
     ret=TCM_APTerminate(authHandle);
     if(ret<0)

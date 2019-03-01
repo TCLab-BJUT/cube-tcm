@@ -104,7 +104,7 @@ static struct vtcm_device
 }vtcm_device[VTCM_DEFAULT_NUM];
 
 static struct task_struct *vtcm_io_task;
-const int maxwaittime=50000;
+const int maxwaittime=500000;
 
 /* TCM command response */
 static struct {
@@ -379,7 +379,7 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
 
 	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
 
-//      debug("%s(%zd)", __FUNCTION__, count);
+        debug("%s(%zd)", __FUNCTION__, count);
         //  down(&vtcm_mutex);
 
 	if(vtcm_dev->state==VTCM_STATE_ERR)
@@ -549,7 +549,8 @@ static int vtcm_io_process(void * data)
 					debug("vtcm %d timeout %d ms! state is %d\n",i,outtime,vtcm_dev->state);
 					vtcm_dev->state=VTCM_STATE_ERR;
 					vtcm_dev->timeout=0;
-					complete(&vtcm_dev->vtcm_notice);
+					if(vtcm_dev->action == VTCM_ACTION_IOCTL)
+						complete(&vtcm_dev->vtcm_notice);
 					continue;
 				}
 			}
@@ -575,7 +576,7 @@ static int vtcm_io_process(void * data)
 				}
 				if(ret == 0) {
 
-					printk("send (%d %d %d) ",i,count,jiffies_to_msecs(get_jiffies_64())); 
+					debug("send (%d %d ) ",i,count); 
 					printk(" cmd (%x %x %x %x)", vtcm_dev->cmd_buf[6],vtcm_dev->cmd_buf[7],vtcm_dev->cmd_buf[8],vtcm_dev->cmd_buf[9]);
 					// debug("vtcm %d send command succeed! %lld\n",i,vtcm_dev->timeout);		
 					vtcm_dev->state=VTCM_STATE_RECV;
@@ -618,7 +619,7 @@ static int vtcm_io_process(void * data)
 						case TCM_TAG_RSP_AUTH2_COMMAND:
 							vtcm_no=0;
 							vtcm_dev=&device_list[0];
-							printk("recv (%d %d %d)  \n",0,response_size,jiffies_to_msecs(get_jiffies_64())); 
+							debug("recv (%d %d) ",0,response_size); 
 							if(vtcm_dev->state!=VTCM_STATE_RECV)
 							{
 								debug("vtcm %d's state %d error! not in recv state!\n",vtcm_no,vtcm_dev->state);
@@ -648,7 +649,7 @@ static int vtcm_io_process(void * data)
 								break;
 							}
 							vtcm_dev=&device_list[vtcm_no-1];
-							printk("recv (%d %d %d) \n",vtcm_no,response_size,jiffies_to_msecs(get_jiffies_64())); 
+							debug("recv (%d %d )",vtcm_no,response_size); 
 
 							if(vtcm_dev->state!=VTCM_STATE_RECV)
 							{

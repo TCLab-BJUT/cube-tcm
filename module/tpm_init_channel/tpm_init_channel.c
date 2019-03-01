@@ -91,6 +91,7 @@ int tpm_ordemu_Extend(struct vtcm_external_input_command * input_head,BYTE * inp
 int tpm_ordemu_PcrRead(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_GetRandom(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 int tpm_ordemu_PhysicalPresence(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
+int tpm_ordemu_SetTempDeactivated(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output);
 
 
 struct tpm_ordemu_struct tpm_emu_seq[] =
@@ -135,6 +136,11 @@ struct tpm_ordemu_struct tpm_emu_seq[] =
 		0xC100,
 		0x65000000,
 		&tpm_ordemu_GetCapability
+	},
+	{
+		0xC100,
+		0x73000000,
+		&tpm_ordemu_SetTempDeactivated
 	},
 	{
 		0xC100,
@@ -236,6 +242,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
     extend_size=struct_size(extend_template);	
     int offset=0;
 
+    print_cubeaudit("tpm_init_channel time_val.tv_usec %d!\n",time_val.tv_usec);
 
     while(1)
     {
@@ -385,6 +392,17 @@ int tpm_ordemu_ContinueSelfTest(struct vtcm_external_input_command * input_head,
 	return ret;
 }
 
+int tpm_ordemu_SetTempDeactivated(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
+{
+	int ret;
+	struct vtcm_external_output_command output_head;
+	output_head.tag=0xC400;
+	output_head.paramSize=0x0a;
+	output_head.returnCode=0x00;
+
+        ret = struct_2_blob(&output_head,output,return_template) ;
+	return ret;
+}
 
 int tpm_ordemu_ResetEstablishmentBit(struct vtcm_external_input_command * input_head,BYTE * input, BYTE * output)
 {
