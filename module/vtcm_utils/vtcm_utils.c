@@ -3428,6 +3428,7 @@ int proc_vtcmutils_PhysicalEnable(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
   return ret;
 }
+
 int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
   int outlen;
   int i=1;
@@ -3458,7 +3459,7 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
     printf("authhandle is error\n");
   }
   int ordinal = htonl(vtcm_input->ordinal);
-  vtcm_ex_sm3(checknum,&ordinal,4);
+  vtcm_ex_sm3(checknum,1,&ordinal,4);
   authdata=Find_AuthSession(0x00,vtcm_input->authHandle);
   int serial = htonl(authdata->SERIAL);
   vtcm_ex_hmac_sm3(hashout,authdata->sharedSecret,32,2,checknum,32,&serial,4);

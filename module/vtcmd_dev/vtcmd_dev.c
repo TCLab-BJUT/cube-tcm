@@ -174,6 +174,7 @@ static int tcmd_connect(char *socket_name,int port)
     tcmd_sock = NULL;
     return res;
   }
+
 //  addr.sun_family = AF_UNIX;
   tcm_addr =(struct sockaddr_in *)&addr;
   tcm_addr->sin_family=AF_INET;
@@ -317,7 +318,7 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 	}	
 
 
-	while(vtcm_dev->state!=VTCM_STATE_RET)
+	if(vtcm_dev->state!=VTCM_STATE_RET)
 	{
 		if(vtcm_dev->state==VTCM_STATE_ERR)
 		{
@@ -341,13 +342,12 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 				}
 			}
 		}	
-		msleep(1);
 	}
   	debug("read wait time %lld count %zd, vtcm_no %d", vtcm_dev->timeout, count,minor);
 	
-//	if((vtcm_dev->state==VTCM_STATE_SEND)
-//		||(vtcm_dev->state==VTCM_STATE_RECV))
-//	wait_for_completion(&vtcm_dev->vtcm_notice);
+	if((vtcm_dev->state==VTCM_STATE_SEND)
+		||(vtcm_dev->state==VTCM_STATE_RECV))
+		wait_for_completion_timeout(&vtcm_dev->vtcm_notice,5000);
 
 	if(vtcm_dev->state==VTCM_STATE_RET)
 	{
@@ -554,7 +554,7 @@ static int vtcm_io_process(void * data)
 					debug("vtcm %d timeout %d ms! state is %d\n",i,outtime,vtcm_dev->state);
 					vtcm_dev->state=VTCM_STATE_ERR;
 					vtcm_dev->timeout=0;
-					if(vtcm_dev->action == VTCM_ACTION_IOCTL)
+					if(!completion_done(&vtcm_dev->vtcm_notice))
 						complete(&vtcm_dev->vtcm_notice);
 					continue;
 				}
@@ -592,7 +592,7 @@ static int vtcm_io_process(void * data)
 					vtcm_dev->state	=VTCM_STATE_ERR;	
 					vtcm_dev->timeout=0;
 					tcmd_sock=NULL;
-					if(vtcm_dev->action==VTCM_ACTION_IOCTL)
+					if(!completion_done(&vtcm_dev->vtcm_notice))
 						complete(&vtcm_dev->vtcm_notice);
 						
 				}
@@ -641,8 +641,6 @@ static int vtcm_io_process(void * data)
 							vtcm_dev->state=VTCM_STATE_RET;
 							vtcm_dev->timeout=0;
 							memcpy(vtcm_dev->res_buf,recv_buf,count);
-							if(vtcm_dev->action==VTCM_ACTION_IOCTL)
-								complete(&vtcm_dev->vtcm_notice);
 
 							break;	
 						case TCM_TAG_RSP_VTCM_COMMAND:
@@ -672,15 +670,16 @@ static int vtcm_io_process(void * data)
 							vtcm_dev->state=VTCM_STATE_RET;
 							vtcm_dev->timeout=0;
 							memcpy(vtcm_dev->res_buf,recv_buf+sizeof(*vtcm_return_head),count-sizeof(*vtcm_return_head));
-							if(vtcm_dev->action==VTCM_ACTION_IOCTL)
-								complete(&vtcm_dev->vtcm_notice);
 
 							break;
 						default:
 							debug("vtcm return head format error! \n");
 							tcmd_sock=NULL;
+							vtcm_dev->state=VTCM_STATE_ERR;
 							break;
 					}
+					if(!completion_done(&vtcm_dev->vtcm_notice))
+						complete(&vtcm_dev->vtcm_notice);
 				
 				}
 			}
