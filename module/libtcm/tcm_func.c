@@ -48,8 +48,10 @@ enum vtcm_trans_type
         DRV_RW
 };
 static enum vtcm_trans_type trans_type=DRV_RW;
+
+static char * tcm_devnamelist[]={"/dev/tcm","/dev/tcm0","/dev/tpm","/dev/tpm0",NULL};
                                          
-char * tcm_devname="/dev/tcm";
+char * tcm_devname;
 int dev_fd;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -235,13 +237,19 @@ int _TSMD_Init()
 UINT32 TCM_LibInit(void)
 {
     int ret;
-
-    dev_fd=open(tcm_devname,O_RDWR);
-    if(dev_fd<0)
-	return dev_fd;
-    
-  INIT_LIST_HEAD(&sessions_list.list);
-  sessions_list.record=NULL;
+    int i;	
+    for(i=0;tcm_devnamelist[i]!=NULL;i++)
+    {
+	tcm_devname=tcm_devnamelist[i];		    
+        dev_fd=open(tcm_devname,O_RDWR);
+        if(dev_fd>0)
+		break;
+    }
+    if(tcm_devnamelist[i]==NULL)
+	return -EIO;
+  
+    INIT_LIST_HEAD(&sessions_list.list);
+    sessions_list.record=NULL;
 
   return 0;
 
