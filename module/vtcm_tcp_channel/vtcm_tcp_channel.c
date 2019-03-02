@@ -161,7 +161,7 @@ int vtcm_tcp_channel_start(void * sub_proc,void * para)
     struct tcloud_connector *temp_conn;
     struct timeval conn_val;
     conn_val.tv_sec=time_val.tv_sec;
-    conn_val.tv_usec=time_val.tv_usec;
+    conn_val.tv_usec=time_val.tv_usec/5;
 
     while(1)
     {

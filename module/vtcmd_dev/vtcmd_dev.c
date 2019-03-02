@@ -104,7 +104,7 @@ static struct vtcm_device
 }vtcm_device[VTCM_DEFAULT_NUM];
 
 static struct task_struct *vtcm_io_task;
-const int maxwaittime=500000;
+const int maxwaittime=50000;
 
 /* TCM command response */
 static struct {
@@ -309,7 +309,12 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 
 	struct vtcm_device * vtcm_dev=&vtcm_device[minor];
 
-//      debug("%s(%zd)", __FUNCTION__, count);
+        debug("%s(%zd %d)", __FUNCTION__, count,minor);
+	if(vtcm_dev->action!=VTCM_ACTION_RW)
+	{
+       		debug("%s no read cmd", __FUNCTION__);
+		return 0;
+	}	
 
 
 	while(vtcm_dev->state!=VTCM_STATE_RET)
@@ -321,11 +326,6 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 			vtcm_dev->state=VTCM_STATE_WAIT;
 			return -EINVAL;
 		}
-		if(vtcm_dev->action!=VTCM_ACTION_RW)
-		{
-        		debug("%s no read cmd", __FUNCTION__);
-			return 0;
-		}	
 		if((vtcm_dev->state==VTCM_STATE_SEND)
 			||(vtcm_dev->state==VTCM_STATE_RECV))
 		{
@@ -335,14 +335,19 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 				if(outtime > maxwaittime)
 				{	
         				debug("%s wait %d ms!\n", __FUNCTION__, outtime);
-					vtcm_dev->state=VTCM_STATE_ERR;
+					vtcm_dev->state=VTCM_STATE_WAIT;
 					vtcm_dev->timeout=0;
 					return 0;
 				}
 			}
-		}
-		msleep(10);
+		}	
+		msleep(1);
 	}
+  	debug("read wait time %lld count %zd, vtcm_no %d", vtcm_dev->timeout, count,minor);
+	
+//	if((vtcm_dev->state==VTCM_STATE_SEND)
+//		||(vtcm_dev->state==VTCM_STATE_RECV))
+//	wait_for_completion(&vtcm_dev->vtcm_notice);
 
 	if(vtcm_dev->state==VTCM_STATE_RET)
 	{
@@ -522,7 +527,7 @@ static int vtcm_io_process(void * data)
 	{
 		if(clock==0)
 			printk(" enter the process circle %p!\n",tcmd_sock);
-		msleep(5);
+		msleep(1);
 		clock++;
 		if(tcmd_sock == NULL)
 		{

@@ -89,7 +89,7 @@ int vtcm_channel_start(void * sub_proc,void * para)
 
     while(1)
     {
-        usleep(time_val.tv_usec);
+        usleep(time_val.tv_usec/10);
 	ret=channel_read(vtcm_channel,ReadBuf+readbuf_len,DIGEST_SIZE*32-readbuf_len);
 	if(ret<0)
 		return ret;
