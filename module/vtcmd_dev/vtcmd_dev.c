@@ -570,7 +570,7 @@ static int vtcm_io_process(void * data)
 					vtcm_cmd_head=(struct vtcm_manage_cmd_head *)(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head));
 					vtcm_cmd_head->tag=TCM_TAG_RQU_VTCM_COMMAND;
 					vtcm_cmd_head->paramSize=ntohl(count+sizeof(*vtcm_cmd_head));
-					vtcm_cmd_head->vtcm_no=ntohs(i+1);
+					vtcm_cmd_head->vtcm_no=ntohs(i);
 					vtcm_cmd_head->cmd=0;
 					ret=tcmd_send_comm(vtcm_dev->cmd_buf-sizeof(*vtcm_cmd_head),count+sizeof(*vtcm_cmd_head));
 				}
@@ -651,7 +651,7 @@ static int vtcm_io_process(void * data)
 								tcmd_sock=NULL;
 								break;
 							}
-							vtcm_dev=&device_list[vtcm_no-1];
+							vtcm_dev=&device_list[vtcm_no];
 							debug("recv (%d %d )",vtcm_no,response_size); 
 
 							if(vtcm_dev->state!=VTCM_STATE_RECV)
