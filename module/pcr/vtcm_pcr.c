@@ -51,7 +51,7 @@ int vtcm_pcr_init(void * sub_proc,void * para)
     tcm_state_t * tcm_instances = proc_share_data_getpointer();
 
 
-    for(i=0;i<vtcm_dev_no+1;i++)//分配存储空间
+    for(i=0;i<vtcm_dev_no;i++)//分配存储空间
     {
         pcr_scenes[i].index_num=TCM_NUM_PCR;
         pcr_scenes[i].pcr_size=sizeof(TCM_DIGEST);
