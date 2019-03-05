@@ -92,14 +92,12 @@ int main(int argc,char **argv)
     printf("keyAuthHandle is : %x\n",keyAuthHandle);
     	
     gettimeofday( &start, NULL );
-    for(i=0;i<2;i++)
-    	ret=TCM_SM1Encrypt(keyHandle,keyAuthHandle,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*8);
+    ret=TCM_SM1Encrypt(keyHandle,keyAuthHandle,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*8);
     gettimeofday( &end, NULL );
     crypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
 
     gettimeofday( &start, NULL );
-    for(i=0;i<2;i++)
-    	ret=TCM_SM1Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
+    ret=TCM_SM1Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
     gettimeofday( &end, NULL );
     decrypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
     printf("crypt time %d us decrypt time: %d us\n", crypttime,decrypttime);
