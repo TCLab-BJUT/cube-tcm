@@ -100,7 +100,7 @@ int main(int argc,char **argv)
 
     	hash_speed = (float)(hash_len*repeattime)*1000 /hashtime;
 
-    	printf(" SM3 algorithm's speed is %f KB/s\n",hash_speed); 
+    	printf(" SM3 algorithm's speed is %f Gbps\n",hash_speed/10); 
 	usleep(1000);
     }	
 
