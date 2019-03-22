@@ -28,8 +28,8 @@
 #include "tcm_constants.h"
 #include "app_struct.h"
 #include "pik_struct.h"
-#include "sm3.h"
-#include "sm4.h"
+//#include "sm3.h"
+//#include "sm4.h"
 
 #include "tspi.h"
 #include "tsmd.h"
@@ -68,7 +68,8 @@ TCM_AUTHHANDLE Build_AuthSession(TCM_SESSION_DATA * authdata,void * tcm_out_data
   Memcpy(authdata->nonceEven,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(Buf+TCM_HASH_SIZE,apcreate_out->nonceEven,TCM_HASH_SIZE);
   Memcpy(auth,authdata->sharedSecret,TCM_HASH_SIZE);
-  sm3_hmac(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
+  //sm3_hmac(auth,TCM_HASH_SIZE,Buf,TCM_HASH_SIZE*2,authdata->sharedSecret);
+  vtcm_ex_hmac_sm3(authdata->sharedSecret,auth,TCM_HASH_SIZE,1,Buf,TCM_HASH_SIZE*2);
 
   if(authdata->entityTypeByte!=TCM_ET_NONE)
   {

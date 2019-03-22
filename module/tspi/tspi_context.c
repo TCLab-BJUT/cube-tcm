@@ -28,8 +28,8 @@
 #include "tcm_constants.h"
 #include "app_struct.h"
 #include "pik_struct.h"
-#include "sm3.h"
-#include "sm4.h"
+//#include "sm3.h"
+//#include "sm4.h"
 
 #include "tsm_typedef.h"
 #include "tsm_structs.h"
