@@ -89,13 +89,10 @@ UINT32 TCM_OwnerReadInternalPub(UINT32 keyhandle,
 
 */
 /* section 6: admin ownership */
+
+UINT32 TCM_TakeOwnership(unsigned char *ownpass,unsigned char *srkpass,
+                           UINT32 authhandle);
 /*
-UINT32 TCM_TakeOwnership(unsigned char *ownpass,
-			   unsigned char *srkpass,
-                           UINT32 keylen,
-			   unsigned char *pcrInfoBuffer,
-			   UINT32 pcrInfoSize,
-			   keydata *key, TCM_BOOL v12);
 UINT32 TCM_OwnerClear(unsigned char *ownpass);
 */
 /*
