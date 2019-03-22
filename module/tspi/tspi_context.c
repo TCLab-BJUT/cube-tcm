@@ -435,8 +435,10 @@ UINT32 Tspi_TCM_PcrRead(TSM_HTCM hTCM,UINT32 ulPcrIndex, UINT32 * pulPcrValueLen
 	{
 		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
 		if(ret<0)
+                        //printf("read ret <0 ");
 			return TSM_E_CONNECTION_BROKEN;
 		if(ret>0)
+                        //printf("read ret >0 ");
 			break;
 		usleep(time_val.tv_usec);
 	}
@@ -512,5 +514,165 @@ UINT32 Tspi_TCM_PcrExtend(TSM_HTCM hTCM,UINT32 ulPcrIndex, UINT32 ulPcrDataLengt
 	Memcpy(*prgbPcrValue,tspi_out.rgbPcrValue,*pulPcrValueLength);
 
 	Free(tspi_out.rgbPcrValue);
+	return TSM_SUCCESS;		
+}
+
+UINT32 Tspi_Context_CreateObject(TSM_HCONTEXT hContext, TSM_FLAG objectType, TSM_FLAG initFlags, TSM_HOBJECT * phObject)
+{
+        int ret;
+	
+        RECORD(TSPI_IN,CREATEOBJECT) tspi_in;
+	RECORD(TSPI_OUT,CREATEOBJECT) tspi_out;
+
+	tspi_in.apino=SUBTYPE(TSPI_OUT,CREATEOBJECT);
+	tspi_in.paramSize=sizeof(tspi_in); 
+	tspi_in.hContext=hContext;
+        tspi_in.objectType=objectType;
+	tspi_in.initFlags=initFlags;
+	/* 
+	tspi_in.objectType=objectType;
+	tspi_in.initFlags=initFlags;
+	NEED MORE
+	*/
+
+	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,CREATEOBJECT));
+	if(tspi_in_template == NULL)
+	{
+		return -EINVAL;
+	}
+	void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,CREATEOBJECT));
+	if(tspi_out_template == NULL)
+	{
+		return -EINVAL;
+	}			
+	
+	ret=struct_2_blob(&tspi_in,Buf,tspi_in_template);
+	if(ret<0)
+		return -EINVAL;
+
+	ret=channel_write(this_context.tsmd_API_channel,Buf,ret);
+	if(ret<0)
+		return TSM_E_CONNECTION_BROKEN;
+	while(1)
+	{
+		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
+		if(ret<0)
+			return TSM_E_CONNECTION_BROKEN;
+		if(ret>0)
+			break;
+		usleep(time_val.tv_usec);
+	}
+
+	ret=blob_2_struct(Buf,&tspi_out,tspi_out_template);
+	if(ret<0)
+		return TSM_E_INVALID_ATTRIB_DATA;
+	//*hPcrComposite=tspi_out.phObject;
+        *phObject=tspi_out.phObject;
+        //objectLength=
+        //Memcpy(*hPcrComposite,*phObject,);	       
+        return TSM_SUCCESS;
+}
+
+
+UINT32 Tspi_PcrComposite_SelectPcrIndex(TSM_HPCRS hPcrComposite, UINT32 ulPcrIndex, UINT32 direction)
+{
+        int ret;
+	RECORD(TSPI_IN,SELECTPCRINDEX) tspi_in;
+	RECORD(TSPI_OUT,SELECTPCRINDEX) tspi_out;
+
+	tspi_in.apino=SUBTYPE(TSPI_IN,SELECTPCRINDEX);
+	tspi_in.paramSize=sizeof(tspi_in);
+	tspi_in.hPcrComposite=hPcrComposite;
+        tspi_in.ulPcrIndex=ulPcrIndex;
+	tspi_in.direction=direction;
+	
+
+	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,SELECTPCRINDEX));
+	if(tspi_in_template == NULL)
+	{
+		return -EINVAL;
+	}
+	void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,SELECTPCRINDEX));
+	if(tspi_out_template == NULL)
+	{
+		return -EINVAL;
+	}			
+	
+	ret=struct_2_blob(&tspi_in,Buf,tspi_in_template);
+	if(ret<0)
+		return -EINVAL;
+
+	ret=channel_write(this_context.tsmd_API_channel,Buf,ret);
+	if(ret<0)
+		return TSM_E_CONNECTION_BROKEN;
+	while(1)
+	{
+		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
+		if(ret<0)
+			return TSM_E_CONNECTION_BROKEN;
+		if(ret>0)
+			break;
+		usleep(time_val.tv_usec);
+	}
+
+	ret=blob_2_struct(Buf,&tspi_out,tspi_out_template);
+	if(ret<0)
+		return TSM_E_INVALID_ATTRIB_DATA;
+        
+        return TSM_SUCCESS;
+}
+
+
+UINT32 Tspi_TCM_PcrReset(TSM_HTCM hTCM,TSM_HPCRS hPcrComposite)
+{
+	int ret;
+
+	RECORD(TSPI_IN,PCRRESET) tspi_in;
+	RECORD(TSPI_OUT,PCRRESET) tspi_out;
+
+	tspi_in.apino=SUBTYPE(TSPI_IN,PCRRESET);
+	tspi_in.hTCM=hTCM;
+	tspi_in.hPcrComposite=hPcrComposite;
+	
+	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCRRESET));
+	if(tspi_in_template == NULL)
+	{
+		return -EINVAL;
+	}
+	void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,PCRRESET));
+	if(tspi_out_template == NULL)
+	{
+		return -EINVAL;
+	}			
+	
+	ret=struct_2_blob(&tspi_in,Buf,tspi_in_template);
+	if(ret<0)
+		return -EINVAL;
+
+	ret=channel_write(this_context.tsmd_API_channel,Buf,ret);
+	if(ret<0)
+		return TSM_E_CONNECTION_BROKEN;
+	while(1)
+	{
+		ret=channel_read(this_context.tsmd_API_channel,Buf,512);
+		if(ret<0)
+			return TSM_E_CONNECTION_BROKEN;
+		if(ret>0)
+			break;
+                printf("its here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		usleep(time_val.tv_usec);
+	}
+
+	ret=blob_2_struct(Buf,&tspi_out,tspi_out_template);
+	if(ret<0)
+		return TSM_E_INVALID_ATTRIB_DATA;
+	//*pulPcrValueLength=tspi_out.ulPcrValueLength;
+	//*prgbPcrValue=malloc(*pulPcrValueLength);
+	//if(*prgbPcrValue == NULL)
+		//return -ENOMEM;
+
+	//Memcpy(*prgbPcrValue,tspi_out.rgbPcrValue,*pulPcrValueLength);
+
+	//Free(tspi_out.rgbPcrValue);
 	return TSM_SUCCESS;		
 }

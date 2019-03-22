@@ -441,6 +441,35 @@ UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue)
   return 0;
 }
 
+UINT32 TCM_PcrReset(UINT32 pcrindex, BYTE * pcrvalue)
+{
+  int ret = 0;
+  struct tcm_in_pcrreset * vtcm_input;
+  struct tcm_out_pcrreset * vtcm_output;
+  void * vtcm_template;
+
+  printf("Begin TCM pcrreset:\n");
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+
+  vtcm_input->ordinal=SUBTYPE_PCRRESET_IN;
+  vtcm_input->pcrIndex=pcrindex;
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+ // Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
+  return 0;
+}
+
 UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
 {
   int outlen;

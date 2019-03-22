@@ -49,10 +49,12 @@
             		"GETRANDOM",
             		"PCREXTEND",
             		"PCRREAD",
+            		"CREATEOBJECT",
+            		"SELECTPCRINDEX",
+            		"PCRRESET",
             		"GETPOLICYOBJECT",
             		"SETSECRET",
             		"GETPUBENDORSEMENTKEY",
-            		"CREATEOBJECT",
             		"TAKEOWNERSHIP"
 		]
 	}
@@ -73,10 +75,12 @@
             		"GETRANDOM",
             		"PCREXTEND",
             		"PCRREAD",
+            		"CREATEOBJECT",
+            		"SELECTPCRINDEX",
+            		"PCRRESET",
             		"GETPOLICYOBJECT",
             		"SETSECRET",
             		"GETPUBENDORSEMENTKEY",
-            		"CREATEOBJECT",
             		"TAKEOWNERSHIP"
 		]
 	}
@@ -333,3 +337,134 @@
                 }
         }
 }
+{
+        "head":
+        {
+                "name":"tspi_in_PcrReset",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_IN",
+                "subtype":"PCRRESET",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"apino","type":"INT"},
+                                {"name":"hTCM","type":"INT"},
+                                {"name":"hPcrComposite","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_PcrReset",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"PCRRESET",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"ulPcrValueLength","type":"INT"},
+                                {"name":"rgbPcrValue","type":"DEFINE","def":"ulPcrValueLength"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_in_CreateObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_IN",
+                "subtype":"CREATEOBJECT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hContext","type":"INT"},
+                                {"name":"objectType","type":"INT"},
+                                {"name":"initFlags","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_CreateObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"CREATEOBJECT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"phObject","type":"INT"}
+                         ]
+                }
+        }
+}
+{       
+        "head":
+        {       
+                "name":"tspi_in_SelectPcrIndex",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {       
+                "type":"TSPI_IN",
+                "subtype":"SELECTPCRINDEX",
+                "struct_desc":
+                {       
+                        "elem_desc":
+                         [      
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hPcrComposite","type":"INT"},
+                                {"name":"ulPcrIndex","type":"INT"},
+                                {"name":"direction","type":"INT"}
+                         ]
+                }
+        }
+}
+{       
+        "head":
+        {       
+                "name":"tspi_out_SelectPcrIndex",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {       
+                "type":"TSPI_OUT",
+                "subtype":"SELECTPCRINDEX",
+                "struct_desc":
+                {       
+                        "elem_desc":
+                         [      
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                         ]
+                }
+        }
+}
+

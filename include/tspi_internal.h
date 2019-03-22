@@ -8,13 +8,19 @@ enum subtype_tspi_in {
 	SUBTYPE(TSPI_IN,GETTCMOBJECT)=0x1,
 	SUBTYPE(TSPI_IN,GETRANDOM),
 	SUBTYPE(TSPI_IN,PCREXTEND),
-	SUBTYPE(TSPI_IN,PCRREAD)
+	SUBTYPE(TSPI_IN,PCRREAD),
+        SUBTYPE(TSPI_IN,CREATEOBJECT),
+        SUBTYPE(TSPI_IN,SELECTPCRINDEX),
+	SUBTYPE(TSPI_IN,PCRRESET)
 };
 enum subtype_tspi_out {
 	SUBTYPE(TSPI_OUT,GETTCMOBJECT)=0x1,
 	SUBTYPE(TSPI_OUT,GETRANDOM),
 	SUBTYPE(TSPI_OUT,PCREXTEND),
-	SUBTYPE(TSPI_OUT,PCRREAD)
+	SUBTYPE(TSPI_OUT,PCRREAD),
+        SUBTYPE(TSPI_OUT,CREATEOBJECT),
+        SUBTYPE(TSPI_OUT,SELECTPCRINDEX),
+	SUBTYPE(TSPI_OUT,PCRRESET)
 };
 
 typedef struct tspi_in_GetTcmObject{
@@ -46,6 +52,28 @@ typedef struct tspi_in_PcrRead{
 	int ulPcrIndex;
 }__attribute__((packed)) RECORD(TSPI_IN,PCRREAD);
 
+typedef struct tspi_in_CreateObject{
+        int apino;
+        int paramSize;
+        int hContext;
+        int objectType;
+        int initFlags;
+}__attribute__((packed)) RECORD(TSPI_IN,CREATEOBJECT);
+
+typedef struct tspi_in_SelectPcrIndex{
+        int apino;
+        int paramSize;
+        int hPcrComposite;
+        int ulPcrIndex;
+        int direction;
+}__attribute__((packed)) RECORD(TSPI_IN,SELECTPCRINDEX);
+
+typedef struct tspi_in_PcrReset{
+	int apino;
+	int hTCM;
+	int hPcrComposite;
+}__attribute__((packed)) RECORD(TSPI_IN,PCRRESET);
+
 typedef struct tspi_out_GetTcmObject{
 	int returncode;
 	int paramSize;
@@ -72,4 +100,19 @@ typedef struct tspi_out_PcrRead{
 	int ulPcrValueLength;
 	BYTE * rgbPcrValue;
 }__attribute__((packed)) RECORD(TSPI_OUT,PCRREAD);
+
+typedef struct tspi_out_CreateObject{
+        int returncode;
+	int paramSize;
+        int phObject;
+}__attribute__((packed)) RECORD(TSPI_OUT,CREATEOBJECT);
+
+typedef struct tspi_out_SelectPcrIndex{
+        int returncode;
+	int paramSize;
+}__attribute__((packed)) RECORD(TSPI_OUT,SELECTPCRINDEX);
+
+typedef struct tspi_out_PcrReset{
+	int returncode;
+}__attribute__((packed)) RECORD(TSPI_OUT,PCRRESET);
 

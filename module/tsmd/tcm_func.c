@@ -219,7 +219,7 @@ int proc_tcm_General(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
 		
   }	
 
-  vtcm_input->ordinal = SUBTYPE_PCRREAD_IN;
+ // vtcm_input->ordinal = SUBTYPE_PCRREAD_IN;
   vtcm_input->paramSize=sizeof(*vtcm_input);
   ret = vtcm_Build_CmdBlob(vtcm_input,cmd_type,vtcm_input->ordinal,Buf);
   if(ret<0)
@@ -273,6 +273,39 @@ int proc_tcm_PcrRead(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
   return ret;
 }
 
+int proc_tcm_PcrReset(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller)
+{
+  int outlen;
+  int i=0;
+  int ret=0;
+  struct tcm_in_pcrreset *vtcm_input=tcm_in;
+  struct tcm_out_pcrreset *vtcm_output=tcm_out;
+  void * vtcm_template;
+
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_PCRRESET_IN;
+  vtcm_input->paramSize=sizeof(*vtcm_input);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN,SUBTYPE_PCRREAD_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  vtcm_input->paramSize=sizeof(*vtcm_input);
+  ret = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(ret<0)
+    return ret;
+  printf("Send command for getRandom:\n");
+  print_bin_data(Buf,ret,8);
+  ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf,vtcm_caller);
+  if(ret<0)
+    return ret; 
+  printf("Receive  output is:\n");
+  print_bin_data(Buf,outlen,8);
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_PCRRESET_OUT);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  ret = blob_2_struct(Buf,vtcm_output,vtcm_template);
+  return ret;
+}
 
 int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out,CHANNEL * vtcm_caller)
 {
