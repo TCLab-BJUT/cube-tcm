@@ -13,6 +13,7 @@ tspi_test:  tspi_test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
 	$(CC) $(FLAGS) tspi_test tspi_test.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 lib$(LIBNAME).so: $(STRUCTOBJ)
 	$(CC) -shared -o lib$(LIBNAME).so $(STRUCTOBJ)	 
+	mv lib$(LIBNAME).so $(CUBEAPPPATH)/locallib/bin
 read_config.o:  read_config.c main_proc_func.h
 	$(CC) $(CFLAGS) read_config.c
 tspi_context.o:  tspi_context.c 

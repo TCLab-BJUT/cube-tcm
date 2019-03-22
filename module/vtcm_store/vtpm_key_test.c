@@ -21,6 +21,7 @@
 #include "memdb.h"
 #include "message.h"
 #include "ex_module.h"
+#include "sys_func.h"
 //#include "tesi.h"
 
 #include "file_struct.h"
@@ -31,7 +32,7 @@
 #include "app_struct.h"
 #include "tpm_global.h"
 #include "tpm_error.h"
-static struct timeval time_val={0,50*1000};
+//static struct timeval time_val={0,50*1000};
 struct vtpm_key_scene * key_scenes;
 
 

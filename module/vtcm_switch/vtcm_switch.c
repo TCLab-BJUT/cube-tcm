@@ -27,7 +27,6 @@
 #include "tcm_global.h"
 #include "tcm_error.h"
 #include "sm2.h"
-#include "sm3.h"
 #include "vtcm_struct.h"
 #include "tcm_iolib.h"
 

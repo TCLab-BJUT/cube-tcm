@@ -60,32 +60,65 @@ int vtcm_import_nv_data(void * instance, BYTE * buf, int storetype);
 */
 static BYTE buffer[DIGEST_SIZE*128];
 
+static char store_file[DIGEST_SIZE*2];
+
+char * _get_store_file(int vtcm_no)
+{
+	int ret;
+	if((vtcm_no <0) || (vtcm_no>=100))
+		return NULL;
+	ret=Strlen(host_permanent_file);
+	if(vtcm_no==0)
+	{
+		store_file[ret]='0';
+		store_file[ret+1]='0';
+		store_file[ret+2]=0;
+	}
+	else if(vtcm_no<10)
+	{
+		store_file[ret]='0';
+		store_file[ret+1]='0'+vtcm_no;
+		store_file[ret+2]=0;
+	}
+	else if(vtcm_no>=10)
+	{
+		store_file[ret]='0'+vtcm_no/10;
+		store_file[ret+1]='0'+vtcm_no%10;
+		store_file[ret+2]=0;
+	}
+	return store_file;
+
+};
+
 int vtcm_store_init(void * sub_proc ,void * para)
 {
     int i;
     int fd;
     int ret;
-    char filename[DIGEST_SIZE*4];
+    char * filename;
 
     printf("vtcm_store_init :\n") ;
+    Strcpy(store_file,host_permanent_file);
 
     tcm_state_t * tcm_instances = proc_share_data_getpointer();
 
 
-    for(i = 0 ;i < 3 ; i++)//分配存储空间
+    for(i = 0 ;i < vtcm_num ; i++)//分配存储空间
     {
         tcm_instances[i].tcm_number = i;
 //      tcm_instances[i].key = tcm_instances[i].tcm_stclear_data.PCRS ;
 
-	Strcpy(filename,host_permanent_file);
-	ret=Strlen(filename);
-	filename[ret]='0';
-	filename[ret+1]='0'+i;
-	filename[ret+2]=0;
+
+	filename=_get_store_file(i);
+	if(filename==NULL)
+	{
+		print_cubeerr("Invalid vtcm no %d!\n",i);
+		return -EINVAL;
+	}
 	
     	fd=open(filename,O_RDONLY);
     	if(fd<0)
-            	return 0;
+            	continue;
     	ret=read(fd,buffer,DIGEST_SIZE*128);
     	if(ret==DIGEST_SIZE*128)
         	return -EINVAL;
@@ -93,7 +126,10 @@ int vtcm_store_init(void * sub_proc ,void * para)
 
     	ret=vtcm_instance_import(&tcm_instances[i],buffer,VTCM_IO_STATIC);
     	if(ret<0)
-        	return ret;
+	{
+        	print_cubeerr("Import tcm data %d failed!\n",i);
+		continue;
+	}
     // prepare the slot sock
 
     }
@@ -112,7 +148,7 @@ int vtcm_store_start(void * sub_proc,void * para)
     int subtype;
     void * sock;
     BYTE uuid[DIGEST_SIZE];
-    char filename[DIGEST_SIZE*4];
+    char *filename;
     int vtcm_no=0;
     int fd;
 
@@ -138,11 +174,7 @@ int vtcm_store_start(void * sub_proc,void * para)
      	{
  		printf("Non_exist vtcm copy!\n");
      	}
-	Strcpy(filename,host_permanent_file);
-	ret=Strlen(filename);
-	filename[ret]='0';
-	filename[ret+1]='0'+vtcm_no;
-	filename[ret+2]=0;
+	filename =  _get_store_file( vtcm_no);
 	
     	fd=open(filename,O_RDONLY);
         if((type==DTYPE_VTCM_OUT)

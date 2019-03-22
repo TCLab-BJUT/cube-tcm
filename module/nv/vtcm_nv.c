@@ -59,7 +59,7 @@ int vtcm_nv_start(void * sub_proc,void * para)
  
 	printf("vtcm_nv module start!\n");
  
-	for(i=0;i<300*1000;i++)
+	while(1)
 	{
         	usleep(time_val.tv_usec);
         	ret = ex_module_recvmsg(sub_proc, &recv_msg);

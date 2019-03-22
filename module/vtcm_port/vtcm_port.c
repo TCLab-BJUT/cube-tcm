@@ -364,7 +364,7 @@ int vtcm_port_start(void * sub_proc,void * para)
         temp_conn = hub_get_next_connector(hub);
     }
 
-    for (;;)
+    while(1)
     {
         ret = hub->hub_ops->select(hub, &conn_val);
         usleep(conn_val.tv_usec);

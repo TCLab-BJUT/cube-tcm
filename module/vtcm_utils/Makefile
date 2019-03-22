@@ -6,7 +6,7 @@ CCP=g++
 PLUGIN=vtcm_utils
 PLUGIN_OBJ= vtcm_ex_utils.o
 TEST_LIB= -L$(CUBELIBPATH)/lib -lsys_func -lexmodule -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lstring -lalloc -lpthread -lsm2So
-LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func
+LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg
 
 main: lib$(PLUGIN).so $(PLUGIN_OBJ)
 lib$(PLUGIN).so:  $(PLUGIN).o $(PLUGIN_OBJ) 
