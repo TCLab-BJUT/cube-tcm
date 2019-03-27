@@ -94,7 +94,7 @@ int main(int argc,char **argv)
     ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sm2", &keyAuthHandle);
     if(ret<0)
     {
-	printf("TCM_APCreate %dfailed!\n",12);
+	printf("TCM_APCreate %dfailed!\n",TCM_ET_KEYHANDLE);
 	return -EINVAL;	
     }	
     printf("keyAuthHandle is : %x\n",keyAuthHandle);

@@ -105,22 +105,13 @@ UINT32 TCM_DisableForceClear(void);
 UINT32 TSC_PhysicalPresence(UINT16 ppresence);
 UINT32 TCM_ResetEstablishmentBit(void);
 */
+
+UINT32 TCM_CreateWrapKey(int parentHandle, int authHandle,char * select,char * keyfile, char * pwdk);
 /*
-UINT32 TCM_CreateWrapKey(UINT32 keyhandle,
-                  unsigned char *keyauth, unsigned char *newauth,
-                  unsigned char *migauth,
-                  keydata *keyparms,keydata *key,
-                  unsigned char *keyblob, unsigned int *bloblen);
 UINT32 TCM_EvictKey(UINT32 keyhandle);
 */
 /* section 9: Administrative functions: Management */
 /*
-UINT32 TCM_SetRedirection(UINT32 keyhandle,
-                            UINT32 redirCmd,
-                            unsigned char * inputData, UINT32 inputDataSize,
-                            unsigned char * ownerAuth,
-                            unsigned char * usageAuth);
-UINT32 TCM_ResetLockValue(unsigned char * ownerAuth);
 */
 
 /* section 15: Identity creation and activation */
@@ -268,49 +259,6 @@ UINT32 TCM_MigrateKey(UINT32 keyhandle,
                         unsigned char * inData, UINT32 inDataSize,
                         unsigned char * outData, UINT32 * outDataSize);
 
-UINT32 TCM_CMK_SetRestrictions(UINT32 restriction,
-                                 unsigned char * ownerAuth);
-
-UINT32 TCM_CMK_ApproveMA(unsigned char * migAuthDigest,
-                           unsigned char * ownerAuth,
-                           unsigned char * hmac);
-
-UINT32 TCM_CMK_CreateKey(UINT32 parenthandle,
-                           unsigned char * keyUsageAuth,
-                           unsigned char * dataUsageAuth,
-                           keydata * keyRequest,
-                           unsigned char * migAuthApproval,
-                           unsigned char * migAuthDigest,
-                           keydata * key,
-                           unsigned char * blob, UINT32 * bloblen);
-
-UINT32 TCM_CMK_CreateTicket(keydata * key,
-                              unsigned char * signedData,
-                              unsigned char * signatureValue, UINT32 signatureValueSize,
-                              unsigned char * ownerAuth,
-                              unsigned char * ticketBuf);
-
-UINT32 TCM_CMK_CreateBlob(UINT32 parenthandle,
-                            unsigned char * parkeyUsageAuth,
-                            UINT16 migScheme,
-                            const struct tpm_buffer *migblob,
-                            unsigned char * sourceKeyDigest,
-                            TCM_MSA_COMPOSITE * msaList,
-                            TCM_CMK_AUTH * resTicket,
-                            unsigned char * sigTicket, UINT32 sigTicketSize,
-                            unsigned char * encData, UINT32 encDataSize,
-                            unsigned char * random, UINT32 * randomSize,
-                            unsigned char * outData, UINT32 * outDataSize);
-
-UINT32 TCM_CMK_ConvertMigration(UINT32 parenthandle,
-                                  unsigned char * keyUsageAuth,
-                                  TCM_CMK_AUTH * resTicket,
-                                  unsigned char * sigTicket,
-                                  keydata * key,
-                                  TCM_MSA_COMPOSITE * msaList,
-                                  unsigned char * random, UINT32 randomSize,
-                                  unsigned char * outData, UINT32 * outDataSize);
-
 UINT32 TCM_Reset(void);
 */
 
@@ -428,21 +376,6 @@ UINT32 TCM_GetCurrentTicks(const struct tpm_buffer *tb, UINT32 offset, TCM_CURRE
 
 /* Additional functions for testing... */
 /*
-UINT32 TCM_RawDataRaw(UINT32 ordinal,
-                        unsigned char * data, 
-                        UINT32 datalen);
-
-UINT32 TCM_RawDataOIAP(UINT32 ordinal,
-                         unsigned char * ownerauth,
-                         unsigned char * data, 
-                         UINT32 datalen);
-
-UINT32 TCM_RawDataOSAP(UINT32 keyhandle,
-                         UINT32 ordinal,
-                         unsigned char * ownerauth,
-                         unsigned char * data, 
-                         UINT32 datalen);
-
 void TCM_CreateEncAuth(const struct session *sess, 
                        const unsigned char *in, unsigned char *out,
                        const unsigned char *nonceodd);
@@ -501,9 +434,6 @@ UINT32 TCM_WriteFile(const char * filename, unsigned char * buffer, UINT32 buffe
 UINT32 TCM_WriteQuoteInfo(struct tpm_buffer *buffer, TCM_QUOTE_INFO * info);
 UINT32 TCM_WriteQuoteInfo2(struct tpm_buffer *buffer, TCM_QUOTE_INFO2 * info2);
 
-UINT32 TCM_WriteCMKAuth(struct tpm_buffer *buffer, TCM_CMK_AUTH * auth) ;
-UINT32 TCM_HashCMKAuth(TCM_CMK_AUTH * auth, unsigned char * hash);
-
 UINT32 TCM_WritePubInfo(TCM_NV_DATA_PUBLIC * pub, struct tpm_buffer *buffer);
 
 UINT32 TCM_ReadPermanentFlags(const struct tpm_buffer *tb,
@@ -558,32 +488,6 @@ UINT32 TSS_SetTCMBuffer(struct tpm_buffer *tb,
                           const unsigned char *buffer,
                           UINT32 len);
 
-UINT32 TCM_WriteTCMFamilyLabel(struct tpm_buffer *buffer, 
-                                 TCM_FAMILY_LABEL l);
-UINT32 TCM_ReadTCMFamilyLabel(const unsigned char *buffer, 
-                                TCM_FAMILY_LABEL *l);
-UINT32 TCM_WriteTCMDelegations(struct tpm_buffer *buffer,
-                                 TCM_DELEGATIONS *td);
-UINT32 TCM_WriteTCMDelegatePublic(struct tpm_buffer *buffer,
-                                    TCM_DELEGATE_PUBLIC * tdp);
-UINT32 TCM_WriteTCMDelegateOwnerBlob(struct tpm_buffer *buffer,
-                                       TCM_DELEGATE_OWNER_BLOB *tdob);
-UINT32 TCM_WriteTCMDelegateKeyBlob(struct tpm_buffer *buffer,
-                                     TCM_DELEGATE_KEY_BLOB *tdob);
-UINT32 TCM_WriteDelegateOwnerBlob(struct tpm_buffer *buffer, TCM_DELEGATE_OWNER_BLOB * blob);
-
-UINT32 TCM_ReadFamilyTableEntry(struct tpm_buffer *buffer,
-                                  UINT32 offset,
-                                  TCM_FAMILY_TABLE_ENTRY *fte);
-UINT32 TCM_ReadDelegatePublic(struct tpm_buffer *buffer,
-                                UINT32 offset,
-                                TCM_DELEGATE_PUBLIC *dp);
-UINT32 TCM_ReadTCMDelegations(const struct tpm_buffer *buffer, UINT32 offset,
-                                TCM_DELEGATIONS *td);
-UINT32 TCM_WriteTransportPublic(struct tpm_buffer *tb,
-                                  TCM_TRANSPORT_PUBLIC *ttp);
-UINT32 TCM_WriteTransportAuth(struct tpm_buffer *tb,
-                                TCM_TRANSPORT_AUTH *tta);
 UINT32 TCM_WriteContextBlob(struct tpm_buffer *buffer,
                               TCM_CONTEXT_BLOB * context);
 UINT32 TCM_ReadContextBlob(const struct tpm_buffer *buffer,
@@ -609,16 +513,6 @@ UINT32 TCM_ValidateSignature(UINT16 sigscheme,
                                RSA *rsa);
 */
 /*
-UINT32 TCM_WriteTransportLogIn(struct tpm_buffer *buffer,
-                                 TCM_TRANSPORT_LOG_IN *ttli);
-UINT32 TCM_WriteTransportLogOut(struct tpm_buffer *buffer,
-                                  TCM_TRANSPORT_LOG_OUT *ttlo);
-UINT32 TCM_WriteCurrentTicks(struct tpm_buffer *buffer,
-                               TCM_CURRENT_TICKS *tct);
-UINT32 TCM_ReadCurrentTicks(struct tpm_buffer *buffer,
-                              UINT32 offset,
-                              TCM_CURRENT_TICKS *tct);
-
 UINT32 read_transdigest(UINT32 handle, unsigned char *digest);
 
 
