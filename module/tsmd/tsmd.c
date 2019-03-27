@@ -28,8 +28,8 @@
 #include "tcm_constants.h"
 #include "app_struct.h"
 #include "pik_struct.h"
-#include "sm3.h"
-#include "sm4.h"
+//#include "sm3.h"
+//#include "sm4.h"
 
 #include "tsm_typedef.h"
 #include "tsm_structs.h"
@@ -252,6 +252,13 @@ TSMD_OBJECT * Build_TsmdObject(UINT32 hContext, TSM_FLAG objectType,TSM_FLAG ini
 		break;
 	case TSM_OBJECT_TYPE_POLICY:
 		new_object->object_struct=Dalloc0(sizeof(struct tsmd_object_key),new_object);	
+		break;
+	case TSM_OBJECT_TYPE_PCRS:
+		new_object->object_struct=Dalloc0(sizeof(struct tsmd_object_hpcrs),new_object);	
+		{
+			TCM_PCR_COMPOSITE * pcrComp=new_object->object_struct;
+			pcrComp->select.sizeOfSelect=TCM_NUM_PCR/CHAR_BIT;
+		}
 		break;
 	default:
 		Free0(new_object);		
@@ -486,6 +493,18 @@ int proc_each_tspicalls(void * sub_proc)
 					output_len=proc_tsmd_PcrRead(sub_proc,tsmd_context->tsmd_send_buf,
 						tsmd_context->tsmd_recv_buf);	
 					break;
+                                case SUBTYPE(TSPI_IN,CREATEOBJECT):
+                                        output_len=proc_tsmd_CreateObject(sub_proc,tsmd_context->tsmd_send_buf,
+                                                tsmd_context->tsmd_recv_buf);
+                                        break;
+                                case SUBTYPE(TSPI_IN,SELECTPCRINDEX):
+                                        output_len=proc_tsmd_SelectPcrIndex(sub_proc,tsmd_context->tsmd_send_buf,
+                                                tsmd_context->tsmd_recv_buf);
+                                        break;
+                                case SUBTYPE(TSPI_IN,PCRRESET):
+					output_len=proc_tsmd_PcrReset(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
 				default:
 					return -EINVAL;
 			}
@@ -577,9 +596,11 @@ int proc_tsmd_GetRandom(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
   	struct tcm_in_GetRandom tcm_in;
   	struct tcm_out_GetRandom tcm_out;
 
+	tcm_in.tag=htons(TCM_TAG_RQU_COMMAND);
+	tcm_in.ordinal=SUBTYPE_GETRANDOM_IN;
 	tcm_in.bytesRequested=tspi_in.ulRandomDataLength;
 
-	ret=proc_tcm_GetRandom(&tcm_in,&tcm_out,vtcm_caller);
+	ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller);
 	
 	if(ret>0)
 		tspi_out.returncode=0;
@@ -686,3 +707,158 @@ int proc_tsmd_PcrRead(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
 	return ret;
 }
+
+int proc_tsmd_CreateObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
+{
+        int ret;
+        RECORD(TSPI_IN, CREATEOBJECT) tspi_in;
+        RECORD(TSPI_OUT, CREATEOBJECT) tspi_out;
+        TSMD_OBJECT * new_object;
+        TSMD_OBJECT * pcrs_object;
+    //  TSMD_OBJECT * policy_object;
+        struct tsmd_object_hpcrs * tcm_struct;
+
+	//  input data convert
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,CREATEOBJECT));
+        if(tspi_in_template == NULL)
+        {
+                return -EINVAL;
+        }
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,CREATEOBJECT));
+        if(tspi_out_template == NULL)
+        {
+                return -EINVAL;
+        }
+
+        ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
+        if(ret<0)
+                return ret;
+
+	// Create object function
+        
+        if(ret>0)
+        {       
+		
+
+                new_object=Build_TsmdObject(tspi_in.hContext,tspi_in.objectType,tspi_in.initFlags);
+                if(new_object==NULL)
+                      tspi_out.returncode=TSM_E_INVALID_HANDLE;
+                else    
+                {       
+                      tspi_out.phObject=new_object->handle;
+                      tspi_out.returncode=0;
+                }
+         
+        }
+
+        else
+                tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+
+	// return 
+
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
+        return ret;
+}
+
+
+int proc_tsmd_SelectPcrIndex(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
+{
+        int ret;
+        RECORD(TSPI_IN, SELECTPCRINDEX) tspi_in;
+        RECORD(TSPI_OUT, SELECTPCRINDEX) tspi_out;
+
+       //input data convert
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,SELECTPCRINDEX));
+        if(tspi_in_template == NULL)
+        {
+                return -EINVAL;
+        }
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,SELECTPCRINDEX));
+        if(tspi_out_template == NULL)
+        {
+                return -EINVAL;
+        }
+
+        ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
+        if(ret<0)
+                return ret;
+
+       /*
+        struct tcm_in_selectpcrindex tcm_in;
+        struct tcm_out_selectpcrindex tcm_out;
+    
+
+        tcm_in.tag=htons(TCM_TAG_RQU_COMMAND);
+        tcm_in.ordinal=SUBTYPE_SELECTPCRINDEX_IN;
+        tcm_in.pcrComposite=tspi_in.hPcrComposite;     
+        tcm_in.pcrIndex=tspi_in.ulPcrIndex;
+        tcm_in.direction=tspi_in.direction;
+        */
+        
+       // UINT32 tsmd_handle;
+	TSMD_OBJECT * pcrs_object;
+        if(ret>0){
+		pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);			
+		TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+		bitmap_set(pcrComp->select.pcrSelect,1);	
+
+              //  hPcrComposite=Ischarinset(tspi_in.ulPcrIndex,tspi_in.hPcrComposite);
+                tspi_out.returncode=0;
+        }else
+                tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+
+
+        //tspi_out.paramSize=sizeof(tspi_out);
+
+
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
+        return ret;
+} 
+
+int proc_tsmd_PcrReset(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
+{ 
+	int ret; 
+	RECORD(TSPI_IN, PCRRESET) tspi_in;	 
+	RECORD(TSPI_OUT, PCRRESET) tspi_out; 
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCRRESET)); 
+	BYTE msghash[DIGEST_SIZE]; 
+        if(tspi_in_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,PCRRESET)); 
+        if(tspi_out_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+ 
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template); 
+	if(ret<0) 
+		return ret; 
+ 
+  	struct tcm_in_pcrreset tcm_in; 
+  	struct tcm_out_pcrreset tcm_out; 
+ 
+	tcm_in.tag=htons(TCM_TAG_RQU_COMMAND); 
+	tcm_in.ordinal=SUBTYPE_PCRRESET_IN; 
+//	tcm_in.pcrComposite=tspi_in.hPcrComposite; 
+ 
+	ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller); 
+	 
+	if(ret>0) 
+		tspi_out.returncode=0; 
+	else 
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+	 
+	/*
+        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
+	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
+	if(tspi_out.rgbPcrValue==NULL) 
+		return -ENOMEM; 
+	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
+        */	
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
+	return ret; 
+}
+

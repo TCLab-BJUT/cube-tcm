@@ -48,10 +48,8 @@ enum vtcm_trans_type
         DRV_RW
 };
 static enum vtcm_trans_type trans_type=DRV_RW;
-
-static char * tcm_devnamelist[]={"/dev/tcm","/dev/tcm0","/dev/tpm","/dev/tpm0",NULL};
                                          
-char * tcm_devname;
+char * tcm_devname="/dev/tpm0";
 int dev_fd;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -237,19 +235,13 @@ int _TSMD_Init()
 UINT32 TCM_LibInit(void)
 {
     int ret;
-    int i;	
-    for(i=0;tcm_devnamelist[i]!=NULL;i++)
-    {
-	tcm_devname=tcm_devnamelist[i];		    
-        dev_fd=open(tcm_devname,O_RDWR);
-        if(dev_fd>0)
-		break;
-    }
-    if(tcm_devnamelist[i]==NULL)
-	return -EIO;
-  
-    INIT_LIST_HEAD(&sessions_list.list);
-    sessions_list.record=NULL;
+
+    dev_fd=open(tcm_devname,O_RDWR);
+    if(dev_fd<0)
+	return dev_fd;
+    
+  INIT_LIST_HEAD(&sessions_list.list);
+  sessions_list.record=NULL;
 
   return 0;
 
@@ -446,35 +438,6 @@ UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue)
   if(vtcm_output->returnCode!=0)
 	return vtcm_output->returnCode;
   Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
-  return 0;
-}
-
-UINT32 TCM_PcrReset(UINT32 pcrindex, BYTE * pcrvalue)
-{
-  int ret = 0;
-  struct tcm_in_pcrreset * vtcm_input;
-  struct tcm_out_pcrreset * vtcm_output;
-  void * vtcm_template;
-
-  printf("Begin TCM pcrreset:\n");
-  vtcm_input = Talloc0(sizeof(*vtcm_input));
-  if(vtcm_input==NULL)
-      return -ENOMEM;
-  vtcm_output = Talloc0(sizeof(*vtcm_output));
-  if(vtcm_output==NULL)
-      return -ENOMEM;
-  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
-
-  vtcm_input->ordinal=SUBTYPE_PCRRESET_IN;
-  vtcm_input->pcrIndex=pcrindex;
-
-  ret=proc_tcm_General(vtcm_input,vtcm_output);
-
-  if(ret<0)
-	return ret;
-  if(vtcm_output->returnCode!=0)
-	return vtcm_output->returnCode;
- // Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
   return 0;
 }
 

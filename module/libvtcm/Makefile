@@ -25,8 +25,8 @@ sm3attr:  sm3attr.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
 	$(CC) $(FLAGS) sm3attr sm3attr.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 sm4test:  sm4test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
 	$(CC) $(FLAGS) sm4test sm4test.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
-sm4attr:  sm4attr.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
-	$(CC) $(FLAGS) sm4attr sm4attr.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
+#sm4attr:  sm4attr.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
+#	$(CC) $(FLAGS) sm4attr sm4attr.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 lib$(LIBNAME).so: $(STRUCTOBJ)
 	$(CC) -shared -o lib$(LIBNAME).so $(STRUCTOBJ)	 
 	cp lib$(LIBNAME).so $(CUBEAPPPATH)/locallib/bin

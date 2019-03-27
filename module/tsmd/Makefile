@@ -5,8 +5,8 @@ CC=gcc
 CCP=g++
 PLUGIN=tsmd
 PLUGIN_OBJ= tcm_func.o
-TEST_LIB= -L$(CUBELIBPATH)/lib -lsys_func -lexmodule -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lstring -lalloc -lpthread -lsm2So
-LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func
+TEST_LIB= -L$(CUBELIBPATH)/lib -lsys_func -lchannel -lexmodule -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lstring -lalloc -lpthread -lsm2So
+LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg
 
 main: lib$(PLUGIN).so $(PLUGIN_OBJ)
 lib$(PLUGIN).so:  $(PLUGIN).o $(PLUGIN_OBJ) 

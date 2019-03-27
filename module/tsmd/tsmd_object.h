@@ -44,4 +44,13 @@ struct tsmd_object_policy
 	TCM_AUTHHANDLE authhandle;
 	BYTE AuthData[DIGEST_SIZE];
 }__attribute__((packed));
+
+struct tsmd_object_hpcrs
+{
+	UINT32 hpcrs_state;
+	UINT32 hpcrsflags;
+	TSM_HANDLE objecthandle;
+	BYTE AuthData[DIGEST_SIZE];
+	TCM_PCR_COMPOSITE pcrComposite;
+}__attribute__((packed));
 #endif

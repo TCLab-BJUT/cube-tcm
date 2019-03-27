@@ -2465,7 +2465,7 @@ int sm4_cbc_data_recover(int input_len,BYTE * input_data,int * output_len,BYTE *
         int block_size=16;  
 
 	pad_value=input_data[input_len-1];
-        if(pad_value>=block_size)
+        if(pad_value>block_size)
 		return -EINVAL;
 	pad_len=(int)pad_value; 
              

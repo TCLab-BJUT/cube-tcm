@@ -2240,7 +2240,7 @@ int proc_vtcmutils_SM3CompleteExtend(void * sub_proc, void * para){
     i++;
   }
   if(datablock!=NULL){
-    vtcm_ex_sm3(nonce,datablock,strlen(datablock));
+    vtcm_ex_sm3(nonce,1,datablock,strlen(datablock));
   }
   vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
   vtcm_input->ordinal = SUBTYPE_SM3COMPLETEEXTEND_IN;
@@ -2877,7 +2877,7 @@ int proc_vtcmutils_SM3Complete(void * sub_proc, void * para){
     i++;
   }
   if(datablock!=NULL){
-    vtcm_ex_sm3(nonce,datablock,strlen(datablock));
+    vtcm_ex_sm3(nonce,1,datablock,strlen(datablock));
   }
   vtcm_input->dataBlock=nonce;
   vtcm_input->dataBlockSize=0x20;
@@ -2930,7 +2930,7 @@ int proc_vtcmutils_SM3Update(void * sub_proc, void * para){
     i++;
   }
   if(datablock!=NULL){
-    vtcm_ex_sm3(nonce,datablock,strlen(datablock));
+    vtcm_ex_sm3(nonce,1,datablock,strlen(datablock));
   }
   vtcm_input->dataBlock=nonce;
   // memcpy(vtcm_input->dataBlock,nonce,TCM_HASH_SIZE);
@@ -3428,6 +3428,7 @@ int proc_vtcmutils_PhysicalEnable(void * sub_proc, void * para){
   print_bin_data(Buf,outlen,8);
   return ret;
 }
+
 int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
   int outlen;
   int i=1;
@@ -3458,7 +3459,7 @@ int proc_vtcmutils_APTerminate(void * sub_proc, void * para){
     printf("authhandle is error\n");
   }
   int ordinal = htonl(vtcm_input->ordinal);
-  vtcm_ex_sm3(checknum,&ordinal,4);
+  vtcm_ex_sm3(checknum,1,&ordinal,4);
   authdata=Find_AuthSession(0x00,vtcm_input->authHandle);
   int serial = htonl(authdata->SERIAL);
   vtcm_ex_hmac_sm3(hashout,authdata->sharedSecret,32,2,checknum,32,&serial,4);
@@ -4557,7 +4558,7 @@ int proc_vtcmutils_Extend(void * sub_proc, void * para){
     i++;
   }
   if(message != NULL){
-    vtcm_ex_sm3(msghash, message,strlen(message));
+    vtcm_ex_sm3(msghash, 1,message,strlen(message));
   }
   for(j=0;j<32;j++){
     vtcm_input->inDigest[j] = (BYTE)msghash[j];

@@ -196,15 +196,15 @@ TSPICALL Tspi_Context_GetDefaultPolicy
     TSM_HCONTEXT        hContext,                      // in
     TSM_HPOLICY*        phPolicy                       // out
 );
-
-TSPICALL Tspi_Context_CreateObject
+*/
+TSM_RESULT Tspi_Context_CreateObject
 (
     TSM_HCONTEXT        hContext,                      // in
     TSM_FLAG            objectType,                    // in
     TSM_FLAG            initFlags,                     // in
     TSM_HOBJECT*        phObject                       // out
 );
-
+/*
 TSPICALL Tspi_Context_CloseObject
 (
     TSM_HCONTEXT        hContext,                      // in
@@ -503,14 +503,14 @@ TSPICALL Tspi_TCM_GetTestResult
     UINT32*             pulTestResultLength,           // out
     BYTE**              prgbTestResult                 // out
 );
-
-TSPICALL Tspi_TCM_GetRandom
+*/
+TSM_RESULT Tspi_TCM_GetRandom
 (
     TSM_HTCM            hTCM,                          // in
     UINT32              ulRandomDataLength,            // in
     BYTE**              prgbRandomData                 // out
 );
-
+/*
 TSPICALL Tspi_TCM_StirRandom
 (
     TSM_HTCM            hTCM,                          // in
@@ -752,14 +752,14 @@ TSPICALL Tspi_PcrComposite_SelectPcrIndex
     TSM_HPCRS           hPcrComposite,                 // in
     UINT32              ulPcrIndex                     // in
 );
-
-TSPICALL Tspi_PcrComposite_SelectPcrIndexEx
+*/
+TSM_RESULT Tspi_PcrComposite_SelectPcrIndex
 (
     TSM_HPCRS           hPcrComposite,                 // in
     UINT32              ulPcrIndex,                    // in
-    UINT32              direction                      // in
+    UINT32              Direction                      // in
 );
-
+/*
 TSPICALL Tspi_PcrComposite_SetPcrValue
 (
     TSM_HPCRS           hPcrComposite,                 // in

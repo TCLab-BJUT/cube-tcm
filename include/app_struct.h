@@ -430,14 +430,6 @@ struct tcm_out_ReadPubek
     TCM_PUBKEY pubEndorsementKey ;
     TCM_DIGEST checksum ;
 }__attribute__((packed)) ;
-/*
-struct tcm_in_OIAP
-{
-    UINT16 tag ;
-    int paramSize ;
-    int ordinal ;
-}__attribute__((packed)) ;
-*/
 
 struct tcm_in_APCreate
 {
@@ -631,6 +623,7 @@ struct tcm_in_NV_ReadValue
     TCM_AUTHHANDLE authHandle;
     BYTE authCode[DIGEST_SIZE];
 }__attribute__((packed));
+
 struct tcm_out_NV_ReadValue
 {
     UINT16 tag;

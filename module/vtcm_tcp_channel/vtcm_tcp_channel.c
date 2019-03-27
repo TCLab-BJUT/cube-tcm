@@ -161,7 +161,7 @@ int vtcm_tcp_channel_start(void * sub_proc,void * para)
     struct tcloud_connector *temp_conn;
     struct timeval conn_val;
     conn_val.tv_sec=time_val.tv_sec;
-    conn_val.tv_usec=time_val.tv_usec;
+    conn_val.tv_usec=time_val.tv_usec/5;
 
     while(1)
     {
@@ -202,7 +202,8 @@ int vtcm_tcp_channel_start(void * sub_proc,void * para)
                 }
                 else if (connector_get_type(recv_conn) == CONN_CHANNEL)
                 {
-                    printf("conn peeraddr %s send message\n", recv_conn->conn_peeraddr);
+		    if(deep_debug)
+                    	printf("conn peeraddr %s send message\n", recv_conn->conn_peeraddr);
                     rc = 0;
                     len = recv_conn->conn_ops->read(recv_conn, Buf, 1024);
                     if (len < 0) {

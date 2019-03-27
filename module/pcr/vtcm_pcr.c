@@ -17,6 +17,7 @@
 #include "crypto_func.h"
 #include "memdb.h"
 #include "message.h"
+#include "sys_func.h"
 #include "ex_module.h"
 //#include "tesi.h"
 
@@ -34,7 +35,6 @@
 
 int vtcm_dev_no;
 
-static struct timeval time_val={0,50*1000};
 struct vtcm_pcr_scene * pcr_scenes;
 
 static int proc_vtcm_pcrread(sub_proc, recv_msg);
@@ -51,7 +51,7 @@ int vtcm_pcr_init(void * sub_proc,void * para)
     tcm_state_t * tcm_instances = proc_share_data_getpointer();
 
 
-    for(i=0;i<vtcm_dev_no+1;i++)//分配存储空间
+    for(i=0;i<vtcm_dev_no;i++)//分配存储空间
     {
         pcr_scenes[i].index_num=TCM_NUM_PCR;
         pcr_scenes[i].pcr_size=sizeof(TCM_DIGEST);
@@ -403,22 +403,35 @@ int proc_vtcm_Sm3CompleteExtend(void* sub_proc, void* recv_msg)
     BYTE buffer[DIGEST_SIZE*2];
     int pcr_size;
     BYTE * pcr;
+    struct vtcm_pcr_scene * pcr_scene;// 当前的pcr场景
 
-    struct tcm_in_Sm3CompleteExtend *tcm_Sm3CompleteExtend_in;
-    ret = message_get_record(recv_msg, (void **)&tcm_Sm3CompleteExtend_in, 0);                                                            
-    if(ret < 0)
-        return ret;
-    if(tcm_Sm3CompleteExtend_in == NULL)
-        return -EINVAL;
+    struct tcm_in_Sm3CompleteExtend *vtcm_in;
+    struct tcm_out_Sm3CompleteExtend *vtcm_out;
+    int vtcm_no; 
+    int returnCode;
+
+    vtcm_no = vtcm_pcr_setvtcmscene(sub_proc,recv_msg);
+    if(vtcm_no<0)
+    {
+	returnCode=-TCM_BAD_PARAMETER;
+	goto sm3completeextend_out_proc;
+    }
+		
+    pcr_scene = ex_module_getpointer(sub_proc);
+    ret = message_get_record(recv_msg,(void **)&vtcm_in,0);
+    if(ret<0)
+	return ret;
+    if(vtcm_in==NULL)
+	return -EINVAL;	
+    vtcm_out = Talloc0(sizeof(*vtcm_out));
+    if(vtcm_out==NULL)
+	return -EINVAL;
     //output process
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM3COMPLETEEXTEND_OUT);
     if(command_template == NULL)
     {
         printf("can't solve this command!\n");
     }
-    struct tcm_out_Sm3CompleteExtend * tcm_Sm3CompleteExtend_out = malloc(struct_size(command_template));
-
-    struct vtcm_pcr_scene * pcr_scene = ex_module_getpointer(sub_proc);
 
     tcm_state_t * tcm_state = proc_share_data_getpointer();
 
@@ -428,24 +441,30 @@ int proc_vtcm_Sm3CompleteExtend(void* sub_proc, void* recv_msg)
     //sm3_update(tcm_state->sm3_context, tcm_Sm3CompleteExtend_in->dataBlock, tcm_Sm3CompleteExtend_in->dataBlockSize);
 
     pcr_size=pcr_scene->pcr_size;
-    pcr=pcr_scene->pcr+(tcm_Sm3CompleteExtend_in->pcrIndex)*pcr_size;
+    pcr=pcr_scene->pcr+(vtcm_in->pcrIndex)*pcr_size;
     Memcpy(buffer,pcr,pcr_size);
-    Memcpy(buffer+pcr_size, tcm_Sm3CompleteExtend_in->dataBlock, pcr_size);
+    Memcpy(buffer+pcr_size, vtcm_in->dataBlock, pcr_size);
 
     //Calculate_context_sha1(buffer,pcr_size*2,pcr) ;;
     vtcm_SM3(pcr, buffer, pcr_size*2);
 
-    Memcpy(tcm_Sm3CompleteExtend_out->pcrResult, pcr, pcr_size);
-    SM3_final(tcm_state->sm3_context, tcm_Sm3CompleteExtend_out->calResult);
-    tcm_Sm3CompleteExtend_out->tag = 0xC400;
-    tcm_Sm3CompleteExtend_out->returnCode = 0;
+    Memcpy(vtcm_out->pcrResult, pcr, pcr_size);
+    SM3_final(tcm_state->sm3_context, vtcm_out->calResult);
 
-    tcm_Sm3CompleteExtend_out->paramSize = 0x4A;
+sm3completeextend_out_proc:
+    vtcm_out->tag = 0xC400;
+    vtcm_out->returnCode = 0;
+
+    vtcm_out->paramSize = 0x4A;
 
     void *send_msg = message_create(DTYPE_VTCM_OUT, SUBTYPE_SM3COMPLETEEXTEND_OUT, recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
-    message_add_record(send_msg, tcm_Sm3CompleteExtend_out);
+    message_add_record(send_msg, vtcm_out);
+    if(vtcm_no>0)
+    {
+	ret=vtcm_addcmdexpand(send_msg,recv_msg);
+    }			
     ret = ex_module_sendmsg(sub_proc, send_msg);
     return ret;
 }
