@@ -136,7 +136,7 @@ TCM_SESSION_DATA * Find_AuthSession(TCM_ENT_TYPE type, TCM_AUTHHANDLE authhandle
   return NULL;
 }
 
-int _TSMD_Init()
+UINT32 _TSMD_Init(void)
 {
     int ret;
     int retval;
@@ -331,6 +331,9 @@ int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
                         	return len;
                 	}
 		}
+		else
+			return ret;
+
         }
 	Memcpy(out,TransBuf,len);
 	*out_len=len;
@@ -564,6 +567,8 @@ UINT32 TCM_APCreate(UINT32 entityType, UINT32 entityValue, char * pwd, UINT32 * 
   authdata=Create_AuthSession_Data(&(vtcm_input->entityType),vtcm_input->authCode,vtcm_input->nonce);
 
   ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
 
   memcpy(authdata->sharedSecret, auth, TCM_NONCE_SIZE);
   authhandle=Build_AuthSession(authdata,vtcm_output);
@@ -670,7 +675,7 @@ UINT32 TCM_EvictKey(UINT32 keyHandle)
 }
 
 
-UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * keyfile,char *pwdk)
+UINT32 TCM_CreateWrapKey(UINT32 parentHandle,UINT32 authHandle,char * select,char * keyfile,char *pwdk)
 {
   int outlen;
   int i=1;

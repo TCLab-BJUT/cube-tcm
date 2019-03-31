@@ -41,6 +41,7 @@
 #define TCMFUNC_H
 
 /* section 3: Admin startup and state */
+UINT32 _TSMD_Init(void);
 UINT32 TCM_LibInit(void);
 /*
 UINT32 TCM_Init(void); 

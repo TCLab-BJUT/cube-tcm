@@ -6,7 +6,7 @@ CCP=g++
 PLUGIN=vtcm_tddl_client
 PLUGIN_OBJ=
 TEST_LIB= -L$(CUBELIBPATH)/lib -lsys_func -lexmodule -lchannel -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lstring -lalloc -lpthread
-LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -ltcmtddl
+LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -ltcmtddl -lftd2xx
 
 main: lib$(PLUGIN).so
 lib$(PLUGIN).so:  $(PLUGIN).o $(PLUGIN_PROC_OBJ) $(INIT_DB_OBJ)
