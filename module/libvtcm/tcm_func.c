@@ -5,8 +5,9 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <dlfcn.h>
-#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 #include "data_type.h"
@@ -48,8 +49,17 @@ enum vtcm_trans_type
         DRV_RW
 };
 static enum vtcm_trans_type trans_type=DRV_RW;
-                                         
-char * tcm_devname="/dev/tpm0";
+
+//static char * tcm_devnamelist[]={"/dev/tcm","/dev/tcm0","/dev/tpm","/dev/tpm0",NULL};
+
+static char * vtcm_addr="127.0.0.1";
+static int vtcm_port=13200;  
+
+static struct sockaddr_in my_addr;
+static struct sockaddr_in dest_addr;
+static int sockfd;
+                                       
+char * tcm_devname;
 int dev_fd;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -134,7 +144,7 @@ TCM_SESSION_DATA * Find_AuthSession(TCM_ENT_TYPE type, TCM_AUTHHANDLE authhandle
   return NULL;
 }
 
-int _TSMD_Init()
+UINT32 _TSMD_Init(void)
 {
     int ret;
     int retval;
@@ -235,15 +245,22 @@ int _TSMD_Init()
 UINT32 TCM_LibInit(void)
 {
     int ret;
-
-    dev_fd=open(tcm_devname,O_RDWR);
-    if(dev_fd<0)
-	return dev_fd;
+    int i;	
     
-  INIT_LIST_HEAD(&sessions_list.list);
-  sessions_list.record=NULL;
+   Strcpy(Buf,vtcm_addr);
+   Strcat(Buf,":");
+   Itoa(vtcm_port,Buf+Strlen(Buf));
+  
+   	
+   dest_addr.sin_family = AF_INET;
+   dest_addr.sin_port = htons(vtcm_port);
+   dest_addr.sin_addr.s_addr = inet_addr(vtcm_addr);
+   Memset(&dest_addr.sin_zero,0,8);
 
-  return 0;
+    INIT_LIST_HEAD(&sessions_list.list);
+    sessions_list.record=NULL;
+
+    return 0;
 
 }
 
@@ -303,27 +320,25 @@ int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
 	int len;
 	BYTE TransBuf[DIGEST_SIZE*32];
 
+       if(-1 == (sockfd = socket(AF_INET,SOCK_STREAM,0)) )
+       {
+    		print_cubeerr("error in create socket\n");
+    		return -1;
+       }
+    // init the dest_addr 
 
-        if(trans_type==DRV_IOCTL)
-        {
-		Memcpy(TransBuf,in,in_len);
-                len = ioctl(dev_fd, TCMIOC_TRANSMIT, TransBuf);
-                if(len==-1)
-                        return -EINVAL;
-        }
-        else
-        {
-                ret=write(dev_fd,in,in_len);
-                if(ret>0)
-		{
-                        len=read(dev_fd,TransBuf,DIGEST_SIZE*32);
-                	if(len<0)
-               		{
-                        	printf("libtcm read return data error!\n");
-                        	return len;
-                	}
-		}
-        }
+  	if(-1 == connect(sockfd,(struct sockaddr*)&dest_addr,sizeof(struct sockaddr)))
+  	{
+    		print_cubeerr("connect error\n");
+    		return -EINVAL;
+  	}
+  	ret = send(sockfd,in,in_len,0);
+  	if(ret!=in_len)
+    		return -EINVAL;
+  	print_cubeaudit("write %d data!\n",ret);
+  	len=recv(sockfd,Buf,1024,0);
+  	print_cubeaudit("read %d data!\n",len);
+  	close(sockfd);
 	Memcpy(out,TransBuf,len);
 	*out_len=len;
 	return len;
@@ -441,6 +456,43 @@ UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue)
   return 0;
 }
 
+UINT32 TCM_PcrReset(UINT32 pcrindex, BYTE * pcrvalue)
+{
+  int ret = 0;
+  struct tcm_in_pcrreset * vtcm_input;
+  struct tcm_out_pcrreset * vtcm_output;
+  void * vtcm_template;
+
+  printf("Begin TCM pcrreset:\n");
+
+   if(pcrindex<0)
+	return -EINVAL;
+   if(pcrindex>=TCM_NUM_PCR)
+	return -EINVAL;
+
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+
+  vtcm_input->ordinal=SUBTYPE_PCRRESET_IN;
+
+  vtcm_input->pcrSelection.sizeOfSelect=TCM_NUM_PCR/CHAR_BIT;
+  bitmap_set(vtcm_input->pcrSelection.pcrSelect,pcrindex);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+ // Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
+  return 0;
+}
+
 UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
 {
   int outlen;
@@ -519,6 +571,8 @@ UINT32 TCM_APCreate(UINT32 entityType, UINT32 entityValue, char * pwd, UINT32 * 
   authdata=Create_AuthSession_Data(&(vtcm_input->entityType),vtcm_input->authCode,vtcm_input->nonce);
 
   ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
 
   memcpy(authdata->sharedSecret, auth, TCM_NONCE_SIZE);
   authhandle=Build_AuthSession(authdata,vtcm_output);
@@ -625,7 +679,7 @@ UINT32 TCM_EvictKey(UINT32 keyHandle)
 }
 
 
-UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * keyfile,char *pwdk)
+UINT32 TCM_CreateWrapKey(UINT32 parentHandle,UINT32 authHandle,char * select,char * keyfile,char *pwdk)
 {
   int outlen;
   int i=1;
@@ -1362,3 +1416,139 @@ UINT32 TCM_SM1Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   Memcpy(out,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
   return 0;
 }
+
+
+UINT32 TCM_TakeOwnership(unsigned char *ownpass,
+			 unsigned char *smkpass,
+                         UINT32 authhandle)
+{
+  unsigned char *encData=NULL;
+  int i=1;
+  int outlen;
+  int ret=0;
+  int offset=0;
+  void * vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+  unsigned char ownerauth[TCM_HASH_SIZE];
+  unsigned char smkauth[TCM_HASH_SIZE];
+  struct tcm_in_TakeOwnership *vtcm_input;
+  struct tcm_out_TakeOwnership *vtcm_output;
+  int  enclen=512;
+  TCM_SYMMETRIC_KEY_PARMS * sm4_parms;
+  TCM_SESSION_DATA * authdata;
+
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_TAKEOWNERSHIP_IN;
+  vtcm_input->protocolID=htons(TCM_PID_OWNER);
+
+  authdata=Find_AuthSession(TCM_ET_NONE,0);
+  if(authdata==NULL)
+  {
+    printf("can't find session for takeownership!\n");
+    return -EINVAL;
+  }
+
+  // compute ownerAuth
+  vtcm_ex_sm3(ownerauth,1,ownpass,Strlen(ownpass));
+  enclen=512;
+  ret=GM_SM2Encrypt(Buf,&enclen,ownerauth,TCM_HASH_SIZE,pubEK->pubKey.key,pubEK->pubKey.keyLength);
+  if(ret!=0)
+      return ret; 
+
+  vtcm_input->encOwnerAuthSize=enclen;
+  vtcm_input->encOwnerAuth=Talloc0(enclen);
+  Memcpy(vtcm_input->encOwnerAuth,Buf,enclen);
+
+  // compute smkAuth
+  vtcm_ex_sm3(smkauth,1,smkpass,Strlen(smkpass));
+  enclen=512;
+  ret=GM_SM2Encrypt(Buf,&enclen,smkauth,TCM_HASH_SIZE,pubEK->pubKey.key,pubEK->pubKey.keyLength);
+  if(ret!=0)
+    return ret; 
+
+  vtcm_input->encSmkAuthSize=enclen;
+  vtcm_input->encSmkAuth=Talloc0(enclen);
+  Memcpy(vtcm_input->encSmkAuth,Buf,enclen);
+
+  //  add vtcm_input's smkParams
+
+  vtcm_input->smkParams.tag=htons(TCM_TAG_KEY);
+  vtcm_input->smkParams.keyUsage=TCM_SM4KEY_STORAGE;
+  vtcm_input->smkParams.keyFlags=0;
+  vtcm_input->smkParams.authDataUsage=TCM_AUTH_ALWAYS;
+  vtcm_input->smkParams.algorithmParms.algorithmID=TCM_ALG_SM4;
+  vtcm_input->smkParams.algorithmParms.encScheme=TCM_ES_SM4_CBC;
+  vtcm_input->smkParams.algorithmParms.sigScheme=TCM_SS_NONE;
+
+  vtcm_input->smkParams.PCRInfoSize=0;
+  vtcm_input->smkParams.PCRInfo=NULL;
+  vtcm_input->smkParams.pubKey.keyLength=0;
+  vtcm_input->smkParams.pubKey.key=NULL;
+  vtcm_input->smkParams.encDataSize=0;
+  vtcm_input->smkParams.encData=NULL;
+
+  // add smkparms's sm4 key parms
+  sm4_parms=Talloc0(sizeof(*sm4_parms));
+
+  if(sm4_parms==NULL)
+    return -ENOMEM;
+  sm4_parms->keyLength=0x80;
+  sm4_parms->blockSize=0x80;
+  sm4_parms->ivSize=0x10;
+  sm4_parms->IV=Talloc0(sm4_parms->ivSize);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+
+  ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
+  if(ret<0)
+    return ret;	
+
+  vtcm_input->smkParams.algorithmParms.parmSize=ret;
+  vtcm_input->smkParams.algorithmParms.parms=Talloc0(ret);
+  if(vtcm_input->smkParams.algorithmParms.parms==NULL)
+    return -ENOMEM;
+  Memcpy(vtcm_input->smkParams.algorithmParms.parms,Buf,ret);
+
+  // add authHandle
+  vtcm_input->authHandle=authdata->handle;			
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_TAKEOWNERSHIP_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+    return offset;
+
+  //
+  //compute DecryptAuthVerfication
+  memcpy(vtcm_input->authCode, ownerauth, TCM_HASH_SIZE);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_TAKEOWNERSHIP_IN,NULL,vtcm_input->authCode);
+  vtcm_input->paramSize=offset;
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  // Check authdata
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_TAKEOWNERSHIP_OUT,NULL,CheckData);
+  if(ret<0)
+  {
+    	return -EINVAL;
+  }
+  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+  {
+    	printf("TakeOwnership check output failed!\n");
+    	return -EINVAL;
+  }
+
+  return 0;
+}
+

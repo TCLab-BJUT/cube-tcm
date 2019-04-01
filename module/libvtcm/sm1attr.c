@@ -103,7 +103,7 @@ int main(int argc,char **argv)
     	gettimeofday( &end, NULL );
     	crypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
         encrypt_speed = (float)(encrypt_len*repeattime)*1000/crypttime;
-    	printf("encrypt speed %f KB/s \n", encrypt_speed);
+    	printf("encrypt speed %f Gbps \n", encrypt_speed/10);
 
 	printf("SM1 Decryt\n");
     	gettimeofday( &start, NULL );
@@ -113,8 +113,8 @@ int main(int argc,char **argv)
    	decrypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
         decrypt_speed = (float)(CryptBuflen*repeattime)*1000/decrypttime;
 
-    	printf("decrypt speed %f KB/s \n",decrypt_speed);
-	sleep(20);
+    	printf("decrypt speed %f Gbps \n",decrypt_speed/10);
+	usleep(1000);
     }
     ret=TCM_APTerminate(authHandle);
     if(ret<0)
