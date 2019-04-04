@@ -675,7 +675,7 @@ UINT32 TCM_EvictKey(UINT32 keyHandle)
 }
 
 
-UINT32 TCM_CreateWrapKey(UINT32 parentHandle,UINT32 authHandle,char * select,char * keyfile,char *pwdk)
+UINT32 TCM_CreateWrapKey(TCM_KEY * keydata,UINT32 parentHandle,UINT32 authHandle,UINT32 keyusage,UINT32 keyflags,char *pwdk)
 {
   int outlen;
   int i=1;
@@ -713,75 +713,82 @@ UINT32 TCM_CreateWrapKey(UINT32 parentHandle,UINT32 authHandle,char * select,cha
   vtcm_input->authHandle=authHandle;
 //Fill keyInfo information
   vtcm_input->keyInfo.tag=htons(TCM_TAG_KEY);
-  vtcm_input->keyInfo.keyFlags=0;
+  vtcm_input->keyInfo.keyUsage=keyusage;
+  vtcm_input->keyInfo.keyFlags=keyflags;
   vtcm_input->keyInfo.authDataUsage=TCM_AUTH_ALWAYS;
 
-  if(!strcmp("sm4",select))
+  switch(keyusage)
   {
-    if(vtcm_input->keyInfo.keyUsage==0)
-    	vtcm_input->keyInfo.keyUsage=TCM_SM4KEY_STORAGE;
-    vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM4;
-    vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM4_CBC;
-    vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_NONE;
-    printf("this is sm4\n");
-    // add smkparms's sm4 key parms
-    sm4_parms=Talloc0(sizeof(*sm4_parms));
-    if(sm4_parms==NULL)
-      return -ENOMEM;
-    sm4_parms->keyLength=0x80;
-    sm4_parms->blockSize=0x80;
-    sm4_parms->ivSize=0x10;
-    sm4_parms->IV=Talloc0(sm4_parms->ivSize);
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
-    if(vtcm_template==NULL)
-      return -EINVAL;
-    ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
-    if(ret<0)
-      return ret; 
-    vtcm_input->keyInfo.algorithmParms.parmSize=ret;
-    vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
-    if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
-      return -ENOMEM;
-    Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
-  }else
-  {
-    if(vtcm_input->keyInfo.keyUsage==0)
-    	vtcm_input->keyInfo.keyUsage=TCM_SM2KEY_SIGNING;
-    //add smkparms's sm2 key parms
-    sm2_parms=Talloc0(sizeof(*sm2_parms));
-    if(sm2_parms==NULL)
-      return -ENOMEM;
-    sm2_parms->keyLength=0x80;
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SM2_ASYMKEY_PARAMETERS);
-    if(vtcm_template==NULL)
-      return -EINVAL;
-    ret=struct_2_blob(sm2_parms,Buf,vtcm_template);
-    if(ret<0)
-      return ret;
-    vtcm_input->keyInfo.algorithmParms.parmSize=ret;
-    vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
-    if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
-      return -ENOMEM;
-    Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
-    vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM2;
-    vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM2;
-    vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_SM2;
-    printf("this is sm2\n");
+
+    case TCM_SM2KEY_SIGNING: 	
+    case TCM_SM2KEY_STORAGE: 	
+    case TCM_SM2KEY_IDENTITY: 	
+    case TCM_SM2KEY_BIND: 	
+    case TCM_SM2KEY_MIGRATE: 	
+    	//add smkparms's sm2 key parms
+    	sm2_parms=Talloc0(sizeof(*sm2_parms));
+    	if(sm2_parms==NULL)
+      		return -ENOMEM;
+    	sm2_parms->keyLength=0x80;
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SM2_ASYMKEY_PARAMETERS);
+    	if(vtcm_template==NULL)
+      		return -EINVAL;
+    	ret=struct_2_blob(sm2_parms,Buf,vtcm_template);
+    	if(ret<0)
+      		return ret;
+    	vtcm_input->keyInfo.algorithmParms.parmSize=ret;
+    	vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
+    	if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
+      		return -ENOMEM;
+    	Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
+    	vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM2;
+    	vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM2;
+    	vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_SM2;
+	break;
+	
+    case TCM_SM4KEY_STORAGE: 	
+    case TCM_SM4KEY_BIND: 	
+    case TCM_SM4KEY_MIGRATE: 	
+
+    	vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM4;
+   	vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM4_CBC;
+    	vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_NONE;
+    	sm4_parms=Talloc0(sizeof(*sm4_parms));
+    	if(sm4_parms==NULL)
+      		return -ENOMEM;
+    	sm4_parms->keyLength=0x80;
+    	sm4_parms->blockSize=0x80;
+    	sm4_parms->ivSize=0x10;
+    	sm4_parms->IV=Talloc0(sm4_parms->ivSize);
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
+    	if(vtcm_template==NULL)
+      		return -EINVAL;
+    	ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
+    	if(ret<0)
+      		return ret; 
+    	vtcm_input->keyInfo.algorithmParms.parmSize=ret;
+    	vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
+    	if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
+      		return -ENOMEM;
+    	Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
+	break;
+    default:
+	return -EINVAL;
   }
   BYTE *Buffer=(BYTE*)malloc(sizeof(BYTE)*256);
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
   if(vtcm_template==NULL)
-    return -EINVAL;
+       return -EINVAL;
   int ret1=0;
   ret1=struct_2_blob(&(vtcm_input->keyInfo),Buffer,vtcm_template);
   if(ret1<0)
-    return ret1;
+      return ret1;
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_CREATEWRAPKEY_IN);
   if(vtcm_template==NULL)
-    return -EINVAL;
+      return -EINVAL;
   offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
   printf("%d\n",offset);
-   if(pwdk!=NULL)
+  if(pwdk!=NULL)
   {
 	vtcm_ex_sm3(ownerauth,1,pwdk,Strlen(pwdk));
   }
@@ -810,11 +817,11 @@ UINT32 TCM_CreateWrapKey(UINT32 parentHandle,UINT32 authHandle,char * select,cha
   ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_CREATEWRAPKEY_OUT,authdata,CheckData);
 
   if(ret<0)
-    return -EINVAL;
+       return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
   {
-    printf("createwrapkey check output authCode failed!\n");
-    return -EINVAL;
+      printf("createwrapkey check output authCode failed!\n");
+      return -EINVAL;
   }	
    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
   if(vtcm_template==NULL)
@@ -824,13 +831,10 @@ UINT32 TCM_CreateWrapKey(UINT32 parentHandle,UINT32 authHandle,char * select,cha
 
   ret=struct_2_blob(&vtcm_output->wrappedKey,Buf,vtcm_template);
   if(ret<0)
-    return -EINVAL;
-  fd=open(keyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
-  if(fd<0)
-    return -EIO;
-  write(fd,Buf,ret);
-  close(fd);
-  printf("Output para: %d \n\n",vtcm_output->returnCode);
+       return -EINVAL;
+  ret=blob_2_struct(Buf,keydata,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
   return 0;
 }
 
