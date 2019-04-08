@@ -1058,7 +1058,8 @@ UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   return 0;
 }
 
-int TCM_SM3Start(){
+int TCM_SM3Start()
+{
   int outlen;
   int i=0;
   int ret=0;
@@ -1079,7 +1080,8 @@ int TCM_SM3Start(){
   return vtcm_output->returnCode;
 }
 
-int TCM_SM3Update(BYTE * data, int data_len){
+int TCM_SM3Update(BYTE * data, int data_len)
+{
   int outlen;
   int i=1;
   int ret=0;
@@ -1115,7 +1117,8 @@ int TCM_SM3Update(BYTE * data, int data_len){
   return ret;
 }
 
-int TCM_SM3Complete(BYTE * in, int in_len,BYTE * out){
+int TCM_SM3Complete(BYTE * in, int in_len,BYTE * out)
+{
 
   int ret=0;
   void *vtcm_template;
