@@ -35,6 +35,7 @@ int main(int argc,char **argv)
 {
 
     int ret;
+    int i;
     TSM_HCONTEXT hContext;
     TSM_HTCM hTCM;
     TSM_HPCRS hPcrComposite;
@@ -70,7 +71,7 @@ int main(int argc,char **argv)
     }
 
     printf("Random Data is :");
-    for(int i=0;i<16;i++)
+    for(i=0;i<16;i++)
     	printf("%2.2x ",RandomData[i]);
     printf("\n");
 
@@ -81,7 +82,7 @@ int main(int argc,char **argv)
 	return ret;
     }
     printf("PcrRead start :");
-    for(int i=0;i<32;i++)
+    for(i=0;i<32;i++)
     	printf("%2.2x ",PcrValue[i]);
     printf("\n");
 
@@ -94,7 +95,7 @@ int main(int argc,char **argv)
 	return ret;
     }
     printf("PcrExtend start :");
-    for(int i=0;i<32;i++)
+    for(i=0;i<32;i++)
     	printf("%2.2x ",PcrValue[i]);
     printf("\n");
  
