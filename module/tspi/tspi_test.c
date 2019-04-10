@@ -27,6 +27,7 @@
 #include "tcm_constants.h"
 #include "app_struct.h"
 #include "pik_struct.h"
+#include "tsm_structs.h"
 //#include "sm3.h"
 //#include "sm4.h"
 #include "tspi.h"

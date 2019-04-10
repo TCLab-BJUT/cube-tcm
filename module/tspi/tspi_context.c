@@ -40,6 +40,8 @@
 TSMD_CONTEXT this_context;
 static char Buf[1024];
 
+TSM_UUID TSM_UUID_SMK = {0,0,0,0,0,{0,0,0,0,0,1}}; 
+
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
 
