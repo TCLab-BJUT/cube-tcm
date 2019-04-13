@@ -333,7 +333,7 @@ int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
   	if(ret!=in_len)
     		return -EINVAL;
   	print_cubeaudit("write %d data!\n",ret);
-  	len=recv(sockfd,Buf,1024,0);
+  	len=recv(sockfd,TransBuf,1024,0);
   	print_cubeaudit("read %d data!\n",len);
   	close(sockfd);
 

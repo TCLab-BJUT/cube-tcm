@@ -54,6 +54,9 @@
             		"PCRRESET",
             		"GETPOLICYOBJECT",
             		"SETSECRET",
+                        "LOADKEYBYUUID",
+                        "ASSIGNTOOBJECT",
+                        "CREATEKEY",
             		"GETPUBENDORSEMENTKEY",
             		"TAKEOWNERSHIP"
 		]
@@ -80,6 +83,9 @@
             		"PCRRESET",
             		"GETPOLICYOBJECT",
             		"SETSECRET",
+                        "LOADKEYBYUUID",
+                        "ASSIGNTOOBJECT",
+                        "CREATEKEY",
             		"GETPUBENDORSEMENTKEY",
             		"TAKEOWNERSHIP"
 		]
@@ -372,10 +378,7 @@
                 {
                         "elem_desc":
                          [
-                                {"name":"returncode","type":"INT"},
-                                {"name":"paramSize","type":"INT"},
-                                {"name":"ulPcrValueLength","type":"INT"},
-                                {"name":"rgbPcrValue","type":"DEFINE","def":"ulPcrValueLength"}
+                                {"name":"returncode","type":"INT"}
                          ]
                 }
         }
@@ -462,9 +465,224 @@
                         "elem_desc":
                          [      
                                 {"name":"returncode","type":"INT"},
-                                {"name":"paramSize","type":"INT"},
+                                {"name":"paramSize","type":"INT"}
                          ]
                 }
         }
 }
-
+{       
+        "head":
+        {       
+                "name":"tspi_in_GetPolicyObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {       
+                "type":"TSPI_IN",
+                "subtype":"GETPOLICYOBJECT",
+                "struct_desc":
+                {       
+                        "elem_desc":
+                         [      
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hObject","type":"INT"},
+                                {"name":"policyType","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_GetPolicyObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"GETPOLICYOBJECT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"phObject","type":"INT"}
+                         ]
+                }
+        }
+}
+{       
+        "head": 
+        {       
+                "name":"tspi_in_SetSecret",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {       
+                "type":"TSPI_IN",
+                "subtype":"SETSECRET",
+                "struct_desc":
+                {       
+                        "elem_desc":
+                         [      
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hPolicy","type":"INT"},
+                                {"name":"secretMode","type":"INT"},
+                                {"name":"ulSecretLength","type":"INT"},
+                                {"name":"rgbSecret","type":"DEFINE","def":"ulSecretLength"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_SetSecret",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"SETSECRET",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"}
+                         ]
+                }
+        }
+}
+{       
+        "head":
+        {       
+                "name":"tspi_in_LoadKeyByUUID",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {       
+                "type":"TSPI_IN",
+                "subtype":"LOADKEYBYUUID",
+                "struct_desc":
+                {       
+                        "elem_desc":
+                         [      
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hContext","type":"INT"},
+                                {"name":"persistentStorageType","type":"INT"},
+				{"name":"uuidData","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_LoadKeyByUUID",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"LOADKEYBYUUID",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"phKey","type":"INT"}
+                         ]
+                }
+        }
+}
+{       
+        "head":
+        {       
+                "name":"tspi_in_AssignToObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {       
+                "type":"TSPI_IN",
+                "subtype":"ASSIGNTOOBJECT",
+                "struct_desc":
+                {       
+                        "elem_desc":
+                         [      
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hPolicy","type":"INT"},
+                                {"name":"hObject","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_AssignToObject",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"ASSIGNTOOBJECT",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"}
+                         ]
+                }
+        }
+}
+{       
+        "head":
+        {       
+                "name":"tspi_in_CreateKey",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {       
+                "type":"TSPI_IN",
+                "subtype":"CREATEKEY",
+                "struct_desc":
+                {       
+                        "elem_desc":
+                         [      
+                                {"name":"apino","type":"INT"},
+                                {"name":"paramSize","type":"INT"},
+                                {"name":"hKey","type":"INT"},
+                                {"name":"hWrappingKey","type":"INT"},
+				{"name":"hPcrComposite","type":"INT"}
+                         ]
+                }
+        }
+}
+{
+        "head":
+        {
+                "name":"tspi_out_CreateKey",
+                "type":"RECORDTYPE"
+        },
+        "record":
+        {
+                "type":"TSPI_OUT",
+                "subtype":"CREATEKEY",
+                "struct_desc":
+                {
+                        "elem_desc":
+                         [
+                                {"name":"returncode","type":"INT"},
+                                {"name":"paramSize","type":"INT"}
+                         ]
+                }
+        }
+}

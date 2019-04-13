@@ -33,6 +33,8 @@
 #include <linux/kthread.h>
 #include <linux/time.h>
 #include <linux/delay.h>
+#include <uapi/linux/tcp.h>
+#include <net/tcp_states.h>
 
 #include "config.h"
 
@@ -168,10 +170,10 @@ static int tcmd_connect(char *socket_name,int port)
   int res;
   struct sockaddr_in * tcm_addr;
 //   res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
-  // res = sock_create_kern(AF_INET, SOCK_STREAM, 0, &tcmd_sock);
-   res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
+     res = sock_create_kern(AF_INET, SOCK_STREAM, 0, &tcmd_sock);
+ //  res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
   if (res != 0) {
-    error("sock_create_kern() failed: %d\n", res);
+    //error("sock_create_kern() failed: %d\n", res);
     tcmd_sock = NULL;
     return res;
   }
@@ -190,7 +192,7 @@ static int tcmd_connect(char *socket_name,int port)
     (struct sockaddr*)&addr, sizeof(struct sockaddr), 0);
 //    (struct sockaddr*)&addr, sizeof(struct sockaddr_un), 0);
   if (res != 0) {
-    error("sock_connect() failed: %d\n", res);
+    //error("sock_connect() failed: %d\n", res);
     tcmd_sock->ops->release(tcmd_sock);
     tcmd_sock = NULL;
     return res;
@@ -511,6 +513,7 @@ static int vtcm_io_process(void * data)
 	int response_size;
 	int vtcm_no;
 	BYTE * recv_buf;
+	struct tcp_info info;
 
 	int clock=0;
 
@@ -540,6 +543,17 @@ static int vtcm_io_process(void * data)
 				{
    					printk("connect succeed!\n");
 				}
+			}
+		}
+		else 
+		{
+  			int len=sizeof(info); 
+  			kernel_getsockopt(tcmd_sock, IPPROTO_TCP, TCP_INFO, (char *)(&info), &len); 
+  			if((info.tcpi_state!=TCP_ESTABLISHED)) 
+			{
+        		        debug("%s tcmd sock disconnected, need reconnect!\n", __FUNCTION__);
+				tcmd_sock=NULL;
+				continue;
 			}
 		}
 

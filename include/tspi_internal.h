@@ -11,7 +11,12 @@ enum subtype_tspi_in {
 	SUBTYPE(TSPI_IN,PCRREAD),
         SUBTYPE(TSPI_IN,CREATEOBJECT),
         SUBTYPE(TSPI_IN,SELECTPCRINDEX),
-	SUBTYPE(TSPI_IN,PCRRESET)
+	SUBTYPE(TSPI_IN,PCRRESET),
+        SUBTYPE(TSPI_IN,GETPOLICYOBJECT),
+        SUBTYPE(TSPI_IN,SETSECRET),
+        SUBTYPE(TSPI_IN,LOADKEYBYUUID),
+        SUBTYPE(TSPI_IN,ASSIGNTOOBJECT),
+        SUBTYPE(TSPI_IN,CREATEKEY)
 };
 enum subtype_tspi_out {
 	SUBTYPE(TSPI_OUT,GETTCMOBJECT)=0x1,
@@ -20,7 +25,12 @@ enum subtype_tspi_out {
 	SUBTYPE(TSPI_OUT,PCRREAD),
         SUBTYPE(TSPI_OUT,CREATEOBJECT),
         SUBTYPE(TSPI_OUT,SELECTPCRINDEX),
-	SUBTYPE(TSPI_OUT,PCRRESET)
+	SUBTYPE(TSPI_OUT,PCRRESET),
+        SUBTYPE(TSPI_OUT,GETPOLICYOBJECT),
+        SUBTYPE(TSPI_OUT,SETSECRET),
+        SUBTYPE(TSPI_OUT,LOADKEYBYUUID),
+        SUBTYPE(TSPI_OUT,ASSIGNTOOBJECT),
+        SUBTYPE(TSPI_OUT,CREATEKEY)
 };
 
 typedef struct tspi_in_GetTcmObject{
@@ -74,6 +84,45 @@ typedef struct tspi_in_PcrReset{
 	int hPcrComposite;
 }__attribute__((packed)) RECORD(TSPI_IN,PCRRESET);
 
+typedef struct tspi_in_GetPolicyObject{
+	int apino;
+        int paramSize;
+        int hObject;
+        int policyType;
+}__attribute__((packed)) RECORD(TSPI_IN,GETPOLICYOBJECT);
+
+typedef struct tspi_in_SetSecret{
+	int apino;
+        int paramSize;
+        int hPolicy;
+        int secretMode;
+        int ulSecretLength;
+        BYTE * rgbSecret;
+}__attribute__((packed)) RECORD(TSPI_IN,SETSECRET);
+
+typedef struct tspi_in_LoadKeyByUUID{
+	int apino;
+        int paramSize;
+        int hContext;
+        int persistentStorageType;
+        int uuidData;
+}__attribute__((packed)) RECORD(TSPI_IN,LOADKEYBYUUID);
+
+typedef struct tspi_in_AssignToObject{
+	int apino;
+        int paramSize;
+        int hPolicy;
+        int hObject;
+}__attribute__((packed)) RECORD(TSPI_IN,ASSIGNTOOBJECT);
+
+typedef struct tspi_in_CreateKey{
+	int apino;
+        int paramSize;
+        int hKey;
+        int hWrappingKey;
+        int hPcrComposite;
+}__attribute__((packed)) RECORD(TSPI_IN,CREATEKEY);
+
 typedef struct tspi_out_GetTcmObject{
 	int returncode;
 	int paramSize;
@@ -115,4 +164,32 @@ typedef struct tspi_out_SelectPcrIndex{
 typedef struct tspi_out_PcrReset{
 	int returncode;
 }__attribute__((packed)) RECORD(TSPI_OUT,PCRRESET);
+
+typedef struct tspi_out_GetPolicyObject{
+        int returncode;
+	int paramSize;
+        int phPolicy;
+}__attribute__((packed)) RECORD(TSPI_OUT,GETPOLICYOBJECT);
+
+typedef struct tspi_out_SetSecret{
+        int returncode;
+	int paramSize;
+}__attribute__((packed)) RECORD(TSPI_OUT,SETSECRET);
+
+typedef struct tspi_out_LoadKeyByUUID{
+	int returncode;
+        int paramSize;
+        int phKey;
+}__attribute__((packed)) RECORD(TSPI_OUT,LOADKEYBYUUID);
+
+typedef struct tspi_out_AssignToObject{
+	int returncode;
+}__attribute__((packed)) RECORD(TSPI_OUT,ASSIGNTOOBJECT);
+
+typedef struct tspi_out_CreateKey{
+	int returncode;
+}__attribute__((packed)) RECORD(TSPI_OUT,CREATEKEY);
+
+
+
 
