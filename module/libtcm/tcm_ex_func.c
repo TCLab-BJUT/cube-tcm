@@ -108,3 +108,30 @@ UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,B
   }
   return 0;
 }
+
+int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey)
+{
+	int ret=0;
+	int i;
+
+    	printf("Begin ex Create sm2 key:\n");
+	
+	BYTE prikey[DIGEST_SIZE*2];
+	BYTE pubkey_XY[64];
+	unsigned long prilen=DIGEST_SIZE*2;
+
+	ret=GM_GenSM2keypair(prikey,&prilen,pubkey_XY);	
+	if(ret!=0)
+		return -EINVAL;
+	*privkey_len=prilen;
+	
+	*privkey=malloc(prilen);
+	if(*privkey==NULL)
+		return -ENOMEM;
+	Memcpy(*privkey,prikey,prilen);
+	*pubkey=malloc(64);
+	if(*pubkey==NULL)
+		return -ENOMEM;
+	Memcpy(*pubkey,pubkey_XY,64);
+	return 0;
+}
