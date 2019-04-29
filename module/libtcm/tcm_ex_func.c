@@ -36,9 +36,9 @@
 extern TCM_PUBKEY * pubEK;
 BYTE ExBuf[DIGEST_SIZE*32];
 
-BYTE * CAprikey;
-unsigned long * CAprilen;
-BYTE * CApubkey;
+BYTE * CAprikey=NULL;
+unsigned long CAprilen;
+BYTE * CApubkey=NULL;
 
 UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen )
 {
@@ -67,7 +67,7 @@ UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen )
 
   //  load key
 
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
   if(vtcm_template==NULL)
       return -EINVAL;
 
@@ -133,5 +133,108 @@ int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey)
 	if(*pubkey==NULL)
 		return -ENOMEM;
 	Memcpy(*pubkey,pubkey_XY,64);
+	return 0;
+}
+
+int TCM_ExCreateCAKey()
+{
+	return TCM_ExCreateSm2Key(&CAprikey,&CAprilen,&CApubkey);
+}
+
+int TCM_ExSaveCAPriKey(char * prikeyfile)
+{
+	int fd;
+	int ret;
+	if(CAprikey==NULL)
+		return -EINVAL;	
+	
+	fd=open(prikeyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+	if(fd<0)
+		return -EIO;	
+	ret=write(fd,CAprikey,CAprilen);
+	if(ret<0)
+	{
+		printf("write prikey file error!\n");
+		return -EIO;	
+	}
+
+	close(fd);
+	
+	return 0;
+}
+
+int TCM_ExLoadCAPriKey(char * prikeyfile)
+{
+	int fd;
+	int ret;
+	fd=open(prikeyfile,O_RDONLY);
+        if(fd<0)
+		return -EIO;	
+	
+	ret=read(fd,ExBuf,DIGEST_SIZE*16+1);
+	if(ret<0)
+	{
+		printf("read  privkey file error!\n");
+		return -EIO;	
+	}
+	if(ret>DIGEST_SIZE*16)
+	{
+		printf("privkey is too long!\n");
+		return -EIO;
+	}
+	CAprilen=ret;
+	CAprikey=malloc(ret);
+	if(CAprikey==NULL)
+		return -ENOMEM;
+	Memcpy(CAprikey,ExBuf,ret);
+	close(fd);
+	return 0;
+}
+
+int TCM_ExSaveCAPubKey(char * pubkeyfile)
+{
+	int fd;
+	int ret;
+	if(CApubkey==NULL)
+		return -EINVAL;	
+	
+	fd=open(pubkeyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+	if(fd<0)
+		return -EIO;	
+	ret=write(fd,CApubkey,64);
+	if(ret<0)
+	{
+		printf("write pubkey file error!\n");
+		return -EIO;	
+	}
+
+	close(fd);
+	return 0;
+}
+
+int TCM_ExLoadCAPubKey(char * pubkeyfile)
+{
+	int fd;
+	int ret;
+	fd=open(pubkeyfile,O_RDONLY);
+	if(fd<0)
+		return -EIO;	
+	
+	ret=read(fd,ExBuf,DIGEST_SIZE*16+1);
+	if(ret<0)
+	{
+		printf("read  pubkey file error!\n");
+		return -EIO;	
+	}
+	if(ret>DIGEST_SIZE*16)
+	{
+		printf("pubkey is too long!\n");
+		return -EIO;
+	}
+	CApubkey=malloc(ret);
+	if(CApubkey==NULL)
+		return -ENOMEM;
+	Memcpy(CApubkey,ExBuf,ret);
+	close(fd);
 	return 0;
 }

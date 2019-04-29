@@ -89,13 +89,20 @@ UINT32 TCM_TakeOwnership(unsigned char *ownpass, unsigned char *smkpass,UINT32 a
 
 UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
 	int userinfolen,BYTE * userinfo,char * pwdk,
-	TCM_KEY pik, BYTE ** req, int * reqlen);
+	TCM_KEY * pik, BYTE ** req, int * reqlen);
 
 UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerhandle,
 	int encdatasize,BYTE * encdata,TCM_SYMMETRIC_KEY * symm_key,
 	char * pwdo,char * pwdk);	
 
 
+
+int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey);
+int TCM_ExCreateCAKey  ( );
+int TCM_ExSaveCAPriKey (char * prikeyfile);
+int TCM_ExLoadCAPriKey (char * prikeyfile);
+int TCM_ExSaveCAPubKey (char * pubkeyfile);
+int TCM_ExLoadCAPubKey (char * pubkeyfile);
 
 
 /*

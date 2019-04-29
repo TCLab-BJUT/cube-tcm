@@ -517,7 +517,7 @@ UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
 	return vtcm_output->returnCode;
 
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
-  ret = struct_clone(key,&vtcm_output->pubEndorsementKey,vtcm_template);
+  ret = struct_clone(&vtcm_output->pubEndorsementKey,key,vtcm_template);
   if(ret<0)
      return -EINVAL;
   printf("finish struct clone!\n");
@@ -527,7 +527,7 @@ UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
 	pubEK=Dalloc0(sizeof(*pubEK),NULL);
 	if(pubEK==NULL)
 		return -ENOMEM;
-  	ret = struct_clone(pubEK,&vtcm_output->pubEndorsementKey,vtcm_template);
+  	ret = struct_clone(&vtcm_output->pubEndorsementKey,pubEK,vtcm_template);
  	 if(ret<0)
 		return -EINVAL;
   }
@@ -838,76 +838,6 @@ UINT32 TCM_CreateWrapKey(TCM_KEY * keydata,UINT32 parentHandle,UINT32 authHandle
   return 0;
 }
 
-/*
-UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen )
-{
-  TCM_KEY *keyOut;
-  int ret=0;
-  int keyLength=0;
-  void * vtcm_template;
-  int fd;
-  int datasize;
-
-  // read file
-  fd=open(keyfile,O_RDONLY);
-  if(fd<0)
-      return -EIO;
-  ret=read(fd,Buf,DIGEST_SIZE*32+1);
-  if(ret<0)
-      return -EIO;
-  if(ret>DIGEST_SIZE*32)
-  {
-      printf("key file too large!\n");
-      return -EINVAL;
-  }
-  close(fd);
-  int length=512;
-  BYTE * keyFile=(BYTE*)malloc(sizeof(BYTE)*keyLength);
-
-  //  load key
-
-  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
-  if(vtcm_template==NULL)
-      return -EINVAL;
-
-  datasize=ret;
-
-  keyOut=Talloc0(sizeof(*keyOut));
-  if(keyOut==NULL)
-    return -ENOMEM;
-
-  ret=blob_2_struct(Buf,keyOut,vtcm_template);
-  if(ret<0||ret>datasize){
-       printf("read key file error!\n");
-       return -EINVAL;
-  }
-
-  *keylen=keyOut->pubKey.keyLength;
-  Memcpy(key,keyOut->pubKey.key,*keylen);
-  return 0;
-}
-
-UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,BYTE * in ,int in_len)
-{
-  int i=1;
-  int ret=0;
-  int fd;
-  int datasize;
-
-  //  load key
-
-  // proc_vtcmutils_ReadFile(keyLength,keyFile);
-  // read data
-
-  *out_len=in_len+65+32+4;
-  ret = GM_SM2Encrypt(out,out_len,in,in_len,pubkey,pubkey_len);
-  if(ret!=0){
-      printf("SM2Encrypt is fail\n");
-      return -EINVAL;
-  }
-  return 0;
-}
-*/
 UINT32 TCM_LoadKey(UINT32 authHandle,char * keyfile,UINT32 *KeyHandle)
 {
   int outlen;
@@ -1558,7 +1488,7 @@ UINT32 TCM_TakeOwnership(unsigned char *ownpass,
 
 UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
 	int userinfolen,BYTE * userinfo,char * pwdk,
-	TCM_KEY pik, BYTE ** req, int * reqlen)
+	TCM_KEY * pik, BYTE ** req, int * reqlen)
 {
   int outlen;
   int i=2;
@@ -1728,7 +1658,7 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
   print_bin_data(Buf,outlen,16);
   // write keyfile	
 
-  ret=struct_clone(&vtcm_output->pik,&pik,vtcm_template);
+  ret=struct_clone(&vtcm_output->pik,pik,vtcm_template);
   if(ret<0)
       return -EINVAL;
 
