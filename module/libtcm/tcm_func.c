@@ -1739,3 +1739,122 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
   Memcpy(&req,vtcm_output->CertData,vtcm_output->CertSize);  
   return 0;
 }	
+
+UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerhandle,
+	int encdatasize,BYTE * encdata,TCM_SYMMETRIC_KEY * symm_key,
+	char * pwdo,char * pwdk)
+{
+  int outlen;
+  int i=2;
+  int ret=0;
+  void *vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+
+  struct tcm_in_ActivateIdentity * vtcm_input;
+  struct tcm_out_ActivateIdentity * vtcm_output;
+
+  BYTE ownerauth[TCM_HASH_SIZE];
+  BYTE pikauth[TCM_HASH_SIZE];
+  BYTE cmdHash[TCM_HASH_SIZE];
+  int  enclen=512;
+  TCM_SM2_ASYMKEY_PARAMETERS * pik_parms;
+  TCM_SESSION_DATA * ownerauthdata;
+  TCM_SESSION_DATA * pikauthdata;
+
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH2_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_ACTIVATEIDENTITY_IN;
+  int offset=0;
+
+
+   vtcm_input->pikHandle=pikhandle;
+   vtcm_input->pikAuthHandle=pikauthhandle;	
+   vtcm_input->ownerAuthHandle=ownerhandle;	
+
+  // find the ownerauthsession and pikauthsession 
+
+  ownerauthdata = Find_AuthSession(TCM_ET_OWNER,vtcm_input->ownerAuthHandle);
+  if(ownerauthdata==NULL)
+  {
+      printf("can't find owner session for activateidentity!\n");
+      return -EINVAL;
+  }	
+
+  pikauthdata = Find_AuthSession(TCM_ET_KEYHANDLE,vtcm_input->pikAuthHandle);
+  if(pikauthdata==NULL)
+  {
+    printf("can't find pik session for activateidentity!\n");
+    return -EINVAL;
+  }	
+
+  // compute the three auth value
+
+  calculate_context_sm3(pwdo,Strlen(pwdo),ownerauth);
+  calculate_context_sm3(pwdk,Strlen(pwdk),pikauth);
+
+  vtcm_input->encDataSize=encdatasize;
+  vtcm_input->encData=Talloc0(vtcm_input->encDataSize);
+  if(vtcm_input->encData==NULL)
+  {
+    return -ENOMEM;
+  }
+  Memcpy(vtcm_input->encData,encdata,vtcm_input->encDataSize);
+
+  // Build authcode
+
+  // output command's bin value 
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+    return offset;
+
+  vtcm_input->paramSize=offset;
+
+  uint32_t temp_int;
+  // compute pikauthCode
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN,pikauthdata,vtcm_input->pikAuth);
+  if(ret==0)
+  {
+      ret=vtcm_Compute_AuthCode2(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
+  }
+  else
+	return -EINVAL;
+  /*	
+ */
+  printf("Begin input for activeidentity:\n");
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+      return offset;
+
+  ret = proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+    return ret;
+  printf("activateidentity:\n");
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_ACTIVATEIDENTITY_OUT);
+  if(vtcm_template==NULL)
+     return -EINVAL;
+
+   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+   if(ret<0)
+        return -EINVAL;
+
+   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY);
+   if(vtcm_template==NULL)
+      	return -EINVAL;
+  
+   ret=struct_clone(symm_key,&vtcm_output->symmkey,vtcm_template);
+
+   if(ret<0)
+	return -EINVAL;
+   
+  return vtcm_output->returnCode;
+}

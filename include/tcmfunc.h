@@ -86,6 +86,18 @@ UINT32 TCM_SM1Encrypt(UINT32 keyHandle,UINT32 EncryptAuthHandle,BYTE * out, int 
 UINT32 TCM_SM1Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len);
 
 UINT32 TCM_TakeOwnership(unsigned char *ownpass, unsigned char *smkpass,UINT32 authhandle);
+
+UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
+	int userinfolen,BYTE * userinfo,char * pwdk,
+	TCM_KEY pik, BYTE ** req, int * reqlen);
+
+UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerhandle,
+	int encdatasize,BYTE * encdata,TCM_SYMMETRIC_KEY * symm_key,
+	char * pwdo,char * pwdk);	
+
+
+
+
 /*
 UINT32 TCM_Init(void); 
 UINT32 TCM_Startup(UINT16 type);
