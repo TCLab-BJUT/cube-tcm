@@ -103,6 +103,11 @@ int TCM_ExSaveCAPriKey (char * prikeyfile);
 int TCM_ExLoadCAPriKey (char * prikeyfile);
 int TCM_ExSaveCAPubKey (char * pubkeyfile);
 int TCM_ExLoadCAPubKey (char * pubkeyfile);
+int TCM_ExGetPubkeyFromTcmkey(TCM_PUBKEY * pubkey,TCM_KEY * tcmkey);
+int TCM_ExSaveTcmKey(TCM_KEY * tcmkey,char * keyfile);
+int TCM_ExSaveTcmPubKey(TCM_PUBKEY * pubkey,char * keyfile);
+int TCM_ExLoadTcmKey(TCM_KEY * tcmkey, char * keyfile);
+int TCM_ExLoadTcmPubKey(TCM_PUBKEY * pubkey, char * keyfile);
 
 
 /*

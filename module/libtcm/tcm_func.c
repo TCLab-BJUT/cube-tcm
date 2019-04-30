@@ -1666,7 +1666,7 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
   *req=Talloc0(vtcm_output->CertSize);
   if(*req==NULL)
 	return -ENOMEM;
-  Memcpy(&req,vtcm_output->CertData,vtcm_output->CertSize);  
+  Memcpy(*req,vtcm_output->CertData,vtcm_output->CertSize);  
   return 0;
 }	
 

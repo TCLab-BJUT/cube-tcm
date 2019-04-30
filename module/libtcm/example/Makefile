@@ -17,4 +17,4 @@ pikreq:  pikreq.c
 	$(CC) $(FLAGS) pikreq pikreq.c $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 
 clean:
-	rm -f *~ *.o *.a  
+	rm -f *~ *.o *.a cainit pikreq libtcm_test 

@@ -27,6 +27,7 @@
 #include "app_struct.h"
 #include "pik_struct.h"
 #include "tcm_global.h"
+#include "tcm_error.h"
 #include "tcm_authlib.h"
 #include "sm4.h"
 #include "vtcm_alg.h"
@@ -236,5 +237,214 @@ int TCM_ExLoadCAPubKey(char * pubkeyfile)
 		return -ENOMEM;
 	Memcpy(CApubkey,ExBuf,ret);
 	close(fd);
+	return 0;
+}
+
+int TCM_ExCAPikReqVerify(TCM_PUBKEY * ekpub, TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
+	 BYTE * reqdata, int reqdatalen)
+{
+	int ret;
+	TCM_IDENTITY_CONTENTS ca_contents;
+	void * vtcm_template;
+
+
+	//  cmd's params
+    	printf("Begin ex CA Pik Req Verify:\n");
+	// build TCM_IDENTITY_CONTENTS struct
+	
+	ca_contents.ver.major=1;
+	ca_contents.ver.minor=1;
+	ca_contents.ordinal = SUBTYPE_MAKEIDENTITY_IN;
+	calculate_context_sm3(userinfo,userinfolen,ca_contents.labelPrivCADigest.digest);
+	
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
+	if(vtcm_template==NULL)
+		return -EINVAL;	
+
+        ret=struct_clone(pik,&ca_contents.identityPubKey,vtcm_template);
+	if(ret<0)
+		return ret;
+
+        //compute cert blob 
+        vtcm_template=memdb_get_template(DTYPE_VTCM_IDENTITY,SUBTYPE_TCM_IDENTITY_CONTENTS);
+        if(vtcm_template==NULL)
+                return -EINVAL;
+        ret=struct_2_blob(&ca_contents,ExBuf,vtcm_template);
+        if(ret<0)
+                return -EINVAL;
+
+	// Verify with CA
+	BYTE UserID[DIGEST_SIZE];
+        unsigned long lenUID=DIGEST_SIZE;
+        Memset(UserID,"A",32);
+	ret=GM_SM2VerifySig(reqdata,reqdatalen,ExBuf,ret,
+		UserID,lenUID,CApubkey,64);
+	if(ret<0)
+	{
+		printf("Verify Sig Data failed!\n");
+		return TCM_BAD_SIGNATURE;
+	}	
+	
+	return 0;
+}
+
+int TCM_ExGetPubkeyFromTcmkey(TCM_PUBKEY * pubkey,TCM_KEY * tcmkey)
+{
+	int ret;
+	void * tcm_key_template;
+
+	tcm_key_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY_PARMS);
+	ret=struct_clone(&tcmkey->algorithmParms,&pubkey->algorithmParms,tcm_key_template);
+	if(ret<0)
+		return TCM_BAD_PARAMETER;
+
+	tcm_key_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
+	ret=struct_clone(&tcmkey->pubKey,&pubkey->pubKey,tcm_key_template);
+	if(ret<0)
+		return TCM_BAD_PARAMETER;
+	return 0;
+}
+
+int TCM_ExSaveTcmKey(TCM_KEY * tcmkey,char * keyfile)
+{
+	int fd;
+	int ret;
+	int keylen;
+	void * tcm_key_template;
+	if(tcmkey==NULL)
+		return TCM_BAD_PARAMETER;
+
+
+	tcm_key_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+	if(tcm_key_template ==NULL)
+		return TCM_BAD_PARAMETER;
+
+	ret=struct_2_blob(tcmkey,ExBuf,tcm_key_template);
+	if(ret<0)
+		return TCM_BAD_PARAMETER;
+	keylen=ret;
+
+	fd=open(keyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+	if(fd<0)
+		return -EIO;	
+
+	ret=write(fd,ExBuf,keylen);
+	if(ret!=keylen)
+	{
+		printf("write prikey file error!\n");
+		return -EIO;	
+	}
+
+	close(fd);
+	
+	return 0;
+}
+
+int TCM_ExSaveTcmPubKey(TCM_PUBKEY * pubkey,char * keyfile)
+{
+	int fd;
+	int ret;
+	int keylen;
+	void * tcm_key_template;
+	if(pubkey==NULL)
+		return TCM_BAD_PARAMETER;
+
+
+	tcm_key_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
+	if(tcm_key_template ==NULL)
+		return TCM_BAD_PARAMETER;
+
+	ret=struct_2_blob(pubkey,ExBuf,tcm_key_template);
+	if(ret<0)
+		return TCM_BAD_PARAMETER;
+	keylen=ret;
+
+	fd=open(keyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+	if(fd<0)
+		return -EIO;	
+
+	ret=write(fd,ExBuf,keylen);
+	if(ret!=keylen)
+	{
+		printf("write tcm pubkey file error!\n");
+		return -EIO;	
+	}
+
+	close(fd);
+	
+	return 0;
+}
+
+int TCM_ExLoadTcmKey(TCM_KEY * tcmkey, char * keyfile)
+{
+	int fd;
+	int ret;
+	int keylen;
+	void * tcm_key_template;
+
+
+	fd=open(keyfile,O_RDONLY);
+        if(fd<0)
+		return -EIO;	
+	
+	ret=read(fd,ExBuf,DIGEST_SIZE*32+1);
+	if(ret<0)
+	{
+		printf("read  tcm key file error!\n");
+		return -EIO;	
+	}
+	close(fd);
+	keylen=ret;
+
+	tcm_key_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+	if(tcm_key_template ==NULL)
+		return TCM_BAD_PARAMETER;
+
+	ret=blob_2_struct(ExBuf,tcmkey,tcm_key_template);
+	if(ret<0)
+		return TCM_BAD_PARAMETER;
+	if(ret>keylen)
+	{
+		printf("tcm key convert failed!\n");
+		return TCM_BAD_PARAMETER;
+	}
+
+	return 0;
+}
+
+int TCM_ExLoadTcmPubKey(TCM_PUBKEY * pubkey, char * keyfile)
+{
+	int fd;
+	int ret;
+	int keylen;
+	void * tcm_key_template;
+
+
+	fd=open(keyfile,O_RDONLY);
+        if(fd<0)
+		return -EIO;	
+	
+	ret=read(fd,ExBuf,DIGEST_SIZE*32+1);
+	if(ret<0)
+	{
+		printf("read  tcm key file error!\n");
+		return -EIO;	
+	}
+	close(fd);
+	keylen=ret;
+
+	tcm_key_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
+	if(tcm_key_template ==NULL)
+		return TCM_BAD_PARAMETER;
+
+	ret=blob_2_struct(ExBuf,pubkey,tcm_key_template);
+	if(ret<0)
+		return TCM_BAD_PARAMETER;
+	if(ret>keylen)
+	{
+		printf("tcm pubkey convert failed!\n");
+		return TCM_BAD_PARAMETER;
+	}
+
 	return 0;
 }

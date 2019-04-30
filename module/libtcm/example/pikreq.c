@@ -32,6 +32,7 @@
 #include "vtcm_alg.h"
 
 char * pubkeyfile="CApub.key";
+char * pikreqfile="pikreq.blob";
 
 int main(int argc,char **argv)
 {
@@ -101,6 +102,7 @@ int main(int argc,char **argv)
     TCM_KEY pik;
     BYTE * req;
     int reqlen;	
+    int fd;
    
     ret = TCM_MakeIdentity(ownerHandle, smkHandle,
 	userinfolen,userinfo,"kkk",
@@ -110,6 +112,18 @@ int main(int argc,char **argv)
 	printf("TCM_MakeIdentity failed!\n");
 	return -EINVAL;	
     }	
+
+    fd=open(pikreqfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+    if(fd<0)
+	  return -EIO;	
+    ret=write(fd,req,reqlen);
+    if(ret<0)
+    {
+		printf("write pik req file error!\n");
+		return -EIO;	
+    }
+
+    close(fd);
 
     return ret;	
 
