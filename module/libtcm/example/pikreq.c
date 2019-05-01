@@ -33,6 +33,8 @@
 
 char * pubkeyfile="CApub.key";
 char * pikreqfile="pikreq.blob";
+char * pikfile="pik.key";
+char * pik_pubfile = "pik_pub.key";
 
 int main(int argc,char **argv)
 {
@@ -100,6 +102,7 @@ int main(int argc,char **argv)
     }	
 
     TCM_KEY pik;
+    TCM_PUBKEY pik_pub;
     BYTE * req;
     int reqlen;	
     int fd;
@@ -124,6 +127,27 @@ int main(int argc,char **argv)
     }
 
     close(fd);
+
+    ret=TCM_ExGetPubkeyFromTcmkey(&pik_pub,&pik);
+    if(ret<0)
+    {
+	printf("get pubkey from pik error!\n");
+	return ret;	
+    }	
+
+    ret=TCM_ExSaveTcmKey(&pik,pikfile);
+    if(ret<0)
+    {
+	printf("save pik error!\n");
+	return ret;	
+    }	
+
+    ret=TCM_ExSaveTcmPubKey(&pik_pub,pik_pubfile);
+    if(ret<0)
+    {
+	printf("save pik_pub error!\n");
+	return ret;	
+    }	
 
     return ret;	
 

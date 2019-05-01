@@ -240,7 +240,7 @@ int TCM_ExLoadCAPubKey(char * pubkeyfile)
 	return 0;
 }
 
-int TCM_ExCAPikReqVerify(TCM_PUBKEY * ekpub, TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
+int TCM_ExCAPikReqVerify(TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
 	 BYTE * reqdata, int reqdatalen)
 {
 	int ret;
@@ -255,7 +255,10 @@ int TCM_ExCAPikReqVerify(TCM_PUBKEY * ekpub, TCM_PUBKEY * pik, BYTE * userinfo,i
 	ca_contents.ver.major=1;
 	ca_contents.ver.minor=1;
 	ca_contents.ordinal = SUBTYPE_MAKEIDENTITY_IN;
-	calculate_context_sm3(userinfo,userinfolen,ca_contents.labelPrivCADigest.digest);
+	Memcpy(ExBuf,userinfo,userinfolen);
+	Memcpy(ExBuf+userinfolen,CApubkey,64);
+
+	calculate_context_sm3(ExBuf,userinfolen+64,ca_contents.labelPrivCADigest.digest);
 	
 	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
 	if(vtcm_template==NULL)
@@ -276,9 +279,9 @@ int TCM_ExCAPikReqVerify(TCM_PUBKEY * ekpub, TCM_PUBKEY * pik, BYTE * userinfo,i
 	// Verify with CA
 	BYTE UserID[DIGEST_SIZE];
         unsigned long lenUID=DIGEST_SIZE;
-        Memset(UserID,"A",32);
+        Memset(UserID,'A',32);
 	ret=GM_SM2VerifySig(reqdata,reqdatalen,ExBuf,ret,
-		UserID,lenUID,CApubkey,64);
+		UserID,lenUID,pik->pubKey.key,pik->pubKey.keyLength);
 	if(ret<0)
 	{
 		printf("Verify Sig Data failed!\n");

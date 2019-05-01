@@ -520,15 +520,28 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
 	unsigned long pulSigLen=512;
 	BYTE UserID[DIGEST_SIZE];
 	unsigned long lenUID=DIGEST_SIZE;
-	Memset(UserID,"A",32);	
+	datalen=ret;
+	Memset(UserID,'A',32);	
+	
 
 	
-	ret=GM_SM2Sign(signedData,&pulSigLen,Buf,ret,UserID,lenUID,privpik->privKey.key,privpik->privKey.keyLength);	
+	ret=GM_SM2Sign(signedData,&pulSigLen,Buf,datalen,UserID,lenUID,privpik->privKey.key,privpik->privKey.keyLength);	
 	if(ret!=0)
 	{
 		returnCode=-TCM_BAD_SIGNATURE;
 		goto makeidentity_out;	
 	}
+
+// add verify test
+//	ret=GM_SM2VerifySig(signedData,pulSigLen,Buf,datalen,
+//		UserID,lenUID,privpik->pubKey.keyCApubkey,64);
+//	if(ret<0)
+//	{
+//		printf("Verify Sig Data failed!\n");
+//	}
+// verify test finish	
+
+
 	vtcm_out->CertSize=pulSigLen;
 	vtcm_out->CertData=Talloc0(vtcm_out->CertSize);
 

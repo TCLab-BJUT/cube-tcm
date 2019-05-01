@@ -1558,8 +1558,8 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
        printf("can't find CA's public key!\n");
        return -EINVAL;
   }
-  Memcpy(Buf+ret,CApubkey,64);
-  vtcm_ex_sm3(vtcm_input->pubDigest,1,Buf,ret+64); 	
+  Memcpy(Buf+offset,CApubkey,64);
+  vtcm_ex_sm3(vtcm_input->pubDigest,1,Buf,offset+64); 	
 
   //  add vtcm_input's pikParams
 
