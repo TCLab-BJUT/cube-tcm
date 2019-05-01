@@ -35,6 +35,7 @@ char * pubkeyfile="CApub.key";
 char * pikreqfile="pikreq.blob";
 char * pikfile="pik.key";
 char * pik_pubfile = "pik_pub.key";
+char * ek_pubfile = "ek_pub.key";
 
 int main(int argc,char **argv)
 {
@@ -115,6 +116,20 @@ int main(int argc,char **argv)
 	printf("TCM_MakeIdentity failed!\n");
 	return -EINVAL;	
     }	
+    ret=TCM_APTerminate(ownerHandle);
+    if(ret<0)
+    {
+	printf("TCM_APTerminate failed!\n");
+	return -EINVAL;	
+    }	
+
+    ret=TCM_APTerminate(smkHandle);
+    if(ret<0)
+    {
+	printf("TCM_APTerminate failed!\n");
+	return -EINVAL;	
+    }	
+
 
     fd=open(pikreqfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
     if(fd<0)
@@ -148,6 +163,14 @@ int main(int argc,char **argv)
 	printf("save pik_pub error!\n");
 	return ret;	
     }	
+
+    ret=TCM_ExSaveTcmPubKey(pubek,ek_pubfile);
+    if(ret<0)
+    {
+	printf("save pik_pub error!\n");
+	return ret;	
+    }	
+
 
     return ret;	
 

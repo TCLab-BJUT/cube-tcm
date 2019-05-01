@@ -451,3 +451,127 @@ int TCM_ExLoadTcmPubKey(TCM_PUBKEY * pubkey, char * keyfile)
 
 	return 0;
 }
+
+int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,int certdatalen,
+	 BYTE ** cert,int * certlen,BYTE ** symmkeyblob, int * symmkeybloblen)
+{
+	int ret;
+	int i;
+	void * vtcm_template;
+	TCM_ASYM_CA_CONTENTS ca_conts;
+	TCM_SYMMETRIC_KEY * symm_key=&ca_conts.sessionKey;
+	TCM_PIK_CERT * pik_cert;
+
+
+	//  cmd's params
+    	printf("Begin ex CA Pik Cert Sign:\n");
+	// build TCM_IDENTITY_CONTENTS struct
+	
+    	if(CAprikey==NULL)
+    	{
+		printf("can't find CA's private key!\n");
+		return -EINVAL;
+    	}
+	
+	BYTE SignBuf[DIGEST_SIZE*4];	
+    	BYTE UserID[DIGEST_SIZE];
+    	unsigned long lenUID = DIGEST_SIZE;
+    	Memset(UserID, 'A', 32);
+	
+	pik_cert=Talloc0(sizeof(*pik_cert));
+	if(pik_cert==NULL)
+		return -ENOMEM;
+	pik_cert->payLoad=0x19;   // add pik_cert's payload
+
+	calculate_context_sm3(certdata,certdatalen,pik_cert->userDigest);
+	
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+
+        // compute pik's digest
+
+       vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
+       if(vtcm_template==NULL)
+		return -EINVAL;
+       ret=struct_2_blob(&pik->pubKey,ExBuf,vtcm_template);
+       if(ret<0)
+		return ret;
+	calculate_context_sm3(ExBuf,ret,pik_cert->pubDigest);		
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
+	if(vtcm_template==NULL)
+		return -EINVAL;	
+
+	// Sign the pik_cert
+	Memcpy(ExBuf,pik_cert->userDigest,DIGEST_SIZE);
+	Memcpy(ExBuf+DIGEST_SIZE,pik_cert->pubDigest,DIGEST_SIZE);
+	
+	pik_cert->signLen=DIGEST_SIZE*4;
+
+	GM_SM2Sign(SignBuf,&pik_cert->signLen,
+		ExBuf,DIGEST_SIZE*2,
+		UserID,lenUID,
+		CAprikey,CAprilen);	
+
+	pik_cert->signData=Talloc0(pik_cert->signLen);
+	Memcpy(pik_cert->signData,SignBuf,pik_cert->signLen);
+   	
+	// Create symmetric key
+	Memset(symm_key,0,sizeof(*symm_key));
+        symm_key->algId=TCM_ALG_SM4;
+        symm_key->encScheme=TCM_ES_SM4_CBC;
+	symm_key->size=0x80/8;
+	symm_key->data=Talloc0(symm_key->size);
+	RAND_bytes(symm_key->data,symm_key->size);
+
+	// Convert cert to blob 
+	vtcm_template=memdb_get_template(DTYPE_VTCM_UTILS,SUBTYPE_TCM_PIK_CERT);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+	Memset(ExBuf,0,DIGEST_SIZE/2);
+	ret=struct_2_blob(pik_cert,ExBuf+DIGEST_SIZE/2,vtcm_template);
+	if(ret<0)
+		return ret;
+	//Crypt the cert blob with symm_key and duplicate it 
+	int offset=DIGEST_SIZE/2;
+	int blobsize=ret;
+    	sm4_context ctx;
+	BYTE EncBuf[512];
+	int Enclen=512;
+
+	ret=blobsize%(DIGEST_SIZE/2);
+	offset-=ret;
+	blobsize+=offset;	
+    	sm4_setkey_enc(&ctx, symm_key->data);
+    	sm4_crypt_ecb(&ctx, 1, blobsize, ExBuf+ret,EncBuf);
+
+	*cert=Talloc0(blobsize);
+	if(*cert==NULL)
+		return -ENOMEM;
+	Memcpy(*cert,EncBuf,blobsize);
+	*certlen=blobsize;
+
+	// Convert ca_conts to blob 
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IDENTITY,SUBTYPE_TCM_ASYM_CA_CONTENTS);
+	if(vtcm_template==NULL)
+		return -EINVAL;
+	ret=struct_2_blob(&ca_conts,ExBuf,vtcm_template);
+	if(ret<0)
+		return ret;
+
+	ret=GM_SM2Encrypt(EncBuf,&Enclen,ExBuf,ret,pubek->pubKey.key,pubek->pubKey.keyLength);
+	if(ret!=0)	
+	{
+        	printf("pubek's SM2Encrypt is fail\n");
+		return -EINVAL;	
+	}
+	blobsize=Enclen;
+
+	*symmkeyblob=Talloc0(blobsize);
+	if(*symmkeyblob==NULL)
+		return -ENOMEM;
+	Memcpy(*symmkeyblob,EncBuf,blobsize);
+	*symmkeybloblen=blobsize;
+
+	return 0;
+}
