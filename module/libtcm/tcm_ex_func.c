@@ -485,22 +485,16 @@ int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,in
 
 	calculate_context_sm3(certdata,certdatalen,pik_cert->userDigest);
 	
-	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
-	if(vtcm_template==NULL)
-		return -EINVAL;
-
         // compute pik's digest
 
-       vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
-       if(vtcm_template==NULL)
-		return -EINVAL;
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
+	if(vtcm_template==NULL)
+		return -EINVAL;	
        ret=struct_2_blob(&pik->pubKey,ExBuf,vtcm_template);
        if(ret<0)
 		return ret;
 	calculate_context_sm3(ExBuf,ret,pik_cert->pubDigest);		
-	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
-	if(vtcm_template==NULL)
-		return -EINVAL;	
+	Memcpy(ca_conts.idDigest.digest,pik_cert->pubDigest,DIGEST_SIZE);
 
 	// Sign the pik_cert
 	Memcpy(ExBuf,pik_cert->userDigest,DIGEST_SIZE);
@@ -536,8 +530,9 @@ int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,in
 	int offset=DIGEST_SIZE/2;
 	int blobsize=ret;
     	sm4_context ctx;
-	BYTE EncBuf[512];
 	int Enclen=512;
+
+	BYTE EncBuf[512];
 
 	ret=blobsize%(DIGEST_SIZE/2);
 	offset-=ret;
@@ -558,7 +553,9 @@ int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,in
 	ret=struct_2_blob(&ca_conts,ExBuf,vtcm_template);
 	if(ret<0)
 		return ret;
-
+	int plainlen=ret;
+  	Enclen=512;
+	Memset(EncBuf,0,Enclen);
 	ret=GM_SM2Encrypt(EncBuf,&Enclen,ExBuf,ret,pubek->pubKey.key,pubek->pubKey.keyLength);
 	if(ret!=0)	
 	{
@@ -566,6 +563,53 @@ int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,in
 		return -EINVAL;	
 	}
 	blobsize=Enclen;
+/*
+ // for test
+       int datalen=DIGEST_SIZE*16;
+// decrypt the encData 
+       BYTE ekpri[32] = {
+		0xd4,0xea,0xec,0x69,0xd5,0x44,0xbb,0x48, 
+		0xf3,0x64,0x1a,0xc3,0x12,0xc6,0x31,0xa7, 
+		0xc4,0x91,0x72,0xd0,0xe6,0xf7,0xa8,0x7c, 
+		0x81,0x15,0x4a,0x7e,0x55,0x9d,0x17,0xa0
+	};
+
+        BYTE TestBuf1[DIGEST_SIZE*16];
+        BYTE TestBuf2[DIGEST_SIZE*16];
+        BYTE TestBuf3[DIGEST_SIZE*16];
+        int cryptlen,decryptlen;
+        Memset(TestBuf1,'A',plainlen);
+        Memset(TestBuf1,0,3);
+        cryptlen=DIGEST_SIZE*16;
+        decryptlen=DIGEST_SIZE*16;
+        print_bin_data(pubek->pubKey.key,pubek->pubKey.keyLength,16);
+
+        //ret=GM_SM2Encrypt(TestBuf2,&cryptlen,TestBuf1,plainlen,pubek->pubKey.key,pubek->pubKey.keyLength);
+        ret=GM_SM2Encrypt(TestBuf2,&cryptlen,ExBuf,plainlen,pubek->pubKey.key,pubek->pubKey.keyLength);
+        if(ret!=0)
+        {
+                printf("pubek's SM2Encrypt test is fail %d\n",ret);
+                return -EINVAL;
+        }
+
+       ret=GM_SM2Decrypt(TestBuf3,&decryptlen, TestBuf2,cryptlen,ekpri,32);
+        if(ret!=0)
+        {
+                printf("pubek's SM2Decrypt test is fail %d\n",ret);
+                return -EINVAL;
+        }
+
+
+
+	BYTE TestBuf[DIGEST_SIZE*16];	
+       //ret=GM_SM2Decrypt(TestBuf3,&datalen, TestBuf2,blobsize,  ekpri,32);
+        ret=GM_SM2Decrypt(TestBuf3,&datalen, EncBuf,blobsize,ekpri,32);
+	if(ret!=0)	
+	{
+        	printf("Test symmkey decrypt failed %d!\n",ret);
+		return ret;	
+	}
+*/
 
 	*symmkeyblob=Talloc0(blobsize);
 	if(*symmkeyblob==NULL)

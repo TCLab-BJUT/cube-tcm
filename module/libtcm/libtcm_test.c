@@ -70,16 +70,19 @@ int main(int argc,char **argv)
     if(pubek==NULL)
 	return -ENOMEM;
 
+    TCM_KEY sm2key;
+    TCM_PUBKEY sm2pubkey; 
+
     ret=TCM_ReadPubek(pubek);
 
-    BYTE pubkey[DIGEST_SIZE*8];
-    int pubkey_len;    
  
-    ret=TCM_SM2LoadPubkey("sm2.key",pubkey, &pubkey_len);
+    ret=TCM_ExLoadTcmKey(&sm2key,"sm2.key");
+
+    ret=TCM_ExGetPubkeyFromTcmkey(&sm2pubkey,&sm2key);
 
     Memset(Buf,DIGEST_SIZE*16,'A');
 
-    ret=TCM_SM2Encrypt(pubkey,pubkey_len,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*9);
+    ret=TCM_SM2Encrypt(sm2pubkey.pubKey.key,sm2pubkey.pubKey.keyLength,CryptBuf,&CryptBuflen,Buf,56);
 
     ret=TCM_APCreate(TCM_ET_SMK, NULL, "sss", &authHandle);
     printf("authHandle is : %x\n",authHandle);

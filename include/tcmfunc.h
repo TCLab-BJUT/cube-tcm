@@ -95,8 +95,6 @@ UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerha
 	int encdatasize,BYTE * encdata,TCM_SYMMETRIC_KEY * symm_key,
 	char * pwdo,char * pwdk);	
 
-
-
 int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey);
 int TCM_ExCreateCAKey  ( );
 int TCM_ExSaveCAPriKey (char * prikeyfile);
@@ -106,6 +104,8 @@ int TCM_ExLoadCAPubKey (char * pubkeyfile);
 
 int TCM_ExCAPikReqVerify(TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
 	 BYTE * reqdata, int reqdatalen);
+int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,int certdatalen,
+	 BYTE ** cert,int * certlen,BYTE ** symmkeyblob, int * symmkeybloblen);
 
 int TCM_ExGetPubkeyFromTcmkey(TCM_PUBKEY * pubkey,TCM_KEY * tcmkey);
 int TCM_ExSaveTcmKey(TCM_KEY * tcmkey,char * keyfile);

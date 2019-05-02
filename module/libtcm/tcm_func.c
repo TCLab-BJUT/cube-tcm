@@ -283,7 +283,7 @@ int proc_tcm_General(void * tcm_in, void * tcm_out)
   else if(vtcm_input->tag == htons(TCM_TAG_RQU_AUTH2_COMMAND))
   {
 	cmd_type=DTYPE_VTCM_IN_AUTH2;	
-	out_type=DTYPE_VTCM_IN_AUTH2;	
+	out_type=DTYPE_VTCM_OUT_AUTH2;	
   }
   else
   {	
@@ -1781,7 +1781,7 @@ UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerha
    if(vtcm_template==NULL)
       	return -EINVAL;
   
-   ret=struct_clone(symm_key,&vtcm_output->symmkey,vtcm_template);
+   ret=struct_clone(&vtcm_output->symmkey,symm_key,vtcm_template);
 
    if(ret<0)
 	return -EINVAL;

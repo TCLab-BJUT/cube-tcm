@@ -28,6 +28,7 @@
 #include "app_struct.h"
 #include "pik_struct.h"
 #include "sm4.h"
+#include "sm2.h"
 #include "tcmfunc.h"
 #include "tcm_error.h"
 #include "vtcm_alg.h"
@@ -40,6 +41,9 @@ char * pik_pubfile = "pik_pub.key";
 char * ek_pubfile = "ek_pub.key";
 char * certfile = "pik.cert";
 char * symmkeyblobfile="symmkey.blob";
+
+BYTE ekpri[32] = {16,32,245,89,177,94,69,158,235,23,43,169,102,90,59,242,70,130,186,125,69,
+			101,179,249,202,33,64,52,1,83,88,223};
 
 int main(int argc,char **argv)
 {
@@ -78,14 +82,14 @@ int main(int argc,char **argv)
     ret=TCM_ExLoadTcmPubKey(&pik_pub,pik_pubfile);
     if(ret!=0)
     {
-		printf("TCM_ExLoadCAPubKey failed!\n");
+		printf("TCM_ExLoadTcmPubKey failed!\n");
 		return -EINVAL;	
     }	
 
     ret=TCM_ExLoadTcmPubKey(&ek_pub,ek_pubfile);
     if(ret!=0)
     {
-		printf("TCM_ExLoadCAPubKey failed!\n");
+		printf("TCM_ExLoadTcmPubKey failed!\n");
 		return -EINVAL;	
     }	
 
@@ -134,6 +138,13 @@ int main(int argc,char **argv)
     }
 
     close(fd);
+
+    int datalen=DIGEST_SIZE*16;
+// decrypt the encData 
+    ret=GM_SM2Decrypt(Buf,&datalen, symmkeyblob,symmkeybloblen,
+	ekpri,32);
+
+
 
     fd=open(symmkeyblobfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
     if(fd<0)
