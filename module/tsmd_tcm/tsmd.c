@@ -72,7 +72,6 @@ static int shm_share_id;
 static int shm_size;
 char * pathname="/tmp";
 
-//int proc_tcm_GetRandom(void * tcm_in, void * tcm_out, CHANNEL * vtcm_caller);
 enum tsmd_context_init_state
 {
 	TSMD_CONTEXT_INIT_START=0x01,
@@ -367,6 +366,7 @@ int tsmd_start(void * sub_proc,void * para)
     static CHANNEL * shm_channel;
     TSMD_CONTEXT * new_context=NULL;
 
+    TCM_LibInit();
 
     while(1)
     {
@@ -557,14 +557,12 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	if(ret<0)
 		return ret;
 
-  	struct tcm_in_GetRandom tcm_in;
-  	struct tcm_out_GetRandom tcm_out;
 
-	tcm_in.bytesRequested=0x10;
-
-	ret=proc_tcm_GetRandom(&tcm_in,&tcm_out,vtcm_caller);
+        BYTE * RandomTest;
+        BYTE RandomTestLen;
+	ret=TCM_GetRandom(10,&RandomTest,&RandomTestLen);
 	
-	if(ret>0)
+	if(ret==0)
 	{
 		tcm_object=Build_TsmdObject(tspi_in.hContext,TSM_OBJECT_TYPE_TCM,0);
 		if(tcm_object==NULL)
@@ -599,8 +597,8 @@ int proc_tsmd_GetRandom(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	RECORD(TSPI_IN, GETRANDOM) tspi_in;	
 	RECORD(TSPI_OUT, GETRANDOM) tspi_out;
     
-        BYTE * RandomData;
-	int RandomDataLength;
+  //      BYTE * RandomData;
+  //	 int RandomDataLength;
 
         void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETRANDOM));
         if(tspi_in_template == NULL)
@@ -659,27 +657,26 @@ int proc_tsmd_PcrExtend(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	if(ret<0)
 		return ret;
 
-  	struct tcm_in_extend tcm_in;
-  	struct tcm_out_extend tcm_out;
+	vtcm_ex_sm3(msghash,1,tspi_in.pbPcrData,tspi_in.ulPcrDataLength);
 
-	tcm_in.tag=htons(TCM_TAG_RQU_COMMAND);
-	tcm_in.ordinal=SUBTYPE_EXTEND_IN;
-	tcm_in.pcrNum=tspi_in.ulPcrIndex;
-	calculate_context_sm3(tspi_in.pbPcrData,tspi_in.ulPcrDataLength,tcm_in.inDigest);
-
-	ret=proc_tcm_Extend(&tcm_in,&tcm_out,vtcm_caller);
-	
-	if(ret>0)
-		tspi_out.returncode=0;
-	else
-		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
-	
-	tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength;
 	tspi_out.ulPcrValueLength=DIGEST_SIZE;
 	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength);
 	if(tspi_out.rgbPcrValue==NULL)
 		return -ENOMEM;
-	Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength);
+
+        ret=TCM_Extend(tspi_in.ulPcrIndex,msghash,tspi_out.rgbPcrValue);
+
+	if(ret==0)
+		tspi_out.returncode=0;
+	else
+	{
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+		tspi_out.ulPcrValueLength=0;
+		Free(tspi_out.rgbPcrValue);
+		tspi_out.rgbPcrValue=NULL;
+	}
+	
+	tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength;
 	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
 	return ret;
 }
@@ -705,26 +702,24 @@ int proc_tsmd_PcrRead(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	if(ret<0)
 		return ret;
 
-  	struct tcm_in_pcrread tcm_in;
-  	struct tcm_out_pcrread tcm_out;
-
-	tcm_in.tag=htons(TCM_TAG_RQU_COMMAND);
-	tcm_in.ordinal=SUBTYPE_PCRREAD_IN;
-	tcm_in.pcrIndex=tspi_in.ulPcrIndex;
-
-	ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller);
-	
-	if(ret>0)
-		tspi_out.returncode=0;
-	else
-		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
-	
-	tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength;
 	tspi_out.ulPcrValueLength=DIGEST_SIZE;
 	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength);
 	if(tspi_out.rgbPcrValue==NULL)
 		return -ENOMEM;
-	Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength);
+
+	ret=TCM_PcrRead(tspi_in.ulPcrIndex,tspi_out.rgbPcrValue);
+	
+	if(ret==0)
+		tspi_out.returncode=0;
+	else
+	{
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+		tspi_out.ulPcrValueLength=0;
+		Free(tspi_out.rgbPcrValue);
+		tspi_out.rgbPcrValue=NULL;
+	}
+	
+	tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength;
 	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
 	return ret;
 }
@@ -879,7 +874,7 @@ int proc_tsmd_PcrReset(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
         //Memcpy(&tcm_in.pcrSelection,pcr_select,sizeof(TCM_PCR_SELECTION));
         Memcpy(&tcm_in.pcrSelection,&pcrComp->select,sizeof(TCM_PCR_SELECTION));
 	
-        ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller); 
+        //ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller); 
 	 
 	if(ret>0) 
 		tspi_out.returncode=0; 
