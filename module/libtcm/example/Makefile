@@ -6,7 +6,7 @@ CCP=g++
 DEPENDLIB= -L$(CUBELIBPATH)/lib -L$(CUBESYSPATH)/plugin -lsys_func -lchannel -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lbasefunc -lstring -lalloc -lsm2So
 LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg -ltcm
 
-main: libtcm_test cainit  casign pikreq pikactive
+main: libtcm_test cainit  casign pikreq pikactive pikverify
 libtcm_test:  libtcm_test.c
 	$(CC) $(FLAGS) libtcm_test libtcm_test.c $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 cainit:  cainit.c
@@ -17,6 +17,8 @@ pikreq:  pikreq.c
 	$(CC) $(FLAGS) pikreq pikreq.c $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 pikactive:  pikactive.c
 	$(CC) $(FLAGS) pikactive pikactive.c $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
+pikverify:  pikverify.c
+	$(CC) $(FLAGS) pikverify pikverify.c $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 
 clean:
-	rm -f *~ *.o *.a cainit casign pikreq pikactive libtcm_test 
+	rm -f *~ *.o *.a cainit casign pikreq pikactive pikverify libtcm_test 

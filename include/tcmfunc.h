@@ -112,6 +112,8 @@ int TCM_ExSaveTcmKey(TCM_KEY * tcmkey,char * keyfile);
 int TCM_ExSaveTcmPubKey(TCM_PUBKEY * pubkey,char * keyfile);
 int TCM_ExLoadTcmKey(TCM_KEY * tcmkey, char * keyfile);
 int TCM_ExLoadTcmPubKey(TCM_PUBKEY * pubkey, char * keyfile);
+int TCM_ExSymmkeyDecrypt(TCM_SYMMETRIC_KEY * symmkey, BYTE * blob,int blobsize,
+	BYTE ** output, int * outputsize);
 
 
 /*

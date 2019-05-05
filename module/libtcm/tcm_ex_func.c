@@ -555,7 +555,7 @@ int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,in
 		return ret;
 	int plainlen=ret;
   	Enclen=512;
-	Memset(EncBuf,0,Enclen);
+	//Memset(EncBuf,0,Enclen);
 	ret=GM_SM2Encrypt(EncBuf,&Enclen,ExBuf,ret,pubek->pubKey.key,pubek->pubKey.keyLength);
 	if(ret!=0)	
 	{
@@ -618,4 +618,39 @@ int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,in
 	*symmkeybloblen=blobsize;
 
 	return 0;
+}
+
+int TCM_ExSymmkeyDecrypt(TCM_SYMMETRIC_KEY * symmkey, BYTE * blob,int blobsize,
+	BYTE ** output, int * outputsize)
+{
+
+    	sm4_context ctx;
+    	sm4_setkey_dec(&ctx, symmkey->data);
+    	sm4_crypt_ecb(&ctx, 0, blobsize, blob,ExBuf);
+
+        
+	*output=Talloc0(blobsize);
+	if(*output==NULL)
+		return -ENOMEM;
+	Memcpy(*output,ExBuf,blobsize);
+	*outputsize=blobsize;
+	return 0;
+}
+
+int TCM_ExCAPubKeyVerify(BYTE * signData, int signdatalen,
+	BYTE *verifydata, int datalen)
+{
+    BYTE UserID[DIGEST_SIZE];
+    unsigned long lenUID = DIGEST_SIZE;
+    memset(UserID, 'A', 32);
+    BYTE VerifyBuf[DIGEST_SIZE*2];
+    if(CApubkey==NULL)
+	return -EINVAL;
+
+    return GM_SM2VerifySig(signData,signdatalen,
+		verifydata,datalen,
+		UserID,lenUID,
+		CApubkey, 64);
+    // check user Digest
+	
 }

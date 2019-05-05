@@ -39,7 +39,7 @@ char * pikreqfile="pikreq.blob";
 char * pikfile = "pik.key";
 char * pik_pubfile = "pik_pub.key";
 char * ek_pubfile = "ek_pub.key";
-char * certfile = "pik.cert";
+char * certblobfile = "pikcert.blob";
 char * symmkeyblobfile="symmkey.blob";
 
 BYTE ekpri[32] = {16,32,245,89,177,94,69,158,235,23,43,169,102,90,59,242,70,130,186,125,69,
@@ -127,7 +127,7 @@ int main(int argc,char **argv)
 		return TCM_BAD_SIGNATURE;	
     }
 
-    fd=open(certfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
+    fd=open(certblobfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
     if(fd<0)
 	  return -EIO;	
     ret=write(fd,cert,certlen);
