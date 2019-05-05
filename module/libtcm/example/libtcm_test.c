@@ -56,6 +56,16 @@ int main(int argc,char **argv)
 
     ret= TCM_LibInit(); 
 
+    BYTE * RandomData;
+    int RandomDataLength;
+
+   ret=TCM_GetRandom(800,&RandomData,&RandomDataLength);
+   if(ret<0)
+   {
+	printf("TCM GetRandom failed!\n");
+	return ret;
+   }
+
 //   ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
 
     Memset(inDigest,'A',DIGEST_SIZE);

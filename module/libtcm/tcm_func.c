@@ -1788,3 +1788,35 @@ UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerha
    
   return vtcm_output->returnCode;
 }
+
+int TCM_GetRandom(int bytesRequest, BYTE ** randomData,int * randomDataLength)
+{
+  int outlen;
+  int i=0;
+  int ret=0;
+  void *vtcm_template;
+  struct tcm_in_GetRandom *vtcm_input;
+  struct tcm_out_GetRandom *vtcm_output;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_GETRANDOM_IN;
+  vtcm_input->bytesRequested=bytesRequest;
+  ret = proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+    return ret;
+  printf("get Random succeed!\n");
+    
+  *randomDataLength=vtcm_output->randomBytesSize;
+  *randomData=Talloc0(vtcm_output->randomBytesSize);
+  if(randomData==NULL)
+	return -ENOMEM;
+  Memcpy(*randomData,vtcm_output->randomBytes,vtcm_output->randomBytesSize);   
+ 
+  return 0;
+} 
+

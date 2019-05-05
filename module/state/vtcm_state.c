@@ -1031,11 +1031,11 @@ int proc_vtcm_GetRandom(void * sub_proc, void * recv_msg)
     BYTE * randomBytes;
     
 
-    struct tcm_in_GetRandom *tcm_GetRandom_in;
-    ret = message_get_record(recv_msg, (void *)&tcm_GetRandom_in, 0);
+    struct tcm_in_GetRandom *vtcm_in;
+    ret = message_get_record(recv_msg, (void *)&vtcm_in, 0);
     if(ret < 0)
         return ret;
-    if(tcm_GetRandom_in == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
     //output process
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_GETRANDOM_OUT);
@@ -1043,30 +1043,33 @@ int proc_vtcm_GetRandom(void * sub_proc, void * recv_msg)
     {
         printf("can't solve this command!\n");
     }
-    struct tcm_out_GetRandom * tcm_GetRandom_out = malloc(struct_size(command_template));
+    struct tcm_out_GetRandom * vtcm_out = malloc(struct_size(command_template));
 
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
     /*
     Processing
     */
-    tcm_GetRandom_out->tag = 0xC400;
-    tcm_GetRandom_out->returnCode = 0;
-    tcm_GetRandom_out->randomBytesSize = 0x10;
-//    tcm_GetRandom_out->randomBytes = 0x2F7E88F6C6905EA8489AC339DA962AD5;
-//    tcm_GetRandom_out->paramSize = 10+sizeof(int)+tcm_GetRandom_out->randomBytesSize;
-    tcm_GetRandom_out->paramSize = 0x1E;
+    vtcm_out->tag = 0xC400;
+    vtcm_out->returnCode = 0;
+  
+    if(vtcm_in->bytesRequested > 512)
+  	   vtcm_out->randomBytesSize=512;
+    else	
+  	   vtcm_out->randomBytesSize=vtcm_in->bytesRequested;
+
+    vtcm_out->paramSize = sizeof(*vtcm_out)-sizeof(BYTE *)+vtcm_out->randomBytesSize;
     
-    tcm_GetRandom_out->randomBytes=malloc(tcm_GetRandom_out->randomBytesSize);
-    if(tcm_GetRandom_out->randomBytes==NULL)
+    vtcm_out->randomBytes=malloc(vtcm_out->randomBytesSize);
+    if(vtcm_out->randomBytes==NULL)
         return -ENOMEM;
-    ret = RAND_bytes(tcm_GetRandom_out->randomBytes,tcm_GetRandom_out->randomBytesSize);
+    ret = RAND_bytes(vtcm_out->randomBytes,vtcm_out->randomBytesSize);
     printf("Random figure is : %d",ret);
     //Reponse
     void *send_msg = message_create(DTYPE_VTCM_OUT, SUBTYPE_GETRANDOM_OUT, recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
-    message_add_record(send_msg, tcm_GetRandom_out);
+    message_add_record(send_msg, vtcm_out);
 
      // add vtcm's expand info	
     ret=vtcm_addcmdexpand(send_msg,recv_msg);

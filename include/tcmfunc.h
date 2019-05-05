@@ -44,6 +44,7 @@
 UINT32 _TSMD_Init(void);
 UINT32 TCM_LibInit(void);
 
+int TCM_GetRandom(int bytesRequest, BYTE ** randomData,int * randomDataLength);
 UINT32 TCM_CreateEndorsementKeyPair(BYTE * pubkeybuf, 
 		UINT32 * pubkeybuflen);
 
