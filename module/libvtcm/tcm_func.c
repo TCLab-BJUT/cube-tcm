@@ -1595,7 +1595,7 @@ UINT32 TCM_TakeOwnership(unsigned char *ownpass,
 
 UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
 	int userinfolen,BYTE * userinfo,char * pwdk,
-	TCM_KEY pik, BYTE ** req, int * reqlen)
+	TCM_KEY * pik, BYTE ** req, int * reqlen)
 {
   int outlen;
   int i=2;
