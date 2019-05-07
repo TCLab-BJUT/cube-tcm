@@ -179,6 +179,7 @@ int vtcm_channel_start(void * sub_proc,void * para)
               			if(command_template == NULL)
                			{
               				printf("vtcm_channel for vtcm:can't solve command %x %x!\n",type,subtype);
+					print_bin_data(ReadBuf+offset,10,10);
               			}	
                 	       	else 
                        		{
