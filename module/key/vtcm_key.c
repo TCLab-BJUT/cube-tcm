@@ -288,7 +288,7 @@ int process_Vtcm_CreateEndorsementKeyPair(void* sub_proc, void* recv_msg)
         DTYPE_VTCM_OUT,
         SUBTYPE_CREATEEKPAIR_OUT); /* Get the entire command template */
     if (template_CreateEKPair_out == NULL) {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_CreateEKPair* vtcm_out = malloc(struct_size(template_CreateEKPair_out));
 
@@ -380,7 +380,7 @@ int proc_vtcm_ReadPubek(void* sub_proc, void* recv_msg)
     void* template_ReadPubek_out = memdb_get_template(
         DTYPE_VTCM_OUT, SUBTYPE_READPUBEK_OUT); // Get the entire command template
     if (template_ReadPubek_out == NULL) {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_ReadPubek* vtcm_out = malloc(struct_size(template_ReadPubek_out));
 
@@ -873,7 +873,7 @@ int proc_vtcm_APCreate(void* sub_proc, void* recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_APCREATE_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }    
     struct tcm_out_APCreate * vtcm_out = malloc(struct_size(template_out));
     /*   
@@ -1271,7 +1271,7 @@ int proc_vtcm_APTerminate(void *sub_proc, void* recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_APTERMINATE_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }    
     struct tcm_out_APTerminate * vtcm_output = malloc(struct_size(template_out));
 
@@ -1478,7 +1478,6 @@ int proc_vtcm_Sm3CompleteExtend(void* sub_proc, void* recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM3COMPLETEEXTEND_OUT);
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
     }
     struct tcm_out_Sm3CompleteExtend * tcm_Sm3CompleteExtend_out = malloc(struct_size(command_template));
 
@@ -1595,7 +1594,6 @@ int proc_vtcm_XX(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_XXX_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
     }
     struct tcm_out_XX * tcm_XX_out = malloc(struct_size(command_template));
 
@@ -1666,6 +1664,7 @@ int vtcm_AuthData_Check_CWrapKey(int ordinal,
     if(template_key == NULL)
     {    
         printf("can't get Key template!\n");
+	return -EINVAL;
     }    
     int Str_length_key = struct_2_blob(tcm_key, Str_Hash_Key, template_key);
     if(Str_length_key == 0)
@@ -1766,7 +1765,7 @@ static int proc_vtcm_CreateWrapKey(void *sub_proc, void* recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_CREATEWRAPKEY_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }    
     struct tcm_out_CreateWrapKey * vtcm_out = malloc(struct_size(template_out));
 
@@ -1983,7 +1982,6 @@ int vtcm_AuthData_Check_LoadKey(int ordinal,
     void * template_key = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_KEY);  //Get the TCM_KEY template
     if(template_key == NULL)
     {    
-        printf("can't get Key template!\n");
     }
     int Str_length_key = struct_2_blob(inKey, Str_Hash_Key, template_key);
     if(Str_length_key == 0) {
@@ -2037,7 +2035,7 @@ int proc_vtcm_LoadKey(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT_AUTH1,SUBTYPE_LOADKEY_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_LoadKey * vtcm_out = malloc(struct_size(command_template));
 
@@ -2166,7 +2164,7 @@ int proc_vtcm_EvictKey(void *sub_proc, void* recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_EVICTKEY_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }    
     
     struct tcm_out_EvictKey * vtcm_output = malloc(struct_size(template_out));
@@ -2462,11 +2460,13 @@ int vtcm_Check_AuthCode_WrapKey(int value_ordinal,
     if(template_key == NULL)
     {    
         printf("can't get Key template!\n");
+	return -EINVAL;
     }    
     int Str_length_key = struct_2_blob(keyInfo, Str_Hash_Key, template_key);
     if(Str_length_key == 0)
     {
         printf("Error, struct_2_blob : TCM_KEY\n");
+	return -EINVAL;
     }
     memcpy(Str_Hash_In + Hash_In_Len, Str_Hash_Key, Str_length_key);
     Hash_In_Len += Str_length_key;
@@ -2516,6 +2516,7 @@ int vtcm_Compute_AuthCode_WrapKey(int value_ret,
     if(template_key == NULL)
     {    
         printf("can't get Key template!\n");
+	return -EINVAL;
     }    
     int Str_length_key = struct_2_blob(tcm_key, Str_Hash_Key, template_key);
     if(Str_length_key == 0)
@@ -3448,7 +3449,7 @@ int proc_vtcm_Seal(void *sub_proc, void *recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH1, SUBTYPE_SEAL_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }    
     struct tcm_out_Seal * vtcm_output = malloc(struct_size(template_out));
     //Processing
@@ -3596,6 +3597,7 @@ int vtcm_Check_AuthCode_UnSeal(int value_ordinal,
     if(template == NULL)
     {    
         printf("can't get Key template!\n");
+	return -EINVAL;
     }    
     int Len = struct_2_blob(encAuth, Str_Hash_Store, template);
     if(Len == 0)
@@ -3696,7 +3698,7 @@ int proc_vtcm_UnSeal(void *sub_proc, void *recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT_AUTH2, SUBTYPE_UNSEAL_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }    
     struct tcm_out_UnSeal * vtcm_output = malloc(struct_size(template_out));
 
@@ -3922,7 +3924,7 @@ int proc_vtcm_OwnerReadInternalPub(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_OWNERREADINTERNALPUB_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_OwnerReadInternalPub * tcm_output = malloc(struct_size(command_template));
 
@@ -4007,7 +4009,7 @@ int proc_vtcm_ChangeAuth(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_CHANGEAUTH_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_ChangeAuth * tcm_output = malloc(struct_size(command_template));
 
@@ -4082,7 +4084,6 @@ int proc_vtcm_WrapKey(void *sub_proc, void* recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_WRAPKEY_OUT);//Get the entire command template
     if(template_out == NULL)
     {    
-        printf("can't solve this command!\n");
     }    
     struct tcm_out_WrapKey * vtcm_output = malloc(struct_size(template_out));
     

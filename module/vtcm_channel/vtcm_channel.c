@@ -134,7 +134,7 @@ int vtcm_channel_start(void * sub_proc,void * para)
 					//Get the entire command template
                        		if(command_template == NULL)
                        		{
-                       			printf("can't solve this command!\n");
+                       			printf("vtcm_channel:can't solve command %x %x!\n",type,subtype);
                			}	
                			else 
                			{
@@ -178,7 +178,7 @@ int vtcm_channel_start(void * sub_proc,void * para)
 					//Get the entire command template
               			if(command_template == NULL)
                			{
-              				printf("can't solve this command!\n");
+              				printf("vtcm_channel for vtcm:can't solve command %x %x!\n",type,subtype);
               			}	
                 	       	else 
                        		{
@@ -214,7 +214,7 @@ int vtcm_channel_start(void * sub_proc,void * para)
 					//Get the entire command template
                			if(command_template == NULL)
                			{
-               				printf("can't solve this manage command!\n");
+               				printf("vtcm_channel for manage:can't solve this manage command!\n");
 
                			}	
             	   		else 

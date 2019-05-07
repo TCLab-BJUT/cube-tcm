@@ -333,7 +333,7 @@ int proc_vtcm_pcrreset(void * sub_proc,void * recv_msg)
      void * template_out = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_PCRRESET_OUT);//Get the entire command template
      if(template_out == NULL)
      {    
-        printf("can't solve this command!\n");
+	return -EINVAL;
      }    
      struct tcm_out_pcrreset * vtcm_output = malloc(struct_size(template_out));
      
@@ -430,7 +430,7 @@ int proc_vtcm_Sm3CompleteExtend(void* sub_proc, void* recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SM3COMPLETEEXTEND_OUT);
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
 
     tcm_state_t * tcm_state = proc_share_data_getpointer();
