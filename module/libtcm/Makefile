@@ -10,9 +10,9 @@ LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg
 
 main: lib$(LIBNAME).so libtcm_test sm1test sm1attr sm2test sm2attr sm3test sm3attr sm4test sm4attr
 libtcm_test:  libtcm_test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
-	$(CC) $(FLAGS) libtcm_test libtcm_test.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
+	$(CC) $(FLAGS) libtcm_test libtcm_test.c lib_rw.c -l$(LIBNAME) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 sm1test:  sm1test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
-	$(CC) $(FLAGS) sm1test sm1test.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
+	$(CC) $(FLAGS) sm1test sm1test.c lib_rw.c -l$(LIBNAME) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 sm1attr:  sm1attr.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
 	$(CC) $(FLAGS) sm1attr sm1attr.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 sm2test:  sm2test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so

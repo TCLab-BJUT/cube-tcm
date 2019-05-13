@@ -171,7 +171,6 @@ UINT32 TSC_PhysicalPresence(UINT16 ppresence);
 UINT32 TCM_ResetEstablishmentBit(void);
 */
 
-UINT32 TCM_CreateWrapKey(int parentHandle, int authHandle,char * select,char * keyfile, char * pwdk);
 /*
 UINT32 TCM_EvictKey(UINT32 keyhandle);
 */
