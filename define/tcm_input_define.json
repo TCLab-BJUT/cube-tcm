@@ -2559,14 +2559,14 @@
 				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"returnCode","type":"TPM32"},
-                {"name":"pikPub","type":"SUBSTRUCT","ref_name":"tcm_key"},
-                {"name":"CertSize","type":"TPM32"},
-                {"name":"CertData","type":"DEFINE","def":"CertSize"},
-                {"name":"smkAuth","type":"BINDATA","size":"32"},
-                {"name":"ownerAuth","type":"BINDATA","size":"32"}
+                		{"name":"pikPub","type":"SUBSTRUCT","ref_name":"tcm_key"},
+                		{"name":"CertSize","type":"TPM32"},
+                		{"name":"CertData","type":"DEFINE","def":"CertSize"},
+               			{"name":"smkAuth","type":"BINDATA","size":"32"},
+                		{"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
-        "flag_no":3,
+        	"flag_no":3,
 		"index":
 		[
 			{
@@ -2602,14 +2602,26 @@
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
 				{"name":"pikHandle","type":"TPM32"},
-                {"name":"encDataSize","type":"TPM32"},
-                {"name":"encData","type":"DEFINE","def":"encDataSize"},
-                {"name":"pikAuthHandle","type":"TPM32"},
-                {"name":"pikAuth","type":"BINDATA","size":"32"},
-                {"name":"ownerHandle","type":"TPM32"},
-                {"name":"ownerAuth","type":"BINDATA","size":"32"}
+                		{"name":"encDataSize","type":"TPM32"},
+                		{"name":"encData","type":"DEFINE","def":"encDataSize"},
+                		{"name":"pikAuthHandle","type":"TPM32"},
+                		{"name":"pikAuth","type":"BINDATA","size":"32"},
+                		{"name":"ownerHandle","type":"TPM32"},
+                		{"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        	"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"encDataSize,encData"
+			},
+			{
+				"flag":"DESC",
+				"elemlist":"encDataSize,encData"
+			}
+		]
 	}	
 }
 {
@@ -2629,11 +2641,23 @@
 				{"name":"tag","type":"SENUM","ref_name":"tcm_tag_value"},
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"returnCode","type":"TPM32"},
-                		{"name":"pikPub","type":"SUBSTRUCT","ref_name":"tcm_key_symmetric_key"},
+                		{"name":"symmkey","type":"SUBSTRUCT","ref_name":"tcm_key_symmetric_key"},
                 		{"name":"pikAuth","type":"BINDATA","size":"32"},
                 		{"name":"ownerAuth","type":"BINDATA","size":"32"}
 			]
 		}
+        	"flag_no":2,
+		"index":
+		[
+			{
+				"flag":"KEY",
+				"elemlist":"symmkey"
+			},
+			{
+				"flag":"DESC",
+				"elemlist":"symmkey"
+			}
+		]
 	}	
 }
 {

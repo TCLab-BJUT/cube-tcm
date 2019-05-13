@@ -11,8 +11,8 @@ LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg
 main: lib$(PLUGIN).so $(PLUGIN_OBJ)
 lib$(PLUGIN).so:  $(PLUGIN).o $(PLUGIN_OBJ) 
 	$(CC) $(FLAGS) lib$(PLUGIN).so $(PLUGIN).o $(PLUGIN_OBJ) $(TEST_LIB) $(LOCALLIB)
-	mv lib$(PLUGIN).so $(CUBE_APP_PLUGIN)
-	cp $(PLUGIN).cfg $(CUBE_APP_PLUGIN)
+	mv lib$(PLUGIN).so $(CUBEAPPPATH)/plugin
+	cp $(PLUGIN).cfg $(CUBEAPPPATH)/plugin
 $(PLUGIN).o: $(PLUGIN).c $(PLUGIN).h
 	$(CC) $(CFLAGS) $(PLUGIN).c
 vtcm_ex_utils.o: vtcm_ex_utils.c

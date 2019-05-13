@@ -520,15 +520,28 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
 	unsigned long pulSigLen=512;
 	BYTE UserID[DIGEST_SIZE];
 	unsigned long lenUID=DIGEST_SIZE;
-	Memset(UserID,"A",32);	
+	datalen=ret;
+	Memset(UserID,'A',32);	
+	
 
 	
-	ret=GM_SM2Sign(signedData,&pulSigLen,Buf,ret,UserID,lenUID,privpik->privKey.key,privpik->privKey.keyLength);	
+	ret=GM_SM2Sign(signedData,&pulSigLen,Buf,datalen,UserID,lenUID,privpik->privKey.key,privpik->privKey.keyLength);	
 	if(ret!=0)
 	{
 		returnCode=-TCM_BAD_SIGNATURE;
 		goto makeidentity_out;	
 	}
+
+// add verify test
+//	ret=GM_SM2VerifySig(signedData,pulSigLen,Buf,datalen,
+//		UserID,lenUID,privpik->pubKey.keyCApubkey,64);
+//	if(ret<0)
+//	{
+//		printf("Verify Sig Data failed!\n");
+//	}
+// verify test finish	
+
+
 	vtcm_out->CertSize=pulSigLen;
 	vtcm_out->CertData=Talloc0(vtcm_out->CertSize);
 
@@ -701,6 +714,35 @@ static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
     	}	
     //  decrypt ca_conts 
 	datalen=DIGEST_SIZE*16;
+
+//     test
+/*
+        BYTE TestBuf1[DIGEST_SIZE*16];
+        BYTE TestBuf2[DIGEST_SIZE*16];
+        BYTE TestBuf3[DIGEST_SIZE*16];
+	int plainlen,cryptlen,decryptlen;
+	plainlen=56;
+	Memset(TestBuf1,'A',plainlen);
+	Memset(TestBuf1,0,3);
+	cryptlen=DIGEST_SIZE*16;
+	decryptlen=DIGEST_SIZE*16;
+	print_bin_data(eKey->encData,32,8);
+
+        ret=GM_SM2Encrypt(TestBuf2,&cryptlen,TestBuf1,plainlen,eKey->pubKey.key,eKey->pubKey.keyLength);
+        if(ret!=0)
+        {
+                printf("pubek's SM2Encrypt test is fail %d\n",ret);
+                return -EINVAL;
+        }
+
+       ret=GM_SM2Decrypt(TestBuf3,&decryptlen, TestBuf2,cryptlen,eKey->encData,eKey->encDataSize);
+        if(ret!=0)
+        {
+                printf("pubek's SM2Decrypt test is fail %d\n",ret);
+                return -EINVAL;
+        }
+*/
+ //    test end
 	// decrypt the encData 
 	ret=GM_SM2Decrypt(Buf,&datalen, vtcm_in->encData,vtcm_in->encDataSize,
 		eKey->encData,eKey->encDataSize);
@@ -709,21 +751,31 @@ static int proc_vtcm_ActivateIdentity(void* sub_proc, void* recv_msg)
 		returnCode=TCM_DECRYPT_ERROR;
 		goto activateidentity_out;
 	}
+	vtcm_template=memdb_get_template(DTYPE_VTCM_IDENTITY,SUBTYPE_TCM_ASYM_CA_CONTENTS);
+	if(vtcm_template==NULL)
+	{
+		returnCode=TCM_BADINDEX;
+		goto activateidentity_out;
+	}
+        ret=blob_2_struct(Buf,&ca_conts,vtcm_template);
+	if(ret<0)
+	{
+		returnCode=TCM_BAD_PARAMETER;
+		goto activateidentity_out;
+	}	
+
 	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY);
 	if(vtcm_template==NULL)
 	{
 		returnCode=TCM_BADINDEX;
 		goto activateidentity_out;
 	}
-        ret=blob_2_struct(Buf,&vtcm_out->symmkey,vtcm_template);
-	
+	ret=struct_clone(&ca_conts.sessionKey,&vtcm_out->symmkey,vtcm_template);
 	if(ret<0)
 	{
 		returnCode=TCM_BAD_PARAMETER;
 		goto activateidentity_out;
-	}	
-	
-	Memcpy(&ca_conts.idDigest,Buf+ret,DIGEST_SIZE);
+	}
 
 	// compute pubkey's digest
 

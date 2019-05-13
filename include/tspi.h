@@ -1,7 +1,8 @@
 #if !defined(_TSPI_H_)
 #define _TSPI_H_
 
-#define TSM_UUID_SMK  {0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 1}} // Storage root key
+//#define TSM_UUID_SMK  {0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 1}} // Storage root key
+extern TSM_UUID TSM_UUID_SMK;
 //
 // TCM well-known secret
 //
@@ -45,6 +46,14 @@
 #define   TSM_KEYAUTH_AUTH_PRIV_USE_ONLY      (0x00020000) // key needs auth
 
 #define    TSM_KEYFLAG_MIGRATABLE             (0x00100000)   // Key is volatile
+
+#define TSM_SECRET_MODE_NONE     (0x00000800) // No authorization will be
+                                              // processed
+#define TSM_SECRET_MODE_SM3     (0x00001000) // Secret string will not be
+                                              // touched by TSP 
+#define TSS_SECRET_MODE_PLAIN    (0x00001800) // Secret string will be hashed
+                                              // using SM3
+#define TSS_SECRET_MODE_POPUP    (0x00002000) // TSM SP will ask for a secret
 
 #include "tsm_typedef.h"
 #include "tsm_error.h"
@@ -103,6 +112,13 @@ TSM_RESULT Tspi_TCM_PcrReset
     TSM_HPCRS           hPcrComposite                  // in
 );
 
+TSM_RESULT Tspi_Context_LoadKeyByUUID
+(
+    TSM_HCONTEXT        hContext,                      // in
+    TSM_FLAG            persistentStorageType,         // in
+    TSM_UUID            uuidData,                      // in
+    TSM_HKEY*           phKey                          // out
+);
 
 /*
 // Class-independent ASN.1 conversion functions

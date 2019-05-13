@@ -405,7 +405,7 @@
    This structure specifies the type of payload in various messages. 
 */
 
-#define TCM_PT_SYM              0x00    /* The entity is an asymmetric key */
+#define TCM_PT_SYM              0x00    /* The entity is an symmetric key */
 #define TCM_PT_ASYM             0x01    /* The entity is an asymmetric key */
 #define TCM_PT_BIND             0x02    /* The entity is bound data */
 #define TCM_PT_MIGRATE          0x03    /* The entity is a migration blob */

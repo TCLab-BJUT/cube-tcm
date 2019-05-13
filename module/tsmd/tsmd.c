@@ -505,6 +505,26 @@ int proc_each_tspicalls(void * sub_proc)
 					output_len=proc_tsmd_PcrReset(sub_proc,tsmd_context->tsmd_send_buf,
 						tsmd_context->tsmd_recv_buf);	
 					break;
+                                case SUBTYPE(TSPI_IN,GETPOLICYOBJECT):
+					output_len=proc_tsmd_GetPolicyObject(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
+                                case SUBTYPE(TSPI_IN,SETSECRET):
+					output_len=proc_tsmd_SetSecret(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
+                                case SUBTYPE(TSPI_IN,LOADKEYBYUUID):
+					output_len=proc_tsmd_LoadKeyByUUID(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
+                                case SUBTYPE(TSPI_IN,ASSIGNTOOBJECT):
+					output_len=proc_tsmd_AssignToObject(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
+                                case SUBTYPE(TSPI_IN,CREATEKEY):
+					output_len=proc_tsmd_CreateKey(sub_proc,tsmd_context->tsmd_send_buf,
+						tsmd_context->tsmd_recv_buf);	
+					break;
 				default:
 					return -EINVAL;
 			}
@@ -821,7 +841,7 @@ int proc_tsmd_PcrReset(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	RECORD(TSPI_IN, PCRRESET) tspi_in;	 
 	RECORD(TSPI_OUT, PCRRESET) tspi_out; 
         void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCRRESET)); 
-	BYTE msghash[DIGEST_SIZE]; 
+	//BYTE msghash[DIGEST_SIZE]; 
         if(tspi_in_template == NULL) 
         { 
                 return -EINVAL; 
@@ -841,10 +861,260 @@ int proc_tsmd_PcrReset(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
  
 	tcm_in.tag=htons(TCM_TAG_RQU_COMMAND); 
 	tcm_in.ordinal=SUBTYPE_PCRRESET_IN; 
-//	tcm_in.pcrComposite=tspi_in.hPcrComposite; 
- 
-	ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller); 
+        
+        TSMD_OBJECT * pcrs_object;
+        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
+	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
+        //*pcr_select=pcrComp->select;
+        
+	TCM_PCR_COMPOSITE * pcrComp=Talloc0(sizeof(TCM_PCR_COMPOSITE));
+        *pcrComp=*(TCM_PCR_COMPOSITE *)(pcrs_object->object_struct);
+        //TCM_PCR_SELECTION * pcr_select=pcrComp->select.pcrSelect;
+        //tcm_in.pcrSelection=pcrComp->select.pcrSelect; 
+        //tcm_in.pcrSelection=*pcr_select;
+        
+        //&tcm_in.pcrSelection==Talloc0(sizeof(TCM_PCR_SELECTION));
+        //Memcpy(&tcm_in.pcrSelection,pcr_select,sizeof(TCM_PCR_SELECTION));
+        Memcpy(&tcm_in.pcrSelection,&pcrComp->select,sizeof(TCM_PCR_SELECTION));
+	
+        ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller); 
 	 
+	if(ret>0) 
+		tspi_out.returncode=0; 
+	else 
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+	 
+	/*
+        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
+	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
+	if(tspi_out.rgbPcrValue==NULL) 
+		return -ENOMEM; 
+	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
+        */	
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
+	return ret; 
+}
+
+int proc_tsmd_SetSecret(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
+{ 
+	int ret; 
+	RECORD(TSPI_IN, SETSECRET) tspi_in;	 
+	RECORD(TSPI_OUT, SETSECRET) tspi_out; 
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,SETSECRET)); 
+	BYTE msghash[DIGEST_SIZE]; 
+        if(tspi_in_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,SETSECRET)); 
+        if(tspi_out_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+ 
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template); 
+	if(ret<0) 
+		return ret; 
+//=================================================================        
+        TSMD_OBJECT * policy_object;
+        policy_object=Find_TsmdObject(tspi_in.hPolicy);
+        //policy_object->object_struct
+      /*  TSMD_OBJECT * pcrs_object;
+        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
+	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
+        //*pcr_select=pcrComp->select;
+        
+	TCM_PCR_COMPOSITE * pcrComp=Talloc0(sizeof(TCM_PCR_COMPOSITE));
+        *pcrComp=*(TCM_PCR_COMPOSITE *)(pcrs_object->object_struct);
+        //TCM_PCR_SELECTION * pcr_select=pcrComp->select.pcrSelect;
+        //tcm_in.pcrSelection=pcrComp->select.pcrSelect; 
+        //tcm_in.pcrSelection=*pcr_select;
+        
+        //&tcm_in.pcrSelection==Talloc0(sizeof(TCM_PCR_SELECTION));
+        //Memcpy(&tcm_in.pcrSelection,pcr_select,sizeof(TCM_PCR_SELECTION));
+        Memcpy(&tcm_in.pcrSelection,&pcrComp->select,sizeof(TCM_PCR_SELECTION));
+	
+        ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller); 
+*/	 
+	if(ret>0) 
+		tspi_out.returncode=0; 
+	else 
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+	 
+	/*
+        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
+	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
+	if(tspi_out.rgbPcrValue==NULL) 
+		return -ENOMEM; 
+	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
+        */	
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
+	return ret; 
+}
+
+int proc_tsmd_GetPolicyObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
+{ 
+	int ret; 
+	RECORD(TSPI_IN, GETPOLICYOBJECT) tspi_in;	 
+	RECORD(TSPI_OUT, GETPOLICYOBJECT) tspi_out; 
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETPOLICYOBJECT)); 
+	//BYTE msghash[DIGEST_SIZE]; 
+        if(tspi_in_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,GETPOLICYOBJECT)); 
+        if(tspi_out_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+ 
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template); 
+	if(ret<0) 
+		return ret; 
+//=================================================================        
+      /*  TSMD_OBJECT * pcrs_object;
+        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
+	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
+        //*pcr_select=pcrComp->select;
+       */ 
+	if(ret>0) 
+		tspi_out.returncode=0; 
+	else 
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+	 
+	/*
+        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
+	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
+	if(tspi_out.rgbPcrValue==NULL) 
+		return -ENOMEM; 
+	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
+        */	
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
+	return ret; 
+}
+
+int proc_tsmd_LoadKeyByUUID(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
+{ 
+	int ret; 
+	RECORD(TSPI_IN, LOADKEYBYUUID) tspi_in;	 
+	RECORD(TSPI_OUT, LOADKEYBYUUID) tspi_out; 
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,LOADKEYBYUUID)); 
+	//BYTE msghash[DIGEST_SIZE]; 
+        if(tspi_in_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,LOADKEYBYUUID)); 
+        if(tspi_out_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+ 
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template); 
+	if(ret<0) 
+		return ret; 
+//=================================================================        
+      /*  TSMD_OBJECT * pcrs_object;
+        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
+	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
+        //*pcr_select=pcrComp->select;
+       */ 
+	if(ret>0) 
+		tspi_out.returncode=0; 
+	else 
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+	 
+	/*
+        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
+	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
+	if(tspi_out.rgbPcrValue==NULL) 
+		return -ENOMEM; 
+	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
+        */	
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
+	return ret; 
+}
+
+int proc_tsmd_AssignToObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
+{ 
+	int ret; 
+	RECORD(TSPI_IN, ASSIGNTOOBJECT) tspi_in;	 
+	RECORD(TSPI_OUT, ASSIGNTOOBJECT) tspi_out; 
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,ASSIGNTOOBJECT)); 
+	//BYTE msghash[DIGEST_SIZE]; 
+        if(tspi_in_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,ASSIGNTOOBJECT)); 
+        if(tspi_out_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+ 
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template); 
+	if(ret<0) 
+		return ret; 
+//=================================================================        
+      /*  TSMD_OBJECT * pcrs_object;
+        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
+	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
+        //*pcr_select=pcrComp->select;
+       */ 
+	if(ret>0) 
+		tspi_out.returncode=0; 
+	else 
+		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+	 
+	/*
+        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
+	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
+	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
+	if(tspi_out.rgbPcrValue==NULL) 
+		return -ENOMEM; 
+	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
+        */	
+        ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
+	return ret; 
+}
+
+int proc_tsmd_CreateKey(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
+{ 
+	int ret; 
+	RECORD(TSPI_IN, CREATEKEY) tspi_in;	 
+	RECORD(TSPI_OUT, CREATEKEY) tspi_out; 
+        void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,CREATEKEY)); 
+	//BYTE msghash[DIGEST_SIZE]; 
+        if(tspi_in_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+        void * tspi_out_template = memdb_get_template(TYPE_PAIR(TSPI_OUT,CREATEKEY)); 
+        if(tspi_out_template == NULL) 
+        { 
+                return -EINVAL; 
+        } 
+ 
+	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template); 
+	if(ret<0) 
+		return ret; 
+//=================================================================        
+      /*  TSMD_OBJECT * pcrs_object;
+        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
+	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
+        //*pcr_select=pcrComp->select;
+       */ 
 	if(ret>0) 
 		tspi_out.returncode=0; 
 	else 

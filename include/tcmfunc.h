@@ -41,7 +41,82 @@
 #define TCMFUNC_H
 
 /* section 3: Admin startup and state */
+UINT32 _TSMD_Init(void);
 UINT32 TCM_LibInit(void);
+
+int TCM_GetRandom(int bytesRequest, BYTE ** randomData,int * randomDataLength);
+UINT32 TCM_CreateEndorsementKeyPair(BYTE * pubkeybuf, 
+		UINT32 * pubkeybuflen);
+
+UINT32 TCM_Extend(UINT32 pcrIndex, BYTE * event,BYTE * pcrvalue);
+
+UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue);
+
+UINT32 TCM_PcrReset(UINT32 pcrindex, BYTE * pcrvalue);
+
+UINT32 TCM_ReadPubek(TCM_PUBKEY *key);
+
+UINT32 TCM_APCreate(UINT32 entityType, UINT32 entityValue, char * pwd, UINT32 * authHandle);
+
+UINT32 TCM_APTerminate(UINT32 authHandle);
+
+UINT32 TCM_EvictKey(UINT32 keyHandle);
+
+UINT32 TCM_CreateWrapKey(TCM_KEY * keydata,UINT32 parentHandle,UINT32 authHandle,UINT32 keyusage,UINT32 keyflags,char *pwdk);
+
+UINT32 TCM_LoadKey(UINT32 authHandle,char * keyfile,UINT32 *KeyHandle);
+
+UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len);
+
+int TCM_SM3Start();
+
+int TCM_SM3Update(BYTE * data, int data_len);
+
+UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen );
+
+UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,BYTE * in ,int in_len);
+
+int TCM_SM3Complete(BYTE * in, int in_len,BYTE * out);
+
+UINT32 TCM_SM4Encrypt(UINT32 keyHandle,UINT32 EncryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len);
+
+UINT32 TCM_SM4Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len);
+
+UINT32 TCM_SM1Encrypt(UINT32 keyHandle,UINT32 EncryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len);
+
+UINT32 TCM_SM1Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len);
+
+UINT32 TCM_TakeOwnership(unsigned char *ownpass, unsigned char *smkpass,UINT32 authhandle);
+
+UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
+	int userinfolen,BYTE * userinfo,char * pwdk,
+	TCM_KEY * pik, BYTE ** req, int * reqlen);
+
+UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerhandle,
+	int encdatasize,BYTE * encdata,TCM_SYMMETRIC_KEY * symm_key,
+	char * pwdo,char * pwdk);	
+
+int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey);
+int TCM_ExCreateCAKey  ( );
+int TCM_ExSaveCAPriKey (char * prikeyfile);
+int TCM_ExLoadCAPriKey (char * prikeyfile);
+int TCM_ExSaveCAPubKey (char * pubkeyfile);
+int TCM_ExLoadCAPubKey (char * pubkeyfile);
+
+int TCM_ExCAPikReqVerify(TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
+	 BYTE * reqdata, int reqdatalen);
+int TCM_ExCAPikCertSign(TCM_PUBKEY * pubek, TCM_PUBKEY * pik, BYTE * certdata,int certdatalen,
+	 BYTE ** cert,int * certlen,BYTE ** symmkeyblob, int * symmkeybloblen);
+
+int TCM_ExGetPubkeyFromTcmkey(TCM_PUBKEY * pubkey,TCM_KEY * tcmkey);
+int TCM_ExSaveTcmKey(TCM_KEY * tcmkey,char * keyfile);
+int TCM_ExSaveTcmPubKey(TCM_PUBKEY * pubkey,char * keyfile);
+int TCM_ExLoadTcmKey(TCM_KEY * tcmkey, char * keyfile);
+int TCM_ExLoadTcmPubKey(TCM_PUBKEY * pubkey, char * keyfile);
+int TCM_ExSymmkeyDecrypt(TCM_SYMMETRIC_KEY * symmkey, BYTE * blob,int blobsize,
+	BYTE ** output, int * outputsize);
+
+
 /*
 UINT32 TCM_Init(void); 
 UINT32 TCM_Startup(UINT16 type);
@@ -71,15 +146,12 @@ UINT32 TCM_SetTempDeactivated(unsigned char *operatorauth  // HMAC key
 UINT32 TCM_SetOperatorAuth(unsigned char * operatorAuth);
 */
 /* Basic TCM_ commands */
-UINT32 TCM_CreateEndorsementKeyPair(BYTE * pubkeybuf, 
-                                      UINT32 * pubkeybuflen);
 /*
 UINT32 TCM_CreateRevocableEK(TCM_BOOL genreset,
                                unsigned char * inputekreset,
                                pubkeydata * k);
 UINT32 TCM_RevokeTrust(unsigned char *ekreset);
 */
-UINT32 TCM_ReadPubek(TCM_PUBKEY *key);
 /*
 UINT32 TCM_DisablePubekRead(unsigned char *ownauth);
 UINT32 TCM_OwnerReadPubek(unsigned char *ownauth,pubkeydata *k);
@@ -88,14 +160,7 @@ UINT32 TCM_OwnerReadInternalPub(UINT32 keyhandle,
                                   pubkeydata *k);
 
 */
-/* section 6: admin ownership */
 /*
-UINT32 TCM_TakeOwnership(unsigned char *ownpass,
-			   unsigned char *srkpass,
-                           UINT32 keylen,
-			   unsigned char *pcrInfoBuffer,
-			   UINT32 pcrInfoSize,
-			   keydata *key, TCM_BOOL v12);
 UINT32 TCM_OwnerClear(unsigned char *ownpass);
 */
 /*
@@ -136,11 +201,12 @@ UINT32 TCM_ActivateIdentity(UINT32 keyhandle,
 
 */
 /* Section 16: Integrity collection and reporting */
-
+/*
 UINT32 TCM_Extend(UINT32 pcrIndex,
                     BYTE * event,
                     BYTE * pcrvalue);
 UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue);
+*/
 /*
 UINT32 TCM_Quote(UINT32 keyhandle,
                    unsigned char *keyauth,
@@ -149,7 +215,7 @@ UINT32 TCM_Quote(UINT32 keyhandle,
                    TCM_PCR_COMPOSITE *tpc,
                    struct tpm_buffer *signature);
 */
-UINT32 TCM_PCRReset(TCM_PCR_SELECTION * selection);
+//UINT32 TCM_PCRReset(TCM_PCR_SELECTION * selection);
 
 /* Section 17: Authorization Changing */
 /*
@@ -320,6 +386,7 @@ UINT32 TCM_ReleaseCounterOwner(UINT32 countid,              // id of the counter
                          );
 */
 /* Section 13: crypto functions */
+/*
 UINT32 TCM_SHA1Start(UINT32 *maxNumBytes);
 UINT32 TCM_SHA1Update(void * data, UINT32 datalen);
 UINT32 TCM_SHA1Complete(void * data, UINT32 datalen,
@@ -333,6 +400,7 @@ UINT32 TCM_Sign(UINT32 keyhandle, unsigned char *keyauth,
                   unsigned char *sig, UINT32 *siglen);
 UINT32 TCM_GetRandom(UINT32 bytesreq,
                        unsigned char * buffer, UINT32 * bytesret);
+*/
 /*
 UINT32 TCM_CertifyKey(UINT32 certhandle,
                         UINT32 keyhandle,

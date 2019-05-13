@@ -86,5 +86,4 @@ typedef struct tcm_pik_cert
 	int signLen;
 	BYTE * signData;
 }__attribute__((packed)) TCM_PIK_CERT;
-
 #endif

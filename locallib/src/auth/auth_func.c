@@ -277,7 +277,7 @@ int vtcm_Key_GetSM2KeyParms(TCM_SM2_ASYMKEY_PARAMETERS** tcm_sm2_asymkey_paramet
     void* command_template = memdb_get_template(
         DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_SM2_ASYMKEY_PARAMETERS);
     if (command_template == NULL) {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     *tcm_sm2_asymkey_parameters = malloc(struct_size(command_template));
     ret = blob_2_struct(tcm_key_parms->parms, *tcm_sm2_asymkey_parameters,
@@ -502,7 +502,6 @@ int vtcm_Create_Checksum(BYTE* checksum, TCM_PUBKEY* pubEndorsementKey,
     if (ret == 0) {
         void* template_tcm_pubkey = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_PUBKEY);
         if (template_tcm_pubkey == NULL) {
-            printf("can't solve this command!\n");
             return -1;
         }
         binsize = struct_2_blob(pubEndorsementKey, buffer, template_tcm_pubkey);
@@ -1222,7 +1221,7 @@ int vtcm_Key_GetStoreAsymkey(TCM_STORE_ASYMKEY **tcm_store_asymkey,
         void* template_store_asymkey = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_STORE_ASYMKEY);
         if (template_store_asymkey == NULL) 
         {
-            printf("can't solve this command!\n");
+		return -EINVAL;
         }
         *tcm_store_asymkey = malloc(struct_size(template_store_asymkey));
 
@@ -1257,7 +1256,7 @@ int vtcm_Key_GetStoreSymkey(TCM_STORE_SYMKEY **tcm_store_symkey,
         void* template_store_symkey = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_STORE_SYMKEY);
         if (template_store_symkey == NULL) 
         {
-            printf("can't solve this command!\n");
+		return -EINVAL;
         }
         *tcm_store_symkey = Dalloc0(struct_size(template_store_symkey),tcm_store_symkey);
         ret = blob_2_struct(tcm_key->encData, *tcm_store_symkey, template_store_symkey);
@@ -1289,7 +1288,7 @@ int vtcm_Key_GetMigrateAsymkey(TCM_MIGRATE_ASYMKEY **tcm_migrate_asymkey,
         void* template_migrate_asymkey = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_STORE_ASYMKEY);
         if (template_migrate_asymkey == NULL) 
         {
-            printf("can't solve this command!\n");
+		return -EINVAL;
         }
         *tcm_migrate_asymkey = malloc(struct_size(template_migrate_asymkey));
         ret = blob_2_struct(tcm_key->encData, *tcm_migrate_asymkey, template_migrate_asymkey);
@@ -1548,7 +1547,6 @@ void vtcm_KeyHandleEntry_Delete(TCM_KEY_HANDLE_ENTRY *tcm_key_handle_entry)
     	    void * template_key = memdb_get_template(DTYPE_VTCM_IN_KEY, SUBTYPE_TCM_BIN_KEY);  //Get the TCM_KEY template
     	    if(template_key == NULL)
             {
-        	printf("can't get Key template!\n");
 		return;
             }
       //      ret=struct_free(tcm_key_handle_entry->key,template_key);

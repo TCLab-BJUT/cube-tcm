@@ -5,8 +5,9 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <dlfcn.h>
-#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 #include "data_type.h"
@@ -48,8 +49,16 @@ enum vtcm_trans_type
         DRV_RW
 };
 static enum vtcm_trans_type trans_type=DRV_RW;
+
+//static char * tcm_devnamelist[]={"/dev/tcm","/dev/tcm0","/dev/tpm","/dev/tpm0",NULL};
+static char * vtcm_addr="127.0.0.1";
+static int vtcm_port=13200;  
+
+static struct sockaddr_in my_addr;
+static struct sockaddr_in dest_addr;
+static int sockfd;
                                          
-char * tcm_devname="/dev/tpm0";
+char * tcm_devname;
 int dev_fd;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
@@ -134,7 +143,7 @@ TCM_SESSION_DATA * Find_AuthSession(TCM_ENT_TYPE type, TCM_AUTHHANDLE authhandle
   return NULL;
 }
 
-int _TSMD_Init()
+UINT32 _TSMD_Init(void)
 {
     int ret;
     int retval;
@@ -235,13 +244,19 @@ int _TSMD_Init()
 UINT32 TCM_LibInit(void)
 {
     int ret;
+    int i;	
+  
+   Strcpy(Buf,vtcm_addr);
+   Strcat(Buf,":");
+   Itoa(vtcm_port,Buf+Strlen(Buf));
+  
+   dest_addr.sin_family = AF_INET;
+   dest_addr.sin_port = htons(vtcm_port);
+   dest_addr.sin_addr.s_addr = inet_addr(vtcm_addr);
+   Memset(&dest_addr.sin_zero,0,8);
 
-    dev_fd=open(tcm_devname,O_RDWR);
-    if(dev_fd<0)
-	return dev_fd;
-    
-  INIT_LIST_HEAD(&sessions_list.list);
-  sessions_list.record=NULL;
+    INIT_LIST_HEAD(&sessions_list.list);
+    sessions_list.record=NULL;
 
   return 0;
 
@@ -302,6 +317,36 @@ int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
   	int ret;
 	int len;
 	BYTE TransBuf[DIGEST_SIZE*32];
+       if(-1 == (sockfd = socket(AF_INET,SOCK_STREAM,0)) )
+       {
+    		print_cubeerr("error in create socket\n");
+    		return -1;
+       }
+    // init the dest_addr 
+
+  	if(-1 == connect(sockfd,(struct sockaddr*)&dest_addr,sizeof(struct sockaddr)))
+  	{
+    		print_cubeerr("connect error\n");
+    		return -EINVAL;
+  	}
+  	ret = send(sockfd,in,in_len,0);
+  	if(ret!=in_len)
+    		return -EINVAL;
+  	print_cubeaudit("write %d data!\n",ret);
+  	len=recv(sockfd,TransBuf,1024,0);
+  	print_cubeaudit("read %d data!\n",len);
+  	close(sockfd);
+
+	Memcpy(out,TransBuf,len);
+	*out_len=len;
+	return len;
+}
+/*
+int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
+{
+  	int ret;
+	int len;
+	BYTE TransBuf[DIGEST_SIZE*32];
 
 
         if(trans_type==DRV_IOCTL)
@@ -323,12 +368,15 @@ int vtcmutils_transmit(int in_len,BYTE * in, int * out_len, BYTE * out)
                         	return len;
                 	}
 		}
+		else
+			return ret;
+
         }
 	Memcpy(out,TransBuf,len);
 	*out_len=len;
 	return len;
 }
-
+*/
 UINT32 TCM_CreateEndorsementKeyPair(BYTE * pubkeybuf,UINT32 * pubkeybuflen)
 {
   int outlen;
@@ -441,6 +489,43 @@ UINT32 TCM_PcrRead(UINT32 pcrindex, BYTE * pcrvalue)
   return 0;
 }
 
+UINT32 TCM_PcrReset(UINT32 pcrindex, BYTE * pcrvalue)
+{
+  int ret = 0;
+  struct tcm_in_pcrreset * vtcm_input;
+  struct tcm_out_pcrreset * vtcm_output;
+  void * vtcm_template;
+
+  printf("Begin TCM pcrreset:\n");
+
+   if(pcrindex<0)
+	return -EINVAL;
+   if(pcrindex>=TCM_NUM_PCR)
+	return -EINVAL;
+
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+
+  vtcm_input->ordinal=SUBTYPE_PCRRESET_IN;
+
+  vtcm_input->pcrSelection.sizeOfSelect=TCM_NUM_PCR/CHAR_BIT;
+  bitmap_set(vtcm_input->pcrSelection.pcrSelect,pcrindex);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+ // Memcpy(pcrvalue,vtcm_output->outDigest,DIGEST_SIZE);
+  return 0;
+}
+
 UINT32 TCM_ReadPubek(TCM_PUBKEY *key)
 {
   int outlen;
@@ -519,6 +604,8 @@ UINT32 TCM_APCreate(UINT32 entityType, UINT32 entityValue, char * pwd, UINT32 * 
   authdata=Create_AuthSession_Data(&(vtcm_input->entityType),vtcm_input->authCode,vtcm_input->nonce);
 
   ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
 
   memcpy(authdata->sharedSecret, auth, TCM_NONCE_SIZE);
   authhandle=Build_AuthSession(authdata,vtcm_output);
@@ -625,7 +712,7 @@ UINT32 TCM_EvictKey(UINT32 keyHandle)
 }
 
 
-UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * keyfile,char *pwdk)
+UINT32 TCM_CreateWrapKey(TCM_KEY * keydata,UINT32 parentHandle,UINT32 authHandle,UINT32 keyusage,UINT32 keyflags,char *pwdk)
 {
   int outlen;
   int i=1;
@@ -663,75 +750,82 @@ UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * ke
   vtcm_input->authHandle=authHandle;
 //Fill keyInfo information
   vtcm_input->keyInfo.tag=htons(TCM_TAG_KEY);
-  vtcm_input->keyInfo.keyFlags=0;
+  vtcm_input->keyInfo.keyUsage=keyusage;
+  vtcm_input->keyInfo.keyFlags=keyflags;
   vtcm_input->keyInfo.authDataUsage=TCM_AUTH_ALWAYS;
 
-  if(!strcmp("sm4",select))
+  switch(keyusage)
   {
-    if(vtcm_input->keyInfo.keyUsage==0)
-    	vtcm_input->keyInfo.keyUsage=TCM_SM4KEY_STORAGE;
-    vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM4;
-    vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM4_CBC;
-    vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_NONE;
-    printf("this is sm4\n");
-    // add smkparms's sm4 key parms
-    sm4_parms=Talloc0(sizeof(*sm4_parms));
-    if(sm4_parms==NULL)
-      return -ENOMEM;
-    sm4_parms->keyLength=0x80;
-    sm4_parms->blockSize=0x80;
-    sm4_parms->ivSize=0x10;
-    sm4_parms->IV=Talloc0(sm4_parms->ivSize);
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
-    if(vtcm_template==NULL)
-      return -EINVAL;
-    ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
-    if(ret<0)
-      return ret; 
-    vtcm_input->keyInfo.algorithmParms.parmSize=ret;
-    vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
-    if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
-      return -ENOMEM;
-    Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
-  }else
-  {
-    if(vtcm_input->keyInfo.keyUsage==0)
-    	vtcm_input->keyInfo.keyUsage=TCM_SM2KEY_SIGNING;
-    //add smkparms's sm2 key parms
-    sm2_parms=Talloc0(sizeof(*sm2_parms));
-    if(sm2_parms==NULL)
-      return -ENOMEM;
-    sm2_parms->keyLength=0x80;
-    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SM2_ASYMKEY_PARAMETERS);
-    if(vtcm_template==NULL)
-      return -EINVAL;
-    ret=struct_2_blob(sm2_parms,Buf,vtcm_template);
-    if(ret<0)
-      return ret;
-    vtcm_input->keyInfo.algorithmParms.parmSize=ret;
-    vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
-    if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
-      return -ENOMEM;
-    Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
-    vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM2;
-    vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM2;
-    vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_SM2;
-    printf("this is sm2\n");
+
+    case TCM_SM2KEY_SIGNING: 	
+    case TCM_SM2KEY_STORAGE: 	
+    case TCM_SM2KEY_IDENTITY: 	
+    case TCM_SM2KEY_BIND: 	
+    case TCM_SM2KEY_MIGRATE: 	
+    	//add smkparms's sm2 key parms
+    	sm2_parms=Talloc0(sizeof(*sm2_parms));
+    	if(sm2_parms==NULL)
+      		return -ENOMEM;
+    	sm2_parms->keyLength=0x80;
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SM2_ASYMKEY_PARAMETERS);
+    	if(vtcm_template==NULL)
+      		return -EINVAL;
+    	ret=struct_2_blob(sm2_parms,Buf,vtcm_template);
+    	if(ret<0)
+      		return ret;
+    	vtcm_input->keyInfo.algorithmParms.parmSize=ret;
+    	vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
+    	if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
+      		return -ENOMEM;
+    	Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
+    	vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM2;
+    	vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM2;
+    	vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_SM2;
+	break;
+	
+    case TCM_SM4KEY_STORAGE: 	
+    case TCM_SM4KEY_BIND: 	
+    case TCM_SM4KEY_MIGRATE: 	
+
+    	vtcm_input->keyInfo.algorithmParms.algorithmID=TCM_ALG_SM4;
+   	vtcm_input->keyInfo.algorithmParms.encScheme=TCM_ES_SM4_CBC;
+    	vtcm_input->keyInfo.algorithmParms.sigScheme=TCM_SS_NONE;
+    	sm4_parms=Talloc0(sizeof(*sm4_parms));
+    	if(sm4_parms==NULL)
+      		return -ENOMEM;
+    	sm4_parms->keyLength=0x80;
+    	sm4_parms->blockSize=0x80;
+    	sm4_parms->ivSize=0x10;
+    	sm4_parms->IV=Talloc0(sm4_parms->ivSize);
+    	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
+    	if(vtcm_template==NULL)
+      		return -EINVAL;
+    	ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
+    	if(ret<0)
+      		return ret; 
+    	vtcm_input->keyInfo.algorithmParms.parmSize=ret;
+    	vtcm_input->keyInfo.algorithmParms.parms=Talloc0(ret);
+    	if(vtcm_input->keyInfo.algorithmParms.parms==NULL)
+      		return -ENOMEM;
+    	Memcpy(vtcm_input->keyInfo.algorithmParms.parms,Buf,ret);
+	break;
+    default:
+	return -EINVAL;
   }
   BYTE *Buffer=(BYTE*)malloc(sizeof(BYTE)*256);
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
   if(vtcm_template==NULL)
-    return -EINVAL;
+       return -EINVAL;
   int ret1=0;
   ret1=struct_2_blob(&(vtcm_input->keyInfo),Buffer,vtcm_template);
   if(ret1<0)
-    return ret1;
+      return ret1;
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_CREATEWRAPKEY_IN);
   if(vtcm_template==NULL)
-    return -EINVAL;
+      return -EINVAL;
   offset=struct_2_blob(vtcm_input,Buf,vtcm_template);
   printf("%d\n",offset);
-   if(pwdk!=NULL)
+  if(pwdk!=NULL)
   {
 	vtcm_ex_sm3(ownerauth,1,pwdk,Strlen(pwdk));
   }
@@ -760,11 +854,11 @@ UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * ke
   ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_CREATEWRAPKEY_OUT,authdata,CheckData);
 
   if(ret<0)
-    return -EINVAL;
+       return -EINVAL;
   if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
   {
-    printf("createwrapkey check output authCode failed!\n");
-    return -EINVAL;
+      printf("createwrapkey check output authCode failed!\n");
+      return -EINVAL;
   }	
    vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
   if(vtcm_template==NULL)
@@ -774,16 +868,14 @@ UINT32 TCM_CreateWrapKey(int parentHandle,int authHandle,char * select,char * ke
 
   ret=struct_2_blob(&vtcm_output->wrappedKey,Buf,vtcm_template);
   if(ret<0)
-    return -EINVAL;
-  fd=open(keyfile,O_CREAT|O_TRUNC|O_WRONLY,0666);
-  if(fd<0)
-    return -EIO;
-  write(fd,Buf,ret);
-  close(fd);
-  printf("Output para: %d \n\n",vtcm_output->returnCode);
+       return -EINVAL;
+  ret=blob_2_struct(Buf,keydata,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
   return 0;
 }
 
+/*
 UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen )
 {
   TCM_KEY *keyOut;
@@ -852,7 +944,7 @@ UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,B
   }
   return 0;
 }
-
+*/
 UINT32 TCM_LoadKey(UINT32 authHandle,char * keyfile,UINT32 *KeyHandle)
 {
   int outlen;
@@ -1004,7 +1096,8 @@ UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   return 0;
 }
 
-int TCM_SM3Start(){
+int TCM_SM3Start()
+{
   int outlen;
   int i=0;
   int ret=0;
@@ -1025,7 +1118,8 @@ int TCM_SM3Start(){
   return vtcm_output->returnCode;
 }
 
-int TCM_SM3Update(BYTE * data, int data_len){
+int TCM_SM3Update(BYTE * data, int data_len)
+{
   int outlen;
   int i=1;
   int ret=0;
@@ -1061,7 +1155,8 @@ int TCM_SM3Update(BYTE * data, int data_len){
   return ret;
 }
 
-int TCM_SM3Complete(BYTE * in, int in_len,BYTE * out){
+int TCM_SM3Complete(BYTE * in, int in_len,BYTE * out)
+{
 
   int ret=0;
   void *vtcm_template;
@@ -1361,4 +1456,442 @@ UINT32 TCM_SM1Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   *out_len=vtcm_output->DecryptedDataSize;
   Memcpy(out,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
   return 0;
+}
+
+
+UINT32 TCM_TakeOwnership(unsigned char *ownpass,
+			 unsigned char *smkpass,
+                         UINT32 authhandle)
+{
+  unsigned char *encData=NULL;
+  int i=1;
+  int outlen;
+  int ret=0;
+  int offset=0;
+  void * vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+  unsigned char ownerauth[TCM_HASH_SIZE];
+  unsigned char smkauth[TCM_HASH_SIZE];
+  struct tcm_in_TakeOwnership *vtcm_input;
+  struct tcm_out_TakeOwnership *vtcm_output;
+  int  enclen=512;
+  TCM_SYMMETRIC_KEY_PARMS * sm4_parms;
+  TCM_SESSION_DATA * authdata;
+
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_TAKEOWNERSHIP_IN;
+  vtcm_input->protocolID=htons(TCM_PID_OWNER);
+
+  authdata=Find_AuthSession(TCM_ET_NONE,0);
+  if(authdata==NULL)
+  {
+    printf("can't find session for takeownership!\n");
+    return -EINVAL;
+  }
+
+  // compute ownerAuth
+  vtcm_ex_sm3(ownerauth,1,ownpass,Strlen(ownpass));
+  enclen=512;
+  ret=GM_SM2Encrypt(Buf,&enclen,ownerauth,TCM_HASH_SIZE,pubEK->pubKey.key,pubEK->pubKey.keyLength);
+  if(ret!=0)
+      return ret; 
+
+  vtcm_input->encOwnerAuthSize=enclen;
+  vtcm_input->encOwnerAuth=Talloc0(enclen);
+  Memcpy(vtcm_input->encOwnerAuth,Buf,enclen);
+
+  // compute smkAuth
+  vtcm_ex_sm3(smkauth,1,smkpass,Strlen(smkpass));
+  enclen=512;
+  ret=GM_SM2Encrypt(Buf,&enclen,smkauth,TCM_HASH_SIZE,pubEK->pubKey.key,pubEK->pubKey.keyLength);
+  if(ret!=0)
+    return ret; 
+
+  vtcm_input->encSmkAuthSize=enclen;
+  vtcm_input->encSmkAuth=Talloc0(enclen);
+  Memcpy(vtcm_input->encSmkAuth,Buf,enclen);
+
+  //  add vtcm_input's smkParams
+
+  vtcm_input->smkParams.tag=htons(TCM_TAG_KEY);
+  vtcm_input->smkParams.keyUsage=TCM_SM4KEY_STORAGE;
+  vtcm_input->smkParams.keyFlags=0;
+  vtcm_input->smkParams.authDataUsage=TCM_AUTH_ALWAYS;
+  vtcm_input->smkParams.algorithmParms.algorithmID=TCM_ALG_SM4;
+  vtcm_input->smkParams.algorithmParms.encScheme=TCM_ES_SM4_CBC;
+  vtcm_input->smkParams.algorithmParms.sigScheme=TCM_SS_NONE;
+
+  vtcm_input->smkParams.PCRInfoSize=0;
+  vtcm_input->smkParams.PCRInfo=NULL;
+  vtcm_input->smkParams.pubKey.keyLength=0;
+  vtcm_input->smkParams.pubKey.key=NULL;
+  vtcm_input->smkParams.encDataSize=0;
+  vtcm_input->smkParams.encData=NULL;
+
+  // add smkparms's sm4 key parms
+  sm4_parms=Talloc0(sizeof(*sm4_parms));
+
+  if(sm4_parms==NULL)
+    return -ENOMEM;
+  sm4_parms->keyLength=0x80;
+  sm4_parms->blockSize=0x80;
+  sm4_parms->ivSize=0x10;
+  sm4_parms->IV=Talloc0(sm4_parms->ivSize);
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY_PARMS);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+
+  ret=struct_2_blob(sm4_parms,Buf,vtcm_template);
+  if(ret<0)
+    return ret;	
+
+  vtcm_input->smkParams.algorithmParms.parmSize=ret;
+  vtcm_input->smkParams.algorithmParms.parms=Talloc0(ret);
+  if(vtcm_input->smkParams.algorithmParms.parms==NULL)
+    return -ENOMEM;
+  Memcpy(vtcm_input->smkParams.algorithmParms.parms,Buf,ret);
+
+  // add authHandle
+  vtcm_input->authHandle=authdata->handle;			
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH1,SUBTYPE_TAKEOWNERSHIP_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+    return offset;
+
+  //
+  //compute DecryptAuthVerfication
+  memcpy(vtcm_input->authCode, ownerauth, TCM_HASH_SIZE);
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_TAKEOWNERSHIP_IN,NULL,vtcm_input->authCode);
+  vtcm_input->paramSize=offset;
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  // Check authdata
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_TAKEOWNERSHIP_OUT,NULL,CheckData);
+  if(ret<0)
+  {
+    	return -EINVAL;
+  }
+  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+  {
+    	printf("TakeOwnership check output failed!\n");
+    	return -EINVAL;
+  }
+
+  return 0;
+}
+
+UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
+	int userinfolen,BYTE * userinfo,char * pwdk,
+	TCM_KEY * pik, BYTE ** req, int * reqlen)
+{
+  int outlen;
+  int i=2;
+  int ret=0;
+  int fd;
+  void *vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+
+  struct tcm_in_MakeIdentity * vtcm_input;
+  struct tcm_out_MakeIdentity * vtcm_output;
+  BYTE pikauth[TCM_HASH_SIZE];
+  BYTE cmdHash[TCM_HASH_SIZE];
+  int  enclen=512;
+  TCM_SM2_ASYMKEY_PARAMETERS * pik_parms;
+  TCM_SESSION_DATA * ownerauthdata;
+  TCM_SESSION_DATA * smkauthdata;
+
+  // makeidentity's param
+
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+      return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+      return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH2_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_MAKEIDENTITY_IN;
+  int offset=0;
+
+  // build vtcm_input structure 
+  vtcm_input->ownerHandle=ownerhandle; 	
+  vtcm_input->smkHandle=smkhandle;
+
+  // find the ownerauthsession and smkauthsession 
+
+  ownerauthdata = Find_AuthSession(TCM_ET_OWNER,vtcm_input->ownerHandle);
+  if(ownerauthdata==NULL)
+  {
+       printf("can't find owner session for makeidentity!\n");
+       return -EINVAL;
+  }	
+
+  smkauthdata = Find_AuthSession(TCM_ET_SMK,vtcm_input->smkHandle);
+  if(smkauthdata==NULL)
+  {
+       printf("can't find smk session for makeidentity!\n");
+       return -EINVAL;
+  }	
+
+  // compute the three auth value
+
+  vtcm_ex_sm3(pikauth,1,pwdk,Strlen(pwdk));
+
+  // compute crypt pik auth
+  for(i=0;i<TCM_HASH_SIZE;i++)
+  {
+    vtcm_input->pikAuth[i]=pikauth[i]^ownerauthdata->sharedSecret[i];
+  } 
+
+  // compute pubDigest
+
+  Memcpy(Buf,userinfo,userinfolen);
+  offset=userinfolen;
+
+  if(CApubkey==NULL)
+  {
+       printf("can't find CA's public key!\n");
+       return -EINVAL;
+  }
+  Memcpy(Buf+ret,CApubkey,64);
+  vtcm_ex_sm3(vtcm_input->pubDigest,1,Buf,ret+64); 	
+
+  //  add vtcm_input's pikParams
+
+  vtcm_input->pikParams.tag=htons(TCM_TAG_KEY);
+  vtcm_input->pikParams.keyUsage=TCM_SM2KEY_IDENTITY;
+  vtcm_input->pikParams.keyFlags=0;
+  //  vtcm_input->pikParams.migratable=FALSE;
+  vtcm_input->pikParams.authDataUsage=TCM_AUTH_ALWAYS;
+  vtcm_input->pikParams.algorithmParms.algorithmID=TCM_ALG_SM2;
+  vtcm_input->pikParams.algorithmParms.encScheme=TCM_ES_NONE;
+  vtcm_input->pikParams.algorithmParms.sigScheme=TCM_SS_SM2;
+
+  vtcm_input->pikParams.PCRInfoSize=0;
+  vtcm_input->pikParams.PCRInfo=NULL;
+  vtcm_input->pikParams.pubKey.keyLength=0;
+  vtcm_input->pikParams.pubKey.key=NULL;
+  vtcm_input->pikParams.encDataSize=0;
+  vtcm_input->pikParams.encData=NULL;
+
+  // add pikparms's sm2 key parms
+  pik_parms=Talloc0(sizeof(*pik_parms));
+  if(pik_parms==NULL)
+      return -ENOMEM;
+  pik_parms->keyLength=0x80;
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SM2_ASYMKEY_PARAMETERS);
+  if(vtcm_template==NULL)
+      return -EINVAL;
+
+  ret=struct_2_blob(pik_parms,Buf,vtcm_template);
+  if(ret<0)
+      return ret;	
+
+  vtcm_input->pikParams.algorithmParms.parmSize=ret;
+  vtcm_input->pikParams.algorithmParms.parms=Talloc0(ret);
+  if(vtcm_input->pikParams.algorithmParms.parms==NULL)
+       return -ENOMEM;
+  Memcpy(vtcm_input->pikParams.algorithmParms.parms,Buf,ret);
+
+  // output command's bin value 
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_MAKEIDENTITY_IN);
+  if(vtcm_template==NULL)
+      return -EINVAL;
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+      return offset;
+
+  vtcm_input->paramSize=offset;
+
+  uint32_t temp_int;
+  // compute smkauthCode
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_MAKEIDENTITY_IN,smkauthdata,vtcm_input->smkAuth);
+  // compute ownerauthCode
+  ret=vtcm_Compute_AuthCode2(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_MAKEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
+
+  printf("Begin input for makeidentity:\n");
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+      return offset;
+
+  print_bin_data(Buf,offset,16);
+  ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
+  if(ret<0)
+      return ret;
+  //printf("makeidentity:\n");
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT);
+  if(vtcm_template==NULL)
+      return -EINVAL;
+
+  ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+  if(ret<0)
+      return -EINVAL;
+  //check output
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret = vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT,smkauthdata,CheckData);
+  if(ret<0)
+      return -EINVAL;
+  if(Memcmp(CheckData,vtcm_output->smkAuth,DIGEST_SIZE)!=0){
+      printf("makeidentity  check output smkauth failed\n");
+      return -EINVAL;
+  }
+
+  ret = vtcm_Compute_AuthCode2(vtcm_output,DTYPE_VTCM_OUT_AUTH2,SUBTYPE_MAKEIDENTITY_OUT,ownerauthdata,CheckData);
+  if(ret<0)
+      return -EINVAL;
+  if(Memcmp(CheckData,vtcm_output->ownerAuth,DIGEST_SIZE)!=0){
+      printf("makeidentity  check output ownerauth failed\n");
+      return -EINVAL;
+  }
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
+  if(vtcm_template==NULL)
+      return -EINVAL;	
+
+  printf("makeidentity:\n");
+  print_bin_data(Buf,outlen,16);
+  // write keyfile	
+
+  ret=struct_clone(&vtcm_output->pik,&pik,vtcm_template);
+  if(ret<0)
+      return -EINVAL;
+
+  *reqlen=vtcm_output->CertSize;
+  *req=Talloc0(vtcm_output->CertSize);
+  if(*req==NULL)
+	return -ENOMEM;
+  Memcpy(&req,vtcm_output->CertData,vtcm_output->CertSize);  
+  return 0;
+}	
+
+UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerhandle,
+	int encdatasize,BYTE * encdata,TCM_SYMMETRIC_KEY * symm_key,
+	char * pwdo,char * pwdk)
+{
+  int outlen;
+  int i=2;
+  int ret=0;
+  void *vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+
+  struct tcm_in_ActivateIdentity * vtcm_input;
+  struct tcm_out_ActivateIdentity * vtcm_output;
+
+  BYTE ownerauth[TCM_HASH_SIZE];
+  BYTE pikauth[TCM_HASH_SIZE];
+  BYTE cmdHash[TCM_HASH_SIZE];
+  int  enclen=512;
+  TCM_SM2_ASYMKEY_PARAMETERS * pik_parms;
+  TCM_SESSION_DATA * ownerauthdata;
+  TCM_SESSION_DATA * pikauthdata;
+
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH2_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_ACTIVATEIDENTITY_IN;
+  int offset=0;
+
+
+   vtcm_input->pikHandle=pikhandle;
+   vtcm_input->pikAuthHandle=pikauthhandle;	
+   vtcm_input->ownerAuthHandle=ownerhandle;	
+
+  // find the ownerauthsession and pikauthsession 
+
+  ownerauthdata = Find_AuthSession(TCM_ET_OWNER,vtcm_input->ownerAuthHandle);
+  if(ownerauthdata==NULL)
+  {
+      printf("can't find owner session for activateidentity!\n");
+      return -EINVAL;
+  }	
+
+  pikauthdata = Find_AuthSession(TCM_ET_KEYHANDLE,vtcm_input->pikAuthHandle);
+  if(pikauthdata==NULL)
+  {
+    printf("can't find pik session for activateidentity!\n");
+    return -EINVAL;
+  }	
+
+  // compute the three auth value
+
+  calculate_context_sm3(pwdo,Strlen(pwdo),ownerauth);
+  calculate_context_sm3(pwdk,Strlen(pwdk),pikauth);
+
+  vtcm_input->encDataSize=encdatasize;
+  vtcm_input->encData=Talloc0(vtcm_input->encDataSize);
+  if(vtcm_input->encData==NULL)
+  {
+    return -ENOMEM;
+  }
+  Memcpy(vtcm_input->encData,encdata,vtcm_input->encDataSize);
+
+  // Build authcode
+
+  // output command's bin value 
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN);
+  if(vtcm_template==NULL)
+    return -EINVAL;
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+    return offset;
+
+  vtcm_input->paramSize=offset;
+
+  uint32_t temp_int;
+  // compute pikauthCode
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN,pikauthdata,vtcm_input->pikAuth);
+  if(ret==0)
+  {
+      ret=vtcm_Compute_AuthCode2(vtcm_input,DTYPE_VTCM_IN_AUTH2,SUBTYPE_ACTIVATEIDENTITY_IN,ownerauthdata,vtcm_input->ownerAuth);
+  }
+  else
+	return -EINVAL;
+  /*	
+ */
+  printf("Begin input for activeidentity:\n");
+  offset = struct_2_blob(vtcm_input,Buf,vtcm_template);
+  if(offset<0)
+      return offset;
+
+  ret = proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+    return ret;
+  printf("activateidentity:\n");
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_OUT_AUTH2,SUBTYPE_ACTIVATEIDENTITY_OUT);
+  if(vtcm_template==NULL)
+     return -EINVAL;
+
+   ret=blob_2_struct(Buf,vtcm_output,vtcm_template);
+   if(ret<0)
+        return -EINVAL;
+
+   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_SYMMETRIC_KEY);
+   if(vtcm_template==NULL)
+      	return -EINVAL;
+  
+   ret=struct_clone(symm_key,&vtcm_output->symmkey,vtcm_template);
+
+   if(ret<0)
+	return -EINVAL;
+   
+  return vtcm_output->returnCode;
 }

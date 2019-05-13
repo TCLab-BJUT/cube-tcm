@@ -159,7 +159,7 @@ int proc_vtcm_Startup(void * sub_proc, void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_STARTUP_OUT);
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_Startup * tcm_Startup_out = malloc(struct_size(command_template));
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
@@ -244,7 +244,7 @@ int proc_vtcm_PhysicalEnable(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_PHYSICALENABLE_OUT) ;//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_PhysicalEnable * vtcm_PhysicalEnable_out = malloc(struct_size(command_template)) ;
 
@@ -299,7 +299,7 @@ int proc_vtcm_PhysicalDisable(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_PHYSICALDISABLE_OUT) ;//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_PhysicalDisable * vtcm_PhysicalDisable_out = malloc(struct_size(command_template)) ;
 
@@ -353,7 +353,7 @@ int proc_vtcm_PhysicalSetDeactivated(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_PHYSICALSETDEACTIVATED_OUT) ;//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_PhysicalSetDeactivated * vtcm_PhysicalSetDeactivated_out = malloc(struct_size(command_template)) ;
 
@@ -481,7 +481,7 @@ int vtcm_GetCapability_CapVersionVal(TCM_SIZED_BUFFER *CapabilityResponse ,TCM_P
     void *command_template_1 = memdb_get_template(DTYPE_VTCM_IN_CAP ,SUBTYPE_TCM_CAP_VERSION_INFO) ; //get the template
     if(command_template_1 == NULL)
     {
-        printf("can't solve this command!\n") ;
+	return -EINVAL;
     }
     
     TCM_CAP_VERSION_INFO *tcm_cap_version_info = malloc(struct_size(command_template_1)) ;
@@ -698,7 +698,7 @@ int proc_vtcm_GetCapability(void * sub_proc,void * recv_msg)
     void * template_GetCapability_out = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_GETCAPABILITY_OUT) ;//Get the entire command template
     if(template_GetCapability_out == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_GetCapability * vtcm_GetCapability_out = malloc(struct_size(template_GetCapability_out)) ;
 
@@ -772,7 +772,7 @@ int proc_vtcm_ForceClear(void * sub_proc,void * recv_msg)
      void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_FORCECLEAR_OUT);
      if(command_template == NULL)
      {
-         printf("can't solve this command!\n");                
+	return -EINVAL;
      }
      struct tcm_out_ForceClear * tcm_ForceClear_out = malloc(struct_size(command_template));
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
@@ -822,7 +822,7 @@ int proc_vtcm_DisableForceClear(void * sub_proc,void * recv_msg)
      void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_DISABLEFORCECLEAR_OUT);
      if(command_template == NULL)
      {
-         printf("can't solve this command!\n");                
+	return -EINVAL;
      }
      struct tcm_out_DisableForceClear * tcm_DisableForceClear_out = malloc(struct_size(command_template));
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
@@ -942,7 +942,7 @@ int proc_vtcm_SelfTestFull(void * sub_proc, void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_SELFTESTFULL_OUT);
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_SelfTestFull * tcm_SelfTestFull_out = malloc(struct_size(command_template));
 
@@ -991,7 +991,7 @@ int proc_vtcm_ContinueSelfTest(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_CONTINUESELFTEST_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_ContinueSelfTest * tcm_ContinueSelfTest_out = malloc(struct_size(command_template));
 
@@ -1031,42 +1031,45 @@ int proc_vtcm_GetRandom(void * sub_proc, void * recv_msg)
     BYTE * randomBytes;
     
 
-    struct tcm_in_GetRandom *tcm_GetRandom_in;
-    ret = message_get_record(recv_msg, (void *)&tcm_GetRandom_in, 0);
+    struct tcm_in_GetRandom *vtcm_in;
+    ret = message_get_record(recv_msg, (void *)&vtcm_in, 0);
     if(ret < 0)
         return ret;
-    if(tcm_GetRandom_in == NULL)
+    if(vtcm_in == NULL)
         return -EINVAL;
     //output process
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT, SUBTYPE_GETRANDOM_OUT);
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
-    struct tcm_out_GetRandom * tcm_GetRandom_out = malloc(struct_size(command_template));
+    struct tcm_out_GetRandom * vtcm_out = malloc(struct_size(command_template));
 
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
     /*
     Processing
     */
-    tcm_GetRandom_out->tag = 0xC400;
-    tcm_GetRandom_out->returnCode = 0;
-    tcm_GetRandom_out->randomBytesSize = 0x10;
-//    tcm_GetRandom_out->randomBytes = 0x2F7E88F6C6905EA8489AC339DA962AD5;
-//    tcm_GetRandom_out->paramSize = 10+sizeof(int)+tcm_GetRandom_out->randomBytesSize;
-    tcm_GetRandom_out->paramSize = 0x1E;
+    vtcm_out->tag = 0xC400;
+    vtcm_out->returnCode = 0;
+  
+    if(vtcm_in->bytesRequested > 512)
+  	   vtcm_out->randomBytesSize=512;
+    else	
+  	   vtcm_out->randomBytesSize=vtcm_in->bytesRequested;
+
+    vtcm_out->paramSize = sizeof(*vtcm_out)-sizeof(BYTE *)+vtcm_out->randomBytesSize;
     
-    tcm_GetRandom_out->randomBytes=malloc(tcm_GetRandom_out->randomBytesSize);
-    if(tcm_GetRandom_out->randomBytes==NULL)
+    vtcm_out->randomBytes=malloc(vtcm_out->randomBytesSize);
+    if(vtcm_out->randomBytes==NULL)
         return -ENOMEM;
-    ret = RAND_bytes(tcm_GetRandom_out->randomBytes,tcm_GetRandom_out->randomBytesSize);
+    ret = RAND_bytes(vtcm_out->randomBytes,vtcm_out->randomBytesSize);
     printf("Random figure is : %d",ret);
     //Reponse
     void *send_msg = message_create(DTYPE_VTCM_OUT, SUBTYPE_GETRANDOM_OUT, recv_msg);
     if(send_msg == NULL)
         return -EINVAL;
-    message_add_record(send_msg, tcm_GetRandom_out);
+    message_add_record(send_msg, vtcm_out);
 
      // add vtcm's expand info	
     ret=vtcm_addcmdexpand(send_msg,recv_msg);
@@ -1969,8 +1972,8 @@ int proc_vtcm_SetCapability(void * sub_proc,void * recv_msg)
     void * template_out = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_SETCAPABILITY_OUT) ;//Get the entire command template
     if(template_out == NULL)
     {
-        printf("can't solve this command!\n");
     }
+	
     struct tcm_out_SetCapability * vtcm_output = malloc(struct_size(template_out)) ;
     tcm_state_t* tcm_state = ex_module_getpointer(sub_proc);
 
@@ -2152,7 +2155,7 @@ int proc_vtcm_FlushSpecific(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_FLUSHSPECIFIC_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_FlushSpecific * tcm_FlushSpecific_out = malloc(struct_size(command_template));
 
@@ -2249,7 +2252,7 @@ int proc_vtcm_OwnerClear(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_OWNERCLEAR_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_OwnerClear * tcm_output = malloc(struct_size(command_template));
 
@@ -2322,7 +2325,7 @@ int proc_vtcm_XX(void * sub_proc,void * recv_msg)
     void * command_template = memdb_get_template(DTYPE_VTCM_OUT,SUBTYPE_XXX_OUT);//Get the entire command template
     if(command_template == NULL)
     {
-        printf("can't solve this command!\n");
+	return -EINVAL;
     }
     struct tcm_out_XX * tcm_output = malloc(struct_size(command_template));
 
