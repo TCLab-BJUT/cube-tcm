@@ -31,14 +31,17 @@ ln -s $CUBESYSPATH/main/main_proc
 cd -
 
 cd locallib
+make clean
 make
 cd -
 
 cd module
-make 
+make clean
+make
 cd -
 
 cd init_module/vtcm_init
+make clean
 make
 cd -
 
