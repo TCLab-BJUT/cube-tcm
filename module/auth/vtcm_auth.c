@@ -524,6 +524,7 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
 	Memset(UserID,'A',32);	
 	
 
+//	print_bin_data(Buf,datalen,16);
 	
 	ret=GM_SM2Sign(signedData,&pulSigLen,Buf,datalen,UserID,lenUID,privpik->privKey.key,privpik->privKey.keyLength);	
 	if(ret!=0)
@@ -531,6 +532,9 @@ static int proc_vtcm_MakeIdentity(void* sub_proc, void* recv_msg)
 		returnCode=-TCM_BAD_SIGNATURE;
 		goto makeidentity_out;	
 	}
+
+//	print_bin_data(signedData,pulSigLen,16);
+//	print_bin_data(pik->pubKey.key,pik->pubKey.keyLength,16);
 
 // add verify test
 //	ret=GM_SM2VerifySig(signedData,pulSigLen,Buf,datalen,

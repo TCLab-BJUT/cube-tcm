@@ -1561,7 +1561,10 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
        return -EINVAL;
   }
   Memcpy(Buf+offset,CApubkey,64);
+
+  print_bin_data(Buf,offset+64,16);	
   vtcm_ex_sm3(vtcm_input->pubDigest,1,Buf,offset+64); 	
+  print_bin_data(vtcm_input->pubDigest,32,16);	
 
   //  add vtcm_input's pikParams
 

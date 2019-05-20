@@ -252,13 +252,16 @@ int TCM_ExCAPikReqVerify(TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
     	printf("Begin ex CA Pik Req Verify:\n");
 	// build TCM_IDENTITY_CONTENTS struct
 	
+	Memset(&ca_contents,0,sizeof(ca_contents));
 	ca_contents.ver.major=1;
 	ca_contents.ver.minor=1;
 	ca_contents.ordinal = SUBTYPE_MAKEIDENTITY_IN;
 	Memcpy(ExBuf,userinfo,userinfolen);
 	Memcpy(ExBuf+userinfolen,CApubkey,64);
+//	print_bin_data(ExBuf,userinfolen+64,16);
 
 	calculate_context_sm3(ExBuf,userinfolen+64,ca_contents.labelPrivCADigest.digest);
+//	print_bin_data(ca_contents.labelPrivCADigest.digest,32,16);
 	
 	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
 	if(vtcm_template==NULL)
@@ -280,8 +283,13 @@ int TCM_ExCAPikReqVerify(TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
 	BYTE UserID[DIGEST_SIZE];
         unsigned long lenUID=DIGEST_SIZE;
         Memset(UserID,'A',32);
-	ret=GM_SM2VerifySig(reqdata,reqdatalen,ExBuf,ret,
-		UserID,lenUID,pik->pubKey.key,pik->pubKey.keyLength);
+
+//	print_bin_data(ExBuf,ret,16);
+//	print_bin_data(reqdata,reqdatalen,16);
+//	print_bin_data(pik->pubKey.key,pik->pubKey.keyLength,16);
+
+	ret=GM_SM2VerifySig(reqdata,(UINT64)reqdatalen,ExBuf,(UINT64)ret,
+		UserID,(UINT64)lenUID,pik->pubKey.key,(UINT64)pik->pubKey.keyLength);
 	if(ret<0)
 	{
 		printf("Verify Sig Data failed!\n");
