@@ -67,10 +67,9 @@
                 "elem_no":3,
                 "elemlist":
                 [
-
-                        "TCM_CAP_VERSION_INFO=0x01",
-                        "TCM_CAP_VERSION_STRUCT=0x02",
-                        "TCM_CAP_DIGEST=0x03"
+                        "TCM_CAP_VERSION_STRUCT=0x01",
+                        "TCM_CAP_VERSION_INFO",
+                        "TCM_CAP_DIGEST"
                 ]
         }
 }
@@ -109,15 +108,15 @@
                 "elemlist":
                 [   
                         "TCM_BIN_KEY_PARMS=0x01",
-                        "TCM_BIN_PUBKEY",
                         "TCM_BIN_STORE_PUBKEY",
+                        "TCM_BIN_PUBKEY",
                         "TCM_BIN_RSA_KEY_PARMS",
                         "TCM_BIN_SM2_ASYMKEY_PARMS",
                         "TCM_BIN_SYMMETRIC_KEY_PARMS",
-                        "TCM_BIN_KEY",
                         "TCM_BIN_STORE_ASYMKEY",
                         "TCM_BIN_STORE_SYMKEY",
                         "TCM_BIN_STORE_PRIVKEY",
+                        "TCM_BIN_KEY",
                         "TCM_BIN_SYMMETRIC_KEY"
                 ]   
         }   

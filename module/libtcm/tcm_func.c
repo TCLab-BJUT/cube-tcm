@@ -52,7 +52,7 @@ static enum vtcm_trans_type trans_type=DRV_RW;
 static char * tcm_devnamelist[]={"/dev/tcm","/dev/tcm0","/dev/tpm","/dev/tpm0",NULL};
                                          
 char * tcm_devname;
-int dev_fd;
+int dev_fd=0;
 static char main_config_file[DIGEST_SIZE*2]="./main_config.cfg";
 static char sys_config_file[DIGEST_SIZE*2]="./sys_config.cfg";
 
@@ -238,6 +238,8 @@ UINT32 TCM_LibInit(void)
 {
     int ret;
     int i;	
+    if(dev_fd!=0)
+	return 0;
     for(i=0;tcm_devnamelist[i]!=NULL;i++)
     {
 	tcm_devname=tcm_devnamelist[i];		    
