@@ -8,9 +8,11 @@ LIBNAME=tspi
 DEPENDLIB= -L$(CUBELIBPATH)/lib -L$(CUBESYSPATH)/plugin -lsys_func -lchannel -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lbasefunc -lstring -lalloc 
 LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func
 
-main: lib$(LIBNAME).so tspi_test
+main: lib$(LIBNAME).so tspi_test tspi_pcrtest
 tspi_test:  tspi_test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
 	$(CC) $(FLAGS) tspi_test tspi_test.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
+tspi_pcrtest:  tspi_pcrtest.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
+	$(CC) $(FLAGS) tspi_pcrtest tspi_pcrtest.c lib_rw.c -l$(LIBNAME) $(STRUCTOBJ) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 lib$(LIBNAME).so: $(STRUCTOBJ)
 	$(CC) -shared -o lib$(LIBNAME).so $(STRUCTOBJ)	 
 	mv lib$(LIBNAME).so $(CUBEAPPPATH)/locallib/bin

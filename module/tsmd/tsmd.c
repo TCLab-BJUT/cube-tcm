@@ -256,8 +256,9 @@ TSMD_OBJECT * Build_TsmdObject(UINT32 hContext, TSM_FLAG objectType,TSM_FLAG ini
 	case TSM_OBJECT_TYPE_PCRS:
 		new_object->object_struct=Dalloc0(sizeof(struct tsmd_object_hpcrs),new_object);	
 		{
-			TCM_PCR_COMPOSITE * pcrComp=new_object->object_struct;
+			TCM_PCR_COMPOSITE * pcrComp=&((struct tsmd_object_hpcrs *)new_object->object_struct)->pcrComposite;
 			pcrComp->select.sizeOfSelect=TCM_NUM_PCR/CHAR_BIT;
+			
 		}
 		break;
 	default:
@@ -819,7 +820,7 @@ int proc_tsmd_SelectPcrIndex(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	TSMD_OBJECT * pcrs_object;
         if(ret>0){
 		pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);			
-		TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
+		TCM_PCR_COMPOSITE * pcrComp=&((struct tsmd_object_hpcrs *)new_object->object_struct)->pcrComposite;
 		bitmap_set(pcrComp->select.pcrSelect,1);	
 
               //  hPcrComposite=Ischarinset(tspi_in.ulPcrIndex,tspi_in.hPcrComposite);

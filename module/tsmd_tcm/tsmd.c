@@ -255,7 +255,7 @@ TSMD_OBJECT * Build_TsmdObject(UINT32 hContext, TSM_FLAG objectType,TSM_FLAG ini
 	case TSM_OBJECT_TYPE_PCRS:
 		new_object->object_struct=Dalloc0(sizeof(struct tsmd_object_hpcrs),new_object);	
 		{
-			TCM_PCR_COMPOSITE * pcrComp=new_object->object_struct;
+			TCM_PCR_COMPOSITE * pcrComp=&((struct tsmd_object_hpcrs *)new_object->object_struct)->pcrComposite;
 			pcrComp->select.sizeOfSelect=TCM_NUM_PCR/CHAR_BIT;
 		}
 		break;
@@ -652,10 +652,13 @@ int proc_tsmd_PcrExtend(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
         {
                 return -EINVAL;
         }
-
+	// convert tspi input blob to tspi in struct 
+	
 	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
 	if(ret<0)
 		return ret;
+
+ 	// compute
 
 	vtcm_ex_sm3(msghash,1,tspi_in.pbPcrData,tspi_in.ulPcrDataLength);
 
@@ -799,32 +802,17 @@ int proc_tsmd_SelectPcrIndex(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
         if(ret<0)
                 return ret;
 
-       /*
-        struct tcm_in_selectpcrindex tcm_in;
-        struct tcm_out_selectpcrindex tcm_out;
-    
-
-        tcm_in.tag=htons(TCM_TAG_RQU_COMMAND);
-        tcm_in.ordinal=SUBTYPE_SELECTPCRINDEX_IN;
-        tcm_in.pcrComposite=tspi_in.hPcrComposite;     
-        tcm_in.pcrIndex=tspi_in.ulPcrIndex;
-        tcm_in.direction=tspi_in.direction;
-        */
-        
        // UINT32 tsmd_handle;
 	TSMD_OBJECT * pcrs_object;
         if(ret>0){
 		pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);			
-		TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
-		bitmap_set(pcrComp->select.pcrSelect,1);	
+		TCM_PCR_COMPOSITE * pcrComp=&((struct tsmd_object_hpcrs *)pcrs_object->object_struct)->pcrComposite;
+		bitmap_set(pcrComp->select.pcrSelect,tspi_in.ulPcrIndex);	
 
               //  hPcrComposite=Ischarinset(tspi_in.ulPcrIndex,tspi_in.hPcrComposite);
                 tspi_out.returncode=0;
         }else
                 tspi_out.returncode=TSM_E_CONNECTION_FAILED;
-
-
-        //tspi_out.paramSize=sizeof(tspi_out);
 
 
         ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
@@ -834,6 +822,7 @@ int proc_tsmd_SelectPcrIndex(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 int proc_tsmd_PcrReset(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
 { 
 	int ret; 
+	int i;
 	RECORD(TSPI_IN, PCRRESET) tspi_in;	 
 	RECORD(TSPI_OUT, PCRRESET) tspi_out; 
         void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,PCRRESET)); 
@@ -859,36 +848,31 @@ int proc_tsmd_PcrReset(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	tcm_in.ordinal=SUBTYPE_PCRRESET_IN; 
         
         TSMD_OBJECT * pcrs_object;
+        struct tsmd_object_hpcrs * pcrs_composite;
         pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
-	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
-        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
-        //*pcr_select=pcrComp->select;
-        
-	TCM_PCR_COMPOSITE * pcrComp=Talloc0(sizeof(TCM_PCR_COMPOSITE));
-        *pcrComp=*(TCM_PCR_COMPOSITE *)(pcrs_object->object_struct);
-        //TCM_PCR_SELECTION * pcr_select=pcrComp->select.pcrSelect;
-        //tcm_in.pcrSelection=pcrComp->select.pcrSelect; 
-        //tcm_in.pcrSelection=*pcr_select;
-        
-        //&tcm_in.pcrSelection==Talloc0(sizeof(TCM_PCR_SELECTION));
-        //Memcpy(&tcm_in.pcrSelection,pcr_select,sizeof(TCM_PCR_SELECTION));
-        Memcpy(&tcm_in.pcrSelection,&pcrComp->select,sizeof(TCM_PCR_SELECTION));
 	
-        //ret=proc_tcm_General(&tcm_in,&tcm_out,vtcm_caller); 
+	if(pcrs_object==NULL)
+		return -EINVAL;
+	TCM_PCR_COMPOSITE * pcrComp=&((struct tsmd_object_hpcrs *)pcrs_object->object_struct)->pcrComposite;
+	//pcrs_composite = (struct tsmd_object_hpcrs *)pcrs_object->object_struct;
+
+	
+	tspi_out.returncode=0; 
+	for(i=0;i<(pcrComp->select.sizeOfSelect)*8;i++)
+	{
+		if(bitmap_get(pcrComp->select.pcrSelect,i))
+		{
+			ret=TCM_PcrReset(i,NULL);
+			if(ret!=0)
+			{
+				tspi_out.returncode=TSM_E_CONNECTION_FAILED;
+				break;
+			} 
+				
+		}
+		
+	}
 	 
-	if(ret>0) 
-		tspi_out.returncode=0; 
-	else 
-		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
-	 
-	/*
-        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
-	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
-	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
-	if(tspi_out.rgbPcrValue==NULL) 
-		return -ENOMEM; 
-	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
-        */	
         ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
 	return ret; 
 }

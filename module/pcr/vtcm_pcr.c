@@ -295,10 +295,10 @@ int vtcm_PCR_Reset(struct vtcm_pcr_scene *pcr_scene,
     {
         int pcr_size = pcr_scene->pcr_size;
         BYTE *pcr = pcr_scene->pcr + pcrIndex * pcr_size;
-        if (TOSPresent) 
-            memset(pcr, 0, pcr_size);
-        else 
-            memset(pcr, 0xff, pcr_size);
+        //if (TOSPresent) 
+        Memset(pcr, 0, pcr_size);
+      //  else 
+      //      Memset(pcr, 0xff, pcr_size);
     }
     return ret;
 }
