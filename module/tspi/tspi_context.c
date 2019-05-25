@@ -789,6 +789,7 @@ UINT32 Tspi_Context_LoadKeyByUUID(TSM_HCONTEXT hContext, TSM_FLAG persistentStor
         tspi_in.paramSize=sizeof(tspi_in);
         tspi_in.hContext=hContext;
 	tspi_in.persistentStorageType=persistentStorageType;
+	Memcpy(&tspi_in.uuidData,&uuidData,sizeof(uuidData));
 	//tspi_in.uuidData=uuidData;
 
 	void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,LOADKEYBYUUID));

@@ -105,7 +105,7 @@ typedef struct tspi_in_LoadKeyByUUID{
         int paramSize;
         int hContext;
         int persistentStorageType;
-        int uuidData;
+        TSM_UUID uuidData;
 }__attribute__((packed)) RECORD(TSPI_IN,LOADKEYBYUUID);
 
 typedef struct tspi_in_AssignToObject{

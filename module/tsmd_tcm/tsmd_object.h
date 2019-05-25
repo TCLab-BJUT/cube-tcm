@@ -1,5 +1,14 @@
 #ifndef TSMD_OBJECT_H
 #define TSMD_OBJECT_H
+typedef struct tsmd_object_struct
+{
+	TSM_HANDLE handle;
+	TSM_HCONTEXT hContext;
+	TSM_FLAG   object_type;
+	TSM_FLAG   object_flag;
+	void * object_struct;
+}__attribute__((packed)) TSMD_OBJECT;
+
 enum tsmd_key_object_state
 {
 	TSMD_KEY_STATE_NULL,
@@ -15,6 +24,7 @@ struct tsmd_object_tcm
 	UINT32 tcm_state;
 	UINT32 tcm_flags;
 	TSM_HTCM tcmhandle;
+	TSM_HKEY hSmk;
 	TSM_HPOLICY policy;
 	
 }__attribute__((packed));

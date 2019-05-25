@@ -42,7 +42,7 @@
 	"record":
 	{
 		"type":"TSPI_IN",
-		"elem_no":9,
+		"elem_no":14,
 		"elemlist":
 		[
             		"GETTCMOBJECT=0x01",
@@ -71,7 +71,7 @@
 	"record":
 	{
 		"type":"TSPI_OUT",
-		"elem_no":9,
+		"elem_no":14,
 		"elemlist":
 		[
             		"GETTCMOBJECT=0x01",
@@ -575,7 +575,7 @@
                                 {"name":"paramSize","type":"INT"},
                                 {"name":"hContext","type":"INT"},
                                 {"name":"persistentStorageType","type":"INT"},
-				{"name":"uuidData","type":"INT"}
+				{"name":"uuidData","type":"SUBSTRUCT","ref_name":"_tdTSM_UUID"}
                          ]
                 }
         }

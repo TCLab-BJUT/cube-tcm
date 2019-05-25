@@ -55,6 +55,11 @@ extern TSM_UUID TSM_UUID_SMK;
                                               // using SM3
 #define TSS_SECRET_MODE_POPUP    (0x00002000) // TSM SP will ask for a secret
 
+#define TSS_PS_TYPE_USER   (1) // Key is registered persistantly in the user
+                               // storage database.
+#define TSS_PS_TYPE_SYSTEM (2) // Key is registered persistantly in the system
+                               // storage database.
+
 #include "tsm_typedef.h"
 #include "tsm_error.h"
 #include "tsm_structs.h"
@@ -119,6 +124,14 @@ TSM_RESULT Tspi_Context_LoadKeyByUUID
     TSM_UUID            uuidData,                      // in
     TSM_HKEY*           phKey                          // out
 );
+
+TSM_RESULT Tspi_GetPolicyObject
+(
+    TSM_HOBJECT         hObject,                       // in
+    TSM_FLAG            policyType,                    // in
+    TSM_HPOLICY*        phPolicy                       // out
+);
+
 
 /*
 // Class-independent ASN.1 conversion functions
@@ -190,13 +203,6 @@ TSPICALL Tspi_ChangeAuthAsym
     TSM_HOBJECT         hParentObject,                 // in
     TSM_HKEY            hIdentKey,                     // in
     TSM_HPOLICY         hNewPolicy                     // in
-);
-
-TSPICALL Tspi_GetPolicyObject
-(
-    TSM_HOBJECT         hObject,                       // in
-    TSM_FLAG            policyType,                    // in
-    TSM_HPOLICY*        phPolicy                       // out
 );
 
 

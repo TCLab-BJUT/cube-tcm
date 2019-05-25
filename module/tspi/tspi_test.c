@@ -80,64 +80,13 @@ int main(int argc,char **argv)
     	printf("%2.2x ",RandomData[i]);
     printf("\n");
    
-    ret=Tspi_TCM_PcrRead(hTCM,0,&PcrLength,&PcrValue);
-    if(ret!=TSM_SUCCESS)
-    {
-	printf("Tspi_TCM_PcrRead Error!\n");
-	return ret;
-    }
-    printf("PcrRead start :");
-    for(i=0;i<32;i++)
-    	printf("%2.2x ",PcrValue[i]);
-    printf("\n");
-
-    char * ExtendValue="AAAAAAAAAAAAAAAA";
-
-    ret=Tspi_TCM_PcrExtend(hTCM,0,Strlen(ExtendValue),ExtendValue,NULL,&PcrLength,&PcrValue);
-    if(ret!=TSM_SUCCESS)
-    {
-	printf("Tspi_TCM_PcrExtend Error!\n");
-	return ret;
-    }
-    printf("PcrExtend start :");
-    for(i=0;i<32;i++)
-    	printf("%2.2x ",PcrValue[i]);
-    printf("\n");
- 
-    ret=Tspi_Context_CreateObject(hContext,TSM_OBJECT_TYPE_PCRS,0,&hPcrComposite);
-    if(ret!=TSM_SUCCESS)
-    {
-	printf("Tspi_TCM_Context_CreateObject Error!\n");
-	return ret;
-    }
-    printf("start createObject_PCRS for coming reset\n");
-
-    ret=Tspi_PcrComposite_SelectPcrIndex(hPcrComposite,1,0);
-    if(ret!=TSM_SUCCESS)
-    {
-	printf("Tspi_TCM_SelectPcrIndex Error!\n");
-	return ret;
-    }
-    printf("start selectPcrIndex for coming reset\n");
-
-    ret=Tspi_TCM_PcrReset(hTCM,hPcrComposite);
-    if(ret!=TSM_SUCCESS)
-    {
-	printf("Tspi_TCM_PcrReset Error!\n");
-	return ret;
-    }
-    printf("PcrReset success !\n");
-    return ret;
-
-
-    ret=Tspi_Context_LoadKeyByUUID(hContext,0x40000000,TSM_UUID_SMK,&hSMK);
+    ret=Tspi_Context_LoadKeyByUUID(hContext,TSS_PS_TYPE_SYSTEM,TSM_UUID_SMK,&hSMK);
     if(ret!=TSM_SUCCESS)
     {     
       printf("Tspi_Context_LoadKeyByUUID Error!\n");
         return ret;
     }
     printf("start Load SMK !\n");
-    return ret;
 
     ret=Tspi_GetPolicyObject(hSMK,0,&hSmkPolicy);
     if(ret!=TSM_SUCCESS)
@@ -145,10 +94,10 @@ int main(int argc,char **argv)
         printf("Tspi_Context_LoadKeyByUUID Error!\n");
         return ret;
     }
-    printf("start Load SMK !\n");
+    printf("start GetPolicyObject !\n");
     return ret;
 
-    ret=Tspi_Policy_SetSecret(hSmkPolicy,TSM_SECRET_MODE_NONE,0,NULL);
+    ret=Tspi_Policy_SetSecret(hSmkPolicy,TSM_SECRET_MODE_NONE,0,"sss");
     if(ret!=TSM_SUCCESS)
     {
 	printf("Tspi_Policy_SetSecret Error!\n");
@@ -172,7 +121,7 @@ int main(int argc,char **argv)
     }
     printf("start createObject_POLICY for coming createKey\n");
 
-    ret=Tspi_Policy_SetSecret(hPolicy,TSM_SECRET_MODE_NONE,0,NULL);
+    ret=Tspi_Policy_SetSecret(hPolicy,TSM_SECRET_MODE_NONE,0,"kkk");
     if(ret!=TSM_SUCCESS)
     {
 	printf("Tspi_Policy_SetSecret Error!\n");
@@ -195,6 +144,8 @@ int main(int argc,char **argv)
 	return ret;
     }
     printf("start createKey\n");
+
+    return 0;	
 }
 
 

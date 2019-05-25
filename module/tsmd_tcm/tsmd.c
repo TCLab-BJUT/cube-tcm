@@ -42,6 +42,7 @@
 
 BYTE Buf[DIGEST_SIZE*32];
 BYTE Output[DIGEST_SIZE*32];
+TSM_UUID TSM_UUID_SMK = {0,0,0,0,0,{0,0,0,0,0,1}}; 
 
 extern Record_List sessions_list;
 /*
@@ -100,6 +101,7 @@ typedef struct tsmd_context_struct
 	UINT32 handle;
 	int shmid;
 	enum tsmd_context_state state;
+	TSM_HTCM tcmhandle;
 		
 	int tsmd_API;
 	int curr_step;
@@ -110,14 +112,6 @@ typedef struct tsmd_context_struct
 	CHANNEL * tsmd_API_channel;
 }__attribute__((packed)) TSMD_CONTEXT;
 
-typedef struct tsmd_object_struct
-{
-	TSM_HANDLE handle;
-	TSM_HCONTEXT hContext;
-	TSM_FLAG   object_type;
-	TSM_FLAG   object_flag;
-	void * object_struct;
-}__attribute__((packed)) TSMD_OBJECT;
 
 struct tsmd_server_struct
 {
@@ -127,6 +121,22 @@ struct tsmd_server_struct
 }__attribute__((packed));
 
 static struct tsmd_server_struct server_context;
+
+int _Comp_TSM_UUID(TSM_UUID * src,TSM_UUID * dest)
+// compare two TSM_UUID, if totally equal, return 0
+// if only rgbNode are equal return 1
+// if rgbNode is not equal return 2 
+{
+	if(src==NULL)
+		return -EINVAL;
+	if(dest==NULL)
+		return -EINVAL;
+	if(Memcmp(src->rgbNode,dest->rgbNode,sizeof(src->rgbNode))!=0)
+		return 1;
+	if(Memcmp(src,dest,sizeof(TSM_UUID)-sizeof(src->rgbNode))!=0)
+		return 2;
+	return 0;
+} 
 
 TSMD_CONTEXT * Find_TsmdContext(UINT32 tsmd_handle)
 {
@@ -274,6 +284,7 @@ TSMD_OBJECT * Build_TsmdObject(UINT32 hContext, TSM_FLAG objectType,TSM_FLAG ini
   List_add_tail(&record->list,&entitys_list.list);
   return new_object;	
 }
+
 
 
 
@@ -539,9 +550,12 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	int ret;
 	RECORD(TSPI_IN, GETTCMOBJECT) tspi_in;	
 	RECORD(TSPI_OUT, GETTCMOBJECT) tspi_out;
+	TSMD_CONTEXT * tsm_context;
 	TSMD_OBJECT * tcm_object;
 	TSMD_OBJECT * policy_object;
+	TSMD_OBJECT * smk_object;
 	struct tsmd_object_tcm * tcm_struct;
+	struct tsmd_object_key * smk_struct;
         void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,GETTCMOBJECT));
         if(tspi_in_template == NULL)
         {
@@ -556,7 +570,12 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template);
 	if(ret<0)
 		return ret;
-
+	tsm_context=Find_TsmdContext(tspi_in.hContext);
+	if(tsm_context==NULL)
+	{
+		tspi_out.returncode=TSM_E_INVALID_HANDLE;
+		goto gettcmobject_out;
+	}
 
         BYTE * RandomTest;
         BYTE RandomTestLen;
@@ -564,8 +583,26 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	
 	if(ret==0)
 	{
+		// build Tcm Object
 		tcm_object=Build_TsmdObject(tspi_in.hContext,TSM_OBJECT_TYPE_TCM,0);
 		if(tcm_object==NULL)
+			tspi_out.returncode=TSM_E_INVALID_HANDLE;
+		else
+		{
+			tsm_context->tcmhandle=tcm_object->handle;
+			policy_object=Build_TsmdObject(tspi_in.hContext,TSM_OBJECT_TYPE_POLICY,0);
+			if(policy_object==NULL)
+				tspi_out.returncode=TSM_E_INVALID_HANDLE;
+			else
+			{
+				tcm_struct=tcm_object->object_struct;
+				tcm_struct->policy=policy_object->handle;
+			//	tspi_out.returncode=0;
+			}
+		}
+		// build Tsm's SMK Object
+		smk_object=Build_TsmdObject(tspi_in.hContext,TSM_OBJECT_TYPE_KEY,0);
+		if(smk_object==NULL)
 			tspi_out.returncode=TSM_E_INVALID_HANDLE;
 		else
 		{
@@ -574,9 +611,10 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 				tspi_out.returncode=TSM_E_INVALID_HANDLE;
 			else
 			{
-				tcm_struct=tcm_object->object_struct;
-				tcm_struct->policy=policy_object->handle;
-				tspi_out.hTCM=tcm_object->handle;
+				tcm_struct->hSmk=smk_object->handle;
+				smk_struct=smk_object->object_struct;
+				smk_struct->policy=policy_object->handle;
+				smk_struct->keyhandle=0x40000000;   // SMK's tcm handle
 				tspi_out.returncode=0;
 			}
 		}
@@ -585,7 +623,7 @@ int proc_tsmd_GetTcmObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	else
 		tspi_out.returncode=TSM_E_CONNECTION_FAILED;
 
-	
+gettcmobject_out:
 	tspi_out.paramSize=sizeof(tspi_out);
 	ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template);
 	return ret;
@@ -957,25 +995,26 @@ int proc_tsmd_GetPolicyObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	if(ret<0) 
 		return ret; 
 //=================================================================        
-      /*  TSMD_OBJECT * pcrs_object;
-        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
-	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
-        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
-        //*pcr_select=pcrComp->select;
-       */ 
-	if(ret>0) 
-		tspi_out.returncode=0; 
-	else 
-		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+        TSMD_OBJECT * host_object;
+        host_object=Find_TsmdObject(tspi_in.hObject);
+	switch(host_object->object_type)
+	{
+		case TSM_OBJECT_TYPE_KEY:
+		{
+			struct tsmd_object_key * key_object = host_object->object_struct;
+			tspi_out.returncode=0;
+			tspi_out.paramSize=sizeof(tspi_out);
+			tspi_out.phPolicy=key_object->policy;
+			break;	
+		}
+		default:
+		{
+			tspi_out.returncode=TSM_E_INVALID_OBJECT_TYPE;
+			tspi_out.paramSize=sizeof(tspi_out);
+			tspi_out.phPolicy=0;
+		}
+	}
 	 
-	/*
-        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
-	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
-	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
-	if(tspi_out.rgbPcrValue==NULL) 
-		return -ENOMEM; 
-	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
-        */	
         ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
 	return ret; 
 }
@@ -983,6 +1022,7 @@ int proc_tsmd_GetPolicyObject(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 int proc_tsmd_LoadKeyByUUID(void * sub_proc,BYTE * in_buf,BYTE * out_buf) 
 { 
 	int ret; 
+	TSMD_CONTEXT * tsm_context;
 	RECORD(TSPI_IN, LOADKEYBYUUID) tspi_in;	 
 	RECORD(TSPI_OUT, LOADKEYBYUUID) tspi_out; 
         void * tspi_in_template = memdb_get_template(TYPE_PAIR(TSPI_IN,LOADKEYBYUUID)); 
@@ -1000,26 +1040,42 @@ int proc_tsmd_LoadKeyByUUID(void * sub_proc,BYTE * in_buf,BYTE * out_buf)
 	ret=blob_2_struct(in_buf,&tspi_in,tspi_in_template); 
 	if(ret<0) 
 		return ret; 
+	
+	tsm_context=Find_TsmdContext(tspi_in.hContext);
+	if(tsm_context==NULL)
+	{
+		tspi_out.returncode=TSM_E_INVALID_HANDLE;
+		goto loadkeybyuuid_out;
+	}
 //=================================================================        
-      /*  TSMD_OBJECT * pcrs_object;
-        pcrs_object=Find_TsmdObject(tspi_in.hPcrComposite);
-	//TCM_PCR_COMPOSITE * pcrComp=pcrs_object->object_struct;
-        //TCM_PCR_SELECTION * pcr_select=Talloc0(sizeof(TCM_PCR_SELECTION));
-        //*pcr_select=pcrComp->select;
-       */ 
-	if(ret>0) 
-		tspi_out.returncode=0; 
-	else 
-		tspi_out.returncode=TSM_E_CONNECTION_FAILED; 
+	
+	if(_Comp_TSM_UUID(&tspi_in.uuidData,&TSM_UUID_SMK))
+	{
+		tspi_out.returncode=TSM_E_KEY_NOT_LOADED;
+		goto loadkeybyuuid_out;	
+	}
+	
+	TSMD_OBJECT * tcm_object=Find_TsmdObject(tsm_context->tcmhandle);
+	if(tcm_object==NULL)
+	{
+		tspi_out.returncode=TSM_E_INVALID_HANDLE;
+		goto loadkeybyuuid_out;
+	}		
+	struct tsmd_object_tcm * tcm_struct=tcm_object->object_struct;
+
+	TSMD_OBJECT * key_object=Find_TsmdObject(tcm_struct->hSmk);
+	if(key_object==NULL)
+	{
+		tspi_out.returncode=TSM_E_INVALID_HANDLE;
+		goto loadkeybyuuid_out;
+	}		
+	struct tsmd_object_key * key_struct=key_object->object_struct;
+	
+	tspi_out.returncode=0; 
+	tspi_out.phKey=tcm_struct->hSmk;
 	 
-	/*
-        tspi_out.paramSize=sizeof(tspi_out)-sizeof(BYTE *)+tspi_out.ulPcrValueLength; 
-	tspi_out.ulPcrValueLength=DIGEST_SIZE; 
-	tspi_out.rgbPcrValue=Talloc0(tspi_out.ulPcrValueLength); 
-	if(tspi_out.rgbPcrValue==NULL) 
-		return -ENOMEM; 
-	//Memcpy(tspi_out.rgbPcrValue,tcm_out.outDigest,tspi_out.ulPcrValueLength); 
-        */	
+loadkeybyuuid_out:
+	tspi_out.paramSize=sizeof(tspi_out);
         ret=struct_2_blob(&tspi_out,out_buf,tspi_out_template); 
 	return ret; 
 }

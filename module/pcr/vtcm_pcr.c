@@ -224,6 +224,7 @@ int proc_vtcm_pcrread(void * sub_proc,void * recv_msg)
     int vtcm_no; 
     int returnCode;
 
+    printf("vtcm_PCR_Pcrread : Start\n");
     vtcm_no = vtcm_pcr_setvtcmscene(sub_proc,recv_msg);
     if(vtcm_no<0)
     {
@@ -367,7 +368,7 @@ int proc_vtcm_pcrreset(void * sub_proc,void * recv_msg)
             {
                 if (vtcm_input->pcrSelection.pcrSelect[i] & j) 
                 {
-                    printf("TPM_Process_PcrReset: Resetting PCR %u\n", pcr_num);
+                    //printf("TPM_Process_PcrReset: Resetting PCR %u\n", pcr_num);
                     ret = vtcm_PCR_Reset(pcr_scene,
                                          tcm_state->tcm_stany_flags.TOSPresent,
                                          pcr_num);
@@ -378,7 +379,6 @@ int proc_vtcm_pcrreset(void * sub_proc,void * recv_msg)
 
 pcrreset_out_proc:
     //Response
-    printf("  proc_vtcm_PcrReset : Response\n");
     vtcm_output->tag = 0xC400;
     vtcm_output->returnCode = ret; 
                                                                                                                                                                  
