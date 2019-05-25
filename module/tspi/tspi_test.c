@@ -95,7 +95,6 @@ int main(int argc,char **argv)
         return ret;
     }
     printf("start GetPolicyObject !\n");
-    return ret;
 
     ret=Tspi_Policy_SetSecret(hSmkPolicy,TSM_SECRET_MODE_NONE,0,"sss");
     if(ret!=TSM_SUCCESS)
