@@ -56,33 +56,20 @@ int main(int argc,char **argv)
 
     ret= TCM_LibInit(); 
 
-//   ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
+    BYTE * RandomData;
+    int RandomDataLength;
 
-    Memset(inDigest,'A',DIGEST_SIZE);
+    TCM_KEY * tcmkey;
 
-    ret=TCM_Extend(0,inDigest,outDigest);
-
-    if(ret==0)
-    	ret=TCM_PcrRead(0,outDigest);
-
-    TCM_PUBKEY * pubek;
-    pubek=malloc(sizeof(*pubek));
-    if(pubek==NULL)
+    tcmkey=malloc(sizeof(*tcmkey));
+    if(tcmkey==NULL)
 	return -ENOMEM;
 
-    TCM_KEY sm2key;
-    TCM_PUBKEY sm2pubkey; 
+    TCM_PUBKEY * pubkey;
+    pubkey=malloc(sizeof(*pubkey));
+    if(pubkey==NULL)
+	return -ENOMEM;
 
-    ret=TCM_ReadPubek(pubek);
-
- 
-    ret=TCM_ExLoadTcmKey(&sm2key,"sm2.key");
-
-    ret=TCM_ExGetPubkeyFromTcmkey(&sm2pubkey,&sm2key);
-
-    Memset(Buf,DIGEST_SIZE*16,'A');
-
-    ret=TCM_ExSM2Encrypt(&sm2pubkey,CryptBuf,&CryptBuflen,Buf,56);
 
     ret=TCM_APCreate(TCM_ET_SMK, NULL, "sss", &authHandle);
     printf("authHandle is : %x\n",authHandle);
@@ -91,23 +78,26 @@ int main(int argc,char **argv)
 	printf("TCM_APCreate failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_LoadKey(0x40000000,authHandle,"sm2.key",&keyHandle);
+
+    ret=TCM_CreateWrapKey(tcmkey,0x40000000,authHandle,
+	TCM_SM2KEY_STORAGE,TCM_ISVOLATILE|TCM_PCRIGNOREDONREAD, "kkk");
     if(ret<0)
     {
-	printf("TCM_LoadKey failed!\n");
+	printf("TCM_CreateWrapKey failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sm2", &keyAuthHandle);
-    if(ret<0)
-    {
-	printf("TCM_APCreate %dfailed!\n",TCM_ET_KEYHANDLE);
-	return -EINVAL;	
-    }	
-    printf("keyAuthHandle is : %x\n",keyAuthHandle);
     	
-    ret=TCM_SM2Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
+    ret = TCM_ExGetPubkeyFromTcmkey(pubkey,tcmkey);
+    if(ret<0)
+    {
+	printf("TCM_ExGetPubkeyFromTcmkey failed!\n");
+	return -EINVAL;	
+    }	
+
+    TCM_ExSaveTcmKey(tcmkey,"sm2store.key");
+	
+    TCM_ExSaveTcmPubKey(pubkey,"sm2storepub.key");
 
     return ret;	
-
 }
 

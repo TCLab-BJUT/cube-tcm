@@ -840,7 +840,7 @@ UINT32 TCM_CreateWrapKey(TCM_KEY * keydata,UINT32 parentHandle,UINT32 authHandle
   return 0;
 }
 
-UINT32 TCM_LoadKey(UINT32 authHandle,char * keyfile,UINT32 *KeyHandle)
+UINT32 TCM_LoadKey(UINT32 parentHandle,UINT32 authHandle,TCM_KEY * tcmkey,UINT32 *KeyHandle)
 {
   int outlen;
   int i=1;
@@ -864,31 +864,17 @@ UINT32 TCM_LoadKey(UINT32 authHandle,char * keyfile,UINT32 *KeyHandle)
     return -ENOMEM;
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_LOADKEY_IN;
-  vtcm_input->parentHandle=0x40;
+  vtcm_input->parentHandle=parentHandle;
   vtcm_input->authHandle=authHandle;
-  int fd;
-  int datasize;
-  fd=open(keyfile,O_RDONLY);
-  if(fd<0)
-    return -EIO;
-  ret=read(fd,Buf,DIGEST_SIZE*32+1);
-  if(ret<0)
-    return -EIO;
-  if(ret>DIGEST_SIZE*32)
-  {
-    printf("key file too large!\n");
-    return -EINVAL;
-  }
-  datasize=ret;
   vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_KEY);
   if(vtcm_template==NULL)
   {
     return -EINVAL;
   }
-  ret=blob_2_struct(Buf,&vtcm_input->inKey,vtcm_template);
-  if((ret<0)||(ret>datasize))
+  ret=struct_clone(tcmkey,&vtcm_input->inKey,vtcm_template);
+  if(ret<0)
   {
-    printf("read key file error!\n");
+    printf("clone tcm key error!\n");
     return -EINVAL;
   }
   authdata=Find_AuthSession(0x04,vtcm_input->authHandle);

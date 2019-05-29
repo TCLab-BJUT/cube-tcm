@@ -89,7 +89,7 @@ UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen )
   return 0;
 }
 
-UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,BYTE * in ,int in_len)
+UINT32 TCM_ExSM2Encrypt(TCM_PUBKEY * pubkey,BYTE * out, int * out_len,BYTE * in ,int in_len)
 {
   int i=1;
   int ret=0;
@@ -102,7 +102,7 @@ UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,B
   // read data
 
   *out_len=in_len+65+32+4;
-  ret = GM_SM2Encrypt(out,out_len,in,in_len,pubkey,pubkey_len);
+  ret = GM_SM2Encrypt(out,out_len,in,in_len,pubkey->pubKey.key,pubkey->pubKey.keyLength);
   if(ret!=0){
       printf("SM2Encrypt is fail\n");
       return -EINVAL;

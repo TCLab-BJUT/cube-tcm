@@ -1976,9 +1976,9 @@
 				{"name":"paramSize","type":"TPM32"},
 				{"name":"ordinal","type":"ENUM","ref_name":"tcm_ordinal_value"},
 				{"name":"parentHandle","type":"TPM32"},
-                {"name":"inKey","type":"SUBSTRUCT","ref_name":"tcm_key"},
-                {"name":"authHandle","type":"TPM32"},
-                {"name":"parentAuth","type":"BINDATA","size":"32"}
+                		{"name":"inKey","type":"SUBSTRUCT","ref_name":"tcm_key"},
+                		{"name":"authHandle","type":"TPM32"},
+                		{"name":"parentAuth","type":"BINDATA","size":"32"}
 			]
 		}
         "flag_no":2,

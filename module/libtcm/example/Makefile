@@ -7,7 +7,7 @@ LIBNAME=-L../../../locallib/bin -ltcm
 DEPENDLIB= -L$(CUBELIBPATH)/lib -L$(CUBESYSPATH)/plugin -lsys_func -lchannel -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lbasefunc -lstring -lalloc -lsm2So
 LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg 
 
-main: libtcm_test cainit  casign pikreq pikactive pikverify
+main: cainit  casign pikreq pikactive pikverify create_key sm2attr
 libtcm_test:  libtcm_test.c
 	$(CC) $(FLAGS) libtcm_test libtcm_test.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB)
 cainit:  cainit.c
@@ -20,6 +20,10 @@ pikactive:  pikactive.c
 	$(CC) $(FLAGS) pikactive pikactive.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
 pikverify:  pikverify.c
 	$(CC) $(FLAGS) pikverify pikverify.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
+create_key:  create_key.c
+	$(CC) $(FLAGS) create_key create_key.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
+sm2attr:  sm2attr.c
+	$(CC) $(FLAGS) sm2attr sm2attr.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
 
 clean:
-	rm -f *~ *.o *.a cainit casign pikreq pikactive pikverify libtcm_test 
+	rm -f *~ *.o *.a cainit casign pikreq pikactive pikverify libtcm_test  create_key sm2attr
