@@ -110,6 +110,22 @@ UINT32 TCM_ExSM2Encrypt(TCM_PUBKEY * pubkey,BYTE * out, int * out_len,BYTE * in 
   return 0;
 }
 
+UINT32 TCM_ExSM2Verify(TCM_PUBKEY * pubkey,BYTE * sign, int sign_len,BYTE * in ,int in_len)
+{
+  int i=1;
+  int ret=0;
+  int fd;
+  int datasize;
+
+  BYTE UserID[DIGEST_SIZE];
+  unsigned long lenUID = DIGEST_SIZE;
+  memset(UserID, 'A', 32);
+
+  ret=GM_SM2VerifySig(sign,sign_len,in,in_len,
+		UserID,lenUID,pubkey->pubKey.key, pubkey->pubKey.keyLength);
+  return ret;
+}
+
 int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey)
 {
 	int ret=0;

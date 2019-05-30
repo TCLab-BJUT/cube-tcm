@@ -977,6 +977,73 @@ UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   return 0;
 }
 
+UINT32 TCM_SM2Sign(UINT32 keyHandle,UINT32 authHandle,BYTE * sign, int * sign_len,BYTE * in, int in_len)
+{
+  unsigned char *encData=NULL;
+  int i=1;
+  int outlen;
+  int ret=0;
+  void * vtcm_template;
+  unsigned char hashout[TCM_HASH_SIZE];
+  unsigned char hmacout[TCM_HASH_SIZE];
+  BYTE signeddata[TCM_HASH_SIZE];	
+  struct tcm_in_Sign *vtcm_input;
+  struct tcm_out_Sign *vtcm_output;
+  TCM_SESSION_DATA * authdata;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_SIGN_IN;
+  vtcm_input->keyHandle=keyHandle;
+  vtcm_input->authHandle=authHandle;
+  int datasize;
+  authdata=Find_AuthSession(0x01,vtcm_input->authHandle);
+  if(authdata==NULL)
+  {
+	printf("can't find sign session!\n");
+	return -EINVAL;
+  }
+  if(in_len>DIGEST_SIZE*24)
+  {
+    printf("sign data too large!\n");
+    return -EINVAL;     
+  }
+  vtcm_input->areaToSignSize =in_len ; 
+  vtcm_input->areaToSign=Talloc0(vtcm_input->areaToSignSize);
+  if(vtcm_input->areaToSign==NULL)
+    return -EINVAL;
+  Memcpy(vtcm_input->areaToSign,in,vtcm_input->areaToSignSize);
+  //
+  //compute DecryptAuthVerfication
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SIGN_IN,authdata,vtcm_input->privAuth);
+ 
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+  // Check authdata
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_SIGN_OUT,authdata,CheckData);
+  if(ret<0)
+  {
+    	return -EINVAL;
+  }
+  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+  {
+    	printf("SM2Sign check output failed!\n");
+    	return -EINVAL;
+  }
+
+  *sign_len=vtcm_output->sigSize;
+  Memcpy(sign,vtcm_output->sig,vtcm_output->sigSize);
+  return 0;	
+  	
+}
 int TCM_SM3Start()
 {
   int outlen;

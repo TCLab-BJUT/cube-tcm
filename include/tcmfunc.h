@@ -68,6 +68,8 @@ UINT32 TCM_LoadKey(UINT32 parentHandle,UINT32 authHandle,TCM_KEY * tcmkey,UINT32
 
 UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int * out_len,BYTE * in, int in_len);
 
+UINT32 TCM_SM2Sign(UINT32 keyHandle,UINT32 authHandle,BYTE * sign, int * sign_len,BYTE * in, int in_len);
+
 int TCM_SM3Start();
 
 int TCM_SM3Update(BYTE * data, int data_len);
@@ -96,6 +98,9 @@ UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerha
 	char * pwdo,char * pwdk);	
 
 UINT32 TCM_ExSM2Encrypt(TCM_PUBKEY * pubkey, BYTE * out, int * out_len,BYTE * in ,int in_len);
+
+UINT32 TCM_ExSM2Verify(TCM_PUBKEY * pubkey,BYTE * sign, int sign_len,BYTE * in ,int in_len);
+
 int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey);
 int TCM_ExCreateCAKey  ( );
 int TCM_ExSaveCAPriKey (char * prikeyfile);

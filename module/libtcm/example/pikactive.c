@@ -110,7 +110,7 @@ int main(int argc,char **argv)
 	return ret;	
     }	
   
-    ret=TCM_LoadKey(smkHandle,pikfile,&keyHandle);
+    ret=TCM_LoadKey(0x40000000,smkHandle,pikfile,&keyHandle);
     if(ret!=0)
     {
 	printf("TCM_LoadKey failed!\n");
