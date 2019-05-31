@@ -1042,8 +1042,61 @@ UINT32 TCM_SM2Sign(UINT32 keyHandle,UINT32 authHandle,BYTE * sign, int * sign_le
   *sign_len=vtcm_output->sigSize;
   Memcpy(sign,vtcm_output->sig,vtcm_output->sigSize);
   return 0;	
-  	
 }
+
+UINT32 TCM_CertifyKey(UINT32 verifykeyHandle,UINT32 verifiedkeyHandle,
+	BYTE * externalData,
+	BYTE * cert, int * cert_len,
+	BYTE * sig, int * sig_len)
+{
+  unsigned char *encData=NULL;
+  int i=1;
+  int outlen;
+  int ret=0;
+  void * vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+  unsigned char hashout[TCM_HASH_SIZE];
+  unsigned char hmacout[TCM_HASH_SIZE];
+  BYTE signeddata[TCM_HASH_SIZE];	
+
+  struct tcm_in_Certify *vtcm_input;
+  struct tcm_out_Certify *vtcm_output;
+  TCM_SESSION_DATA * authdata;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_CERTIFYKEY_IN;
+  int offset=0;
+
+
+  vtcm_input->verifykeyHandle=verifykeyHandle;
+  vtcm_input->verifiedkeyHandle=verifiedkeyHandle;
+
+  Memcpy(vtcm_input->externalData,externalData,DIGEST_SIZE);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_CERTIFY_INFO);
+  if(vtcm_template==NULL)
+	return -EINVAL;
+  ret==struct_2_blob(&vtcm_output->certifyInfo,Buf,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
+  *cert_len=ret;
+  *sig_len=vtcm_output->sigSize;
+  Memcpy(cert,Buf,*cert_len);
+  Memcpy(sig,vtcm_output->sig,vtcm_output->sigSize);
+  return 0;	
+}
+
 int TCM_SM3Start()
 {
   int outlen;

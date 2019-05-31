@@ -97,6 +97,11 @@ UINT32 TCM_ActivateIdentity(UINT32 pikhandle,UINT32 pikauthhandle,UINT32 ownerha
 	int encdatasize,BYTE * encdata,TCM_SYMMETRIC_KEY * symm_key,
 	char * pwdo,char * pwdk);	
 
+UINT32 TCM_CertifyKey(UINT32 verifykeyHandle,UINT32 verifiedkeyHandle,
+	BYTE * externalData,
+	BYTE * cert, int * cert_len,
+	BYTE * sig, int * sig_len);
+
 UINT32 TCM_ExSM2Encrypt(TCM_PUBKEY * pubkey, BYTE * out, int * out_len,BYTE * in ,int in_len);
 
 UINT32 TCM_ExSM2Verify(TCM_PUBKEY * pubkey,BYTE * sign, int sign_len,BYTE * in ,int in_len);
