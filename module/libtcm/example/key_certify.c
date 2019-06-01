@@ -69,6 +69,7 @@ int main(int argc,char **argv)
     TCM_KEY * verifykey;
     TCM_KEY * verifiedkey;
     TCM_PUBKEY * pubkey;
+    TCM_PUBKEY * signpubkey;
     Memset(nonce,'A',DIGEST_SIZE);
 
     verifykey=malloc(sizeof(*verifykey));
@@ -164,6 +165,16 @@ int main(int argc,char **argv)
     ret=TCM_ExSM2Verify(pubkey,SignBuf,SignLen,Buf,Buflen);
     printf("TCM_ExSM2Verify verify result is %d!\n",ret);
 
+    TCM_CERTIFY_INFO certinfo;
+    ret = TCM_ExLoadTcmPubKey(pubkey, "sm2signpub.key");
+    if(ret!=0)
+    {
+	printf("ExLoadTcmPubKey error!\n");
+	return -EINVAL;	
+    }
+	
+    ret=TCM_ExCertifyKeyVerify(pubkey,&certinfo,Buf,Buflen);
+    printf("TCM_ExCertifyKeyVerify result is %d!\n",ret);
     return ret;	
 
 }

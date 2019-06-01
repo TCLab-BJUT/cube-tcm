@@ -678,3 +678,33 @@ int TCM_ExCAPubKeyVerify(BYTE * signData, int signdatalen,
     // check user Digest
 	
 }
+
+UINT32 TCM_ExCertifyKeyVerify(TCM_PUBKEY * pubkey,TCM_CERTIFY_INFO * cert,BYTE * in ,int in_len)
+{
+  int ret=0;
+  void * vtcm_template;
+  BYTE pubDigest[DIGEST_SIZE];	
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_CERTIFY_INFO);
+  if(vtcm_template==NULL)
+	return -EINVAL;
+
+  ret=blob_2_struct(in,cert,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
+  if(vtcm_template==NULL)
+        return -EINVAL;
+  ret=struct_2_blob(&pubkey->pubKey,ExBuf,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
+  vtcm_ex_sm3(pubDigest,1,ExBuf,ret);
+
+  if(Memcmp(pubDigest,&cert->pubkeyDigest,DIGEST_SIZE)==0)
+  {
+	return 0;
+  }
+ 
+  return 1;
+}

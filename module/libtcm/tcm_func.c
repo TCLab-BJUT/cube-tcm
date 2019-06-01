@@ -1087,7 +1087,7 @@ UINT32 TCM_CertifyKey(UINT32 verifykeyHandle,UINT32 verifiedkeyHandle,
   vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_CERTIFY_INFO);
   if(vtcm_template==NULL)
 	return -EINVAL;
-  ret==struct_2_blob(&vtcm_output->certifyInfo,Buf,vtcm_template);
+  ret=struct_2_blob(&vtcm_output->certifyInfo,Buf,vtcm_template);
   if(ret<0)
 	return -EINVAL;
   *cert_len=ret;

@@ -1222,8 +1222,6 @@ int proc_vtcm_CertifyKey(void* sub_proc, void* recv_msg)
     unsigned long lenUID=DIGEST_SIZE;
     Memset(UserID,'A',32);	
 
-
-
     ret=GM_SM2Sign(signedData,&pulSigLen,Buf,ret,UserID,lenUID,privkey->privKey.key,privkey->privKey.keyLength);	
     if(ret!=0)
     {
