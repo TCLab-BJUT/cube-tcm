@@ -708,3 +708,64 @@ UINT32 TCM_ExCertifyKeyVerify(TCM_PUBKEY * pubkey,TCM_CERTIFY_INFO * cert,BYTE *
  
   return 1;
 }
+
+UINT32 TCM_ExCreateQuoteInfo(TCM_QUOTE_INFO * quoteInfo,TCM_PCR_COMPOSITE * pcrComp,
+		BYTE * externalData)
+{
+   int ret;
+
+   Memset(quoteInfo,0,sizeof(*quoteInfo));
+
+   quoteInfo->tag=TCM_TAG_QUOTE_INFO;
+   Memcpy(quoteInfo->fixed,"QUOT",4);
+   if(externalData!=NULL)	
+   	Memcpy(quoteInfo->externalData,externalData,DIGEST_SIZE);
+
+   quoteInfo->info.tag=TCM_TAG_PCR_INFO;
+   quoteInfo->info.localityAtCreation=0;
+   quoteInfo->info.localityAtRelease=TCM_LOC_ONE|TCM_LOC_TWO|TCM_LOC_THREE|TCM_LOC_FOUR;
+   Memcpy(&quoteInfo->info.creationPCRSelection,&pcrComp->select,sizeof(TCM_PCR_SELECTION));
+   ret=memdb_output_blob(pcrComp,ExBuf,DTYPE_VTCM_PCR,SUBTYPE_TCM_PCR_COMPOSITE);
+   if(ret<0)
+	return ret;
+   print_bin_data(ExBuf,ret,16);
+   vtcm_ex_sm3(&quoteInfo->info.digestAtCreation,1,ExBuf,ret);
+   return 0;   	  
+}
+
+UINT32 TCM_ExInitPcrComposite(TCM_PCR_COMPOSITE * pcrComp)
+{
+	int ret;
+	ret=vtcm_Init_PcrComposite(pcrComp);
+	return ret;	
+}
+
+UINT32 TCM_ExAddPcrComposite(TCM_PCR_COMPOSITE * pcrComp,int pcrIndex, BYTE * pcrValue)
+{
+	return vtcm_Add_PCRComposite(pcrComp,pcrIndex,pcrValue);
+}
+
+UINT32 TCM_ExDupPcrComposite(TCM_PCR_COMPOSITE * pcrComp,int pcrIndex, BYTE * pcrValue)
+{
+	return vtcm_Dup_PCRComposite(pcrComp,pcrIndex,pcrValue);
+}
+
+UINT32 TCM_ExCompPcrsDigest(TCM_PCR_COMPOSITE * pcrComp,BYTE * digest)
+{
+	return vtcm_Comp_PcrsDigest(pcrComp,digest);
+}
+
+UINT32 TCM_ExCheckQuotePcr(TCM_PCR_COMPOSITE * pcrComp, TCM_QUOTE_INFO *quoteInfo)
+{
+	int ret;	
+	BYTE pcrdigest[DIGEST_SIZE];
+	ret=vtcm_Comp_PcrsDigest(pcrComp,pcrdigest);	
+	if(ret<0)
+		return ret;
+	
+   	if(Memcmp(pcrdigest,&quoteInfo->info.digestAtCreation,TCM_HASH_SIZE)==0)
+		ret=0;
+   	else
+		ret=TCM_SHA_ERROR;
+	return ret;
+}

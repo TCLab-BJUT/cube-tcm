@@ -1931,3 +1931,71 @@ int TCM_GetRandom(int bytesRequest, BYTE ** randomData,int * randomDataLength)
   return 0;
 } 
 
+
+UINT32 TCM_Quote(UINT32 pikHandle,UINT32 pikAuthHandle,
+	BYTE * externalData,TCM_PCR_COMPOSITE * pcrComp,
+	BYTE * sig, int * sig_len)
+{
+  int i=1;
+  int outlen;
+  int ret=0;
+  void * vtcm_template;
+  unsigned char nonce[TCM_HASH_SIZE];
+  BYTE signeddata[TCM_HASH_SIZE];	
+
+  struct tcm_in_Quote *vtcm_input;
+  struct tcm_out_Quote *vtcm_output;
+  TCM_SESSION_DATA * authdata;
+  vtcm_input = Talloc0(sizeof(*vtcm_input));
+  if(vtcm_input==NULL)
+    return -ENOMEM;
+  vtcm_output = Talloc0(sizeof(*vtcm_output));
+  if(vtcm_output==NULL)
+    return -ENOMEM;
+  vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
+  vtcm_input->ordinal = SUBTYPE_QUOTE_IN;
+  int offset=0;
+
+  vtcm_input->keyHandle=pikHandle;
+  vtcm_input->authHandle=pikAuthHandle;
+
+  Memcpy(vtcm_input->externalData,externalData,DIGEST_SIZE);
+
+  authdata = Find_AuthSession(TCM_ET_KEYHANDLE,vtcm_input->authHandle);
+  if(authdata==NULL)
+  {
+    printf("can't find pik session for quote!\n");
+    return -EINVAL;
+  }	
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_PCR_SELECTION);
+  if(vtcm_template==NULL)
+	return -EINVAL;
+  ret=struct_clone(&pcrComp->select,&vtcm_input->targetPCR,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
+
+  // compute authcode
+  ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_QUOTE_IN,authdata,vtcm_input->privAuth);
+
+  ret=proc_tcm_General(vtcm_input,vtcm_output);
+  if(ret<0)
+	return ret;
+  if(vtcm_output->returnCode!=0)
+	return vtcm_output->returnCode;
+
+  BYTE CheckData[TCM_HASH_SIZE];
+  ret=vtcm_Compute_AuthCode(vtcm_output,DTYPE_VTCM_OUT_AUTH1,SUBTYPE_QUOTE_OUT,authdata,CheckData);
+
+  if(ret<0)
+       return -EINVAL;
+  if(Memcmp(CheckData,vtcm_output->resAuth,DIGEST_SIZE)!=0)
+  {
+      printf("quote check output authCode failed!\n");
+      return -EINVAL;
+  }	
+
+  *sig_len=vtcm_output->sigSize;
+  Memcpy(sig,vtcm_output->sig,vtcm_output->sigSize);
+  return 0;	
+}

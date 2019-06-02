@@ -102,6 +102,11 @@ UINT32 TCM_CertifyKey(UINT32 verifykeyHandle,UINT32 verifiedkeyHandle,
 	BYTE * cert, int * cert_len,
 	BYTE * sig, int * sig_len);
 
+UINT32 TCM_Quote(UINT32 pikHandle,UINT32 pikAuthHandle,
+	BYTE * externalData,TCM_PCR_COMPOSITE * pcrComp,
+	BYTE * sig, int * sig_len);
+
+
 UINT32 TCM_ExSM2Encrypt(TCM_PUBKEY * pubkey, BYTE * out, int * out_len,BYTE * in ,int in_len);
 
 UINT32 TCM_ExSM2Verify(TCM_PUBKEY * pubkey,BYTE * sign, int sign_len,BYTE * in ,int in_len);
@@ -127,7 +132,15 @@ int TCM_ExSymmkeyDecrypt(TCM_SYMMETRIC_KEY * symmkey, BYTE * blob,int blobsize,
 	BYTE ** output, int * outputsize);
 UINT32 TCM_ExCertifyKeyVerify(TCM_PUBKEY * pubkey,TCM_CERTIFY_INFO * cert,
 	BYTE * in ,int in_len);
-
+//
+// pcr and quote func group
+UINT32 TCM_ExCreateQuoteInfo(TCM_QUOTE_INFO * quoteInfo,TCM_PCR_COMPOSITE * pcrComp,
+		BYTE * externalData);
+UINT32 TCM_ExInitPcrComposite(TCM_PCR_COMPOSITE * pcrComp);
+UINT32 TCM_ExAddPcrComposite(TCM_PCR_COMPOSITE * pcrComp,int pcrIndex, BYTE * pcrValue);
+UINT32 TCM_ExDupPcrComposite(TCM_PCR_COMPOSITE * pcrComp,int pcrIndex, BYTE * pcrValue);
+UINT32 TCM_ExCompPcrsDigest(TCM_PCR_COMPOSITE * pcrComp,BYTE * digest);
+UINT32 TCM_ExCheckQuotePcr(TCM_PCR_COMPOSITE * pcrComp, TCM_QUOTE_INFO *quoteInfo);
 
 /*
 UINT32 TCM_Init(void); 

@@ -980,6 +980,8 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
     	return -EINVAL;
     ret=struct_2_blob(&vtcm_out->pcrData,Buf,vtcm_template);	
 
+    // debug 
+    print_bin_data(Buf,ret,16);
     calculate_context_sm3(Buf,ret,&quoteinfo.info.digestAtCreation);
 
     quoteinfo.tag=TCM_TAG_QUOTE_INFO;
@@ -1016,6 +1018,9 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
 	return -EINVAL;
     ret=struct_2_blob(&quoteinfo,Buf,vtcm_template);
 
+    // debug 
+    print_bin_data(Buf,ret,16);
+
 	offset=ret;
 	BYTE * signedData=Buf+ret+1;
 	unsigned long pulSigLen=512;
@@ -1031,6 +1036,8 @@ static int proc_vtcm_Quote(void* sub_proc, void* recv_msg)
 		returnCode=-TCM_BAD_SIGNATURE;
 		goto quote_out;	
 	}
+    	// debug 
+    	print_bin_data(signedData,pulSigLen,16);
 
 	vtcm_out->sigSize=pulSigLen;
 	vtcm_out->sig=Talloc0(vtcm_out->sigSize);
