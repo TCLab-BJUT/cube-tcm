@@ -72,6 +72,13 @@ int main(int argc,char **argv)
 	return -EINVAL;
 
     // load pik
+    ret = TCM_Extend(1,nonce,inDigest);
+    if(ret!=0)
+    {
+	printf("TCM_Extend error!\n");
+	return -EINVAL;	
+    }
+    // load pik
     ret = TCM_ExLoadTcmKey(pikey, "pik.key");
     if(ret!=0)
     {
