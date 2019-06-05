@@ -170,8 +170,7 @@ static int tcmd_connect(char *socket_name,int port)
   int res;
   struct sockaddr_in * tcm_addr;
 //   res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
-//     res = sock_create_kern(AF_INET, SOCK_STREAM, 0, &tcmd_sock);
-   res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
+     res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
   if (res != 0) {
     //error("sock_create_kern() failed: %d\n", res);
     tcmd_sock = NULL;

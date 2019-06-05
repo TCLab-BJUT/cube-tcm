@@ -296,9 +296,13 @@ int proc_tcm_General(void * tcm_in, void * tcm_out)
   if(ret<0)
      return -EINVAL;
   inlen=ret;
+ 
+  print_bin_data(Buf,ret,16);
+
   ret = vtcmutils_transmit(inlen,Buf,&outlen,Buf);
   if(ret<0)
     return ret; 
+  print_bin_data(Buf,ret,16);
 
   vtcm_template=memdb_get_template(out_type,vtcm_input->ordinal);
   if(vtcm_template==NULL)
@@ -1668,9 +1672,7 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
   }
   Memcpy(Buf+offset,CApubkey,64);
 
-  print_bin_data(Buf,offset+64,16);	
   vtcm_ex_sm3(vtcm_input->pubDigest,1,Buf,offset+64); 	
-  print_bin_data(vtcm_input->pubDigest,32,16);	
 
   //  add vtcm_input's pikParams
 
