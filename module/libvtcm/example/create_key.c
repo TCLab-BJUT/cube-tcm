@@ -56,30 +56,20 @@ int main(int argc,char **argv)
 
     ret= TCM_LibInit(); 
 
-//   ret= TCM_CreateEndorsementKeyPair(Buf,&Buflen); 
+    BYTE * RandomData;
+    int RandomDataLength;
 
-    Memset(inDigest,'A',DIGEST_SIZE);
+    TCM_KEY * tcmkey;
 
-    ret=TCM_Extend(0,inDigest,outDigest);
-
-    if(ret==0)
-    	ret=TCM_PcrRead(0,outDigest);
-
-    TCM_PUBKEY * pubek;
-    pubek=malloc(sizeof(*pubek));
-    if(pubek==NULL)
+    tcmkey=malloc(sizeof(*tcmkey));
+    if(tcmkey==NULL)
 	return -ENOMEM;
 
-    ret=TCM_ReadPubek(pubek);
+    TCM_PUBKEY * pubkey;
+    pubkey=malloc(sizeof(*pubkey));
+    if(pubkey==NULL)
+	return -ENOMEM;
 
-    BYTE pubkey[DIGEST_SIZE*8];
-    int pubkey_len;    
- 
-    ret=TCM_SM2LoadPubkey("sm2.key",pubkey, &pubkey_len);
-
-    Memset(Buf,DIGEST_SIZE*16,'A');
-
-    ret=TCM_SM2Encrypt(pubkey,pubkey_len,CryptBuf,&CryptBuflen,Buf,DIGEST_SIZE*9);
 
     ret=TCM_APCreate(TCM_ET_SMK, NULL, "sss", &authHandle);
     printf("authHandle is : %x\n",authHandle);
@@ -88,23 +78,46 @@ int main(int argc,char **argv)
 	printf("TCM_APCreate failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_LoadKey(authHandle,"sm2.key",&keyHandle);
+
+    ret=TCM_CreateWrapKey(tcmkey,0x40000000,authHandle,
+	TCM_SM2KEY_STORAGE,TCM_ISVOLATILE|TCM_PCRIGNOREDONREAD, "kkk");
     if(ret<0)
     {
-	printf("TCM_LoadKey failed!\n");
+	printf("TCM_CreateWrapKey failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sm2", &keyAuthHandle);
+
+    ret = TCM_ExGetPubkeyFromTcmkey(pubkey,tcmkey);
     if(ret<0)
     {
-	printf("TCM_APCreate %dfailed!\n",12);
+	printf("TCM_ExGetPubkeyFromTcmkey failed!\n");
 	return -EINVAL;	
     }	
-    printf("keyAuthHandle is : %x\n",keyAuthHandle);
-    	
-    ret=TCM_SM2Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
+
+    TCM_ExSaveTcmKey(tcmkey,"sm2store.key");
+	
+    TCM_ExSaveTcmPubKey(pubkey,"sm2storepub.key");
+
+    ret=TCM_CreateWrapKey(tcmkey,0x40000000,authHandle,
+	TCM_SM2KEY_SIGNING,TCM_ISVOLATILE|TCM_PCRIGNOREDONREAD, "kkk");
+    if(ret<0)
+    {
+	printf("TCM_CreateWrapKey failed!\n");
+	return -EINVAL;	
+    }	
+
+    ret=TCM_APTerminate(authHandle);
+    printf("Terminate authHandle %x\n",authHandle);
+    if(ret<0)
+    {
+	printf("TCM_APCreate failed!\n");
+	return -EINVAL;	
+    }	
+
+    TCM_ExSaveTcmKey(tcmkey,"sm2sign.key");
+	
+    TCM_ExSaveTcmPubKey(pubkey,"sm2signpub.key");
 
     return ret;	
-
 }
 

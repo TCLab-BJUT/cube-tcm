@@ -89,7 +89,7 @@ UINT32 TCM_SM2LoadPubkey(char *keyfile,BYTE * key, int *keylen )
   return 0;
 }
 
-UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,BYTE * in ,int in_len)
+UINT32 TCM_ExSM2Encrypt(TCM_PUBKEY * pubkey,BYTE * out, int * out_len,BYTE * in ,int in_len)
 {
   int i=1;
   int ret=0;
@@ -102,12 +102,28 @@ UINT32 TCM_SM2Encrypt(BYTE * pubkey, int pubkey_len, BYTE * out, int * out_len,B
   // read data
 
   *out_len=in_len+65+32+4;
-  ret = GM_SM2Encrypt(out,out_len,in,in_len,pubkey,pubkey_len);
+  ret = GM_SM2Encrypt(out,out_len,in,in_len,pubkey->pubKey.key,pubkey->pubKey.keyLength);
   if(ret!=0){
       printf("SM2Encrypt is fail\n");
       return -EINVAL;
   }
   return 0;
+}
+
+UINT32 TCM_ExSM2Verify(TCM_PUBKEY * pubkey,BYTE * sign, int sign_len,BYTE * in ,int in_len)
+{
+  int i=1;
+  int ret=0;
+  int fd;
+  int datasize;
+
+  BYTE UserID[DIGEST_SIZE];
+  unsigned long lenUID = DIGEST_SIZE;
+  memset(UserID, 'A', 32);
+
+  ret=GM_SM2VerifySig(sign,sign_len,in,in_len,
+		UserID,lenUID,pubkey->pubKey.key, pubkey->pubKey.keyLength);
+  return ret;
 }
 
 int TCM_ExCreateSm2Key(BYTE ** privkey,int * privkey_len,BYTE ** pubkey)
@@ -252,13 +268,16 @@ int TCM_ExCAPikReqVerify(TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
     	printf("Begin ex CA Pik Req Verify:\n");
 	// build TCM_IDENTITY_CONTENTS struct
 	
+	Memset(&ca_contents,0,sizeof(ca_contents));
 	ca_contents.ver.major=1;
 	ca_contents.ver.minor=1;
 	ca_contents.ordinal = SUBTYPE_MAKEIDENTITY_IN;
 	Memcpy(ExBuf,userinfo,userinfolen);
 	Memcpy(ExBuf+userinfolen,CApubkey,64);
+//	print_bin_data(ExBuf,userinfolen+64,16);
 
 	calculate_context_sm3(ExBuf,userinfolen+64,ca_contents.labelPrivCADigest.digest);
+//	print_bin_data(ca_contents.labelPrivCADigest.digest,32,16);
 	
 	vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_PUBKEY);
 	if(vtcm_template==NULL)
@@ -280,8 +299,13 @@ int TCM_ExCAPikReqVerify(TCM_PUBKEY * pik, BYTE * userinfo,int userinfolen,
 	BYTE UserID[DIGEST_SIZE];
         unsigned long lenUID=DIGEST_SIZE;
         Memset(UserID,'A',32);
-	ret=GM_SM2VerifySig(reqdata,reqdatalen,ExBuf,ret,
-		UserID,lenUID,pik->pubKey.key,pik->pubKey.keyLength);
+
+//	print_bin_data(ExBuf,ret,16);
+//	print_bin_data(reqdata,reqdatalen,16);
+//	print_bin_data(pik->pubKey.key,pik->pubKey.keyLength,16);
+
+	ret=GM_SM2VerifySig(reqdata,(UINT64)reqdatalen,ExBuf,(UINT64)ret,
+		UserID,(UINT64)lenUID,pik->pubKey.key,(UINT64)pik->pubKey.keyLength);
 	if(ret<0)
 	{
 		printf("Verify Sig Data failed!\n");
@@ -653,4 +677,95 @@ int TCM_ExCAPubKeyVerify(BYTE * signData, int signdatalen,
 		CApubkey, 64);
     // check user Digest
 	
+}
+
+UINT32 TCM_ExCertifyKeyVerify(TCM_PUBKEY * pubkey,TCM_CERTIFY_INFO * cert,BYTE * in ,int in_len)
+{
+  int ret=0;
+  void * vtcm_template;
+  BYTE pubDigest[DIGEST_SIZE];	
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_PCR,SUBTYPE_TCM_CERTIFY_INFO);
+  if(vtcm_template==NULL)
+	return -EINVAL;
+
+  ret=blob_2_struct(in,cert,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
+
+  vtcm_template=memdb_get_template(DTYPE_VTCM_IN_KEY,SUBTYPE_TCM_BIN_STORE_PUBKEY);
+  if(vtcm_template==NULL)
+        return -EINVAL;
+  ret=struct_2_blob(&pubkey->pubKey,ExBuf,vtcm_template);
+  if(ret<0)
+	return -EINVAL;
+  vtcm_ex_sm3(pubDigest,1,ExBuf,ret);
+
+  if(Memcmp(pubDigest,&cert->pubkeyDigest,DIGEST_SIZE)==0)
+  {
+	return 0;
+  }
+ 
+  return 1;
+}
+
+UINT32 TCM_ExCreateQuoteInfo(TCM_QUOTE_INFO * quoteInfo,TCM_PCR_COMPOSITE * pcrComp,
+		BYTE * externalData)
+{
+   int ret;
+
+   Memset(quoteInfo,0,sizeof(*quoteInfo));
+
+   quoteInfo->tag=TCM_TAG_QUOTE_INFO;
+   Memcpy(quoteInfo->fixed,"QUOT",4);
+   if(externalData!=NULL)	
+   	Memcpy(quoteInfo->externalData,externalData,DIGEST_SIZE);
+
+   quoteInfo->info.tag=TCM_TAG_PCR_INFO;
+   quoteInfo->info.localityAtCreation=0;
+   quoteInfo->info.localityAtRelease=TCM_LOC_ONE|TCM_LOC_TWO|TCM_LOC_THREE|TCM_LOC_FOUR;
+   Memcpy(&quoteInfo->info.creationPCRSelection,&pcrComp->select,sizeof(TCM_PCR_SELECTION));
+   ret=memdb_output_blob(pcrComp,ExBuf,DTYPE_VTCM_PCR,SUBTYPE_TCM_PCR_COMPOSITE);
+   if(ret<0)
+	return ret;
+   print_bin_data(ExBuf,ret,16);
+   vtcm_ex_sm3(&quoteInfo->info.digestAtCreation,1,ExBuf,ret);
+   return 0;   	  
+}
+
+UINT32 TCM_ExInitPcrComposite(TCM_PCR_COMPOSITE * pcrComp)
+{
+	int ret;
+	ret=vtcm_Init_PcrComposite(pcrComp);
+	return ret;	
+}
+
+UINT32 TCM_ExAddPcrComposite(TCM_PCR_COMPOSITE * pcrComp,int pcrIndex, BYTE * pcrValue)
+{
+	return vtcm_Add_PCRComposite(pcrComp,pcrIndex,pcrValue);
+}
+
+UINT32 TCM_ExDupPcrComposite(TCM_PCR_COMPOSITE * pcrComp,int pcrIndex, BYTE * pcrValue)
+{
+	return vtcm_Dup_PCRComposite(pcrComp,pcrIndex,pcrValue);
+}
+
+UINT32 TCM_ExCompPcrsDigest(TCM_PCR_COMPOSITE * pcrComp,BYTE * digest)
+{
+	return vtcm_Comp_PcrsDigest(pcrComp,digest);
+}
+
+UINT32 TCM_ExCheckQuotePcr(TCM_PCR_COMPOSITE * pcrComp, TCM_QUOTE_INFO *quoteInfo)
+{
+	int ret;	
+	BYTE pcrdigest[DIGEST_SIZE];
+	ret=vtcm_Comp_PcrsDigest(pcrComp,pcrdigest);	
+	if(ret<0)
+		return ret;
+	
+   	if(Memcmp(pcrdigest,&quoteInfo->info.digestAtCreation,TCM_HASH_SIZE)==0)
+		ret=0;
+   	else
+		ret=TCM_SHA_ERROR;
+	return ret;
 }

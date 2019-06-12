@@ -70,17 +70,34 @@ int main(int argc,char **argv)
     CryptBuf=Buf+DIGEST_SIZE*72;
     OutBuf=CryptBuf+DIGEST_SIZE*72;  
 
-    TCM_PUBKEY * pubek;
-    pubek=malloc(sizeof(*pubek));
-    if(pubek==NULL)
+    TCM_PUBKEY * pubkey;
+    TCM_KEY * tcmkey;
+    pubkey=malloc(sizeof(*pubkey));
+    if(pubkey==NULL)
 	return -EINVAL;
 
-    BYTE pubkey[DIGEST_SIZE*8];
-    int pubkey_len;    
- 
-    ret=TCM_SM2LoadPubkey("sm2.key",pubkey, &pubkey_len);
+    ret = TCM_ExLoadTcmPubKey(pubkey, "sm2storepub.key");
+    if(ret!=0)
+    {
+	printf("ExLoadTcmPubKey error!\n");
+	return -EINVAL;	
+    }
 
-    Memset(Buf,DIGEST_SIZE*16,'A');
+    Memset(Buf,'A',DIGEST_SIZE*16);
+
+    // Sm2 Encrypt
+    ret=TCM_ExSM2Encrypt(pubkey,CryptBuf,&CryptBuflen,Buf,encrypt_len);
+
+    tcmkey=malloc(sizeof(*tcmkey));
+    if(tcmkey==NULL)
+	return -EINVAL;
+
+    ret = TCM_ExLoadTcmKey(tcmkey, "sm2store.key");
+    if(ret!=0)
+    {
+	printf("ExLoadTcmKey error!\n");
+	return -EINVAL;	
+    }
 
     ret=TCM_APCreate(TCM_ET_SMK, NULL, "sss", &authHandle);
     printf("authHandle is : %x\n",authHandle);
@@ -89,13 +106,14 @@ int main(int argc,char **argv)
 	printf("TCM_APCreate failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_LoadKey(authHandle,"sm2.key",&keyHandle);
+    ret=TCM_LoadKey(0x40000000,authHandle,tcmkey,&keyHandle);
     if(ret<0)
     {
 	printf("TCM_LoadKey failed!\n");
 	return -EINVAL;	
     }	
-    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sm2", &keyAuthHandle);
+
+    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "kkk", &keyAuthHandle);
     if(ret<0)
     {
 	printf("TCM_APCreate %dfailed!\n",12);
@@ -103,35 +121,8 @@ int main(int argc,char **argv)
     }	
     printf("keyAuthHandle is : %x\n",keyAuthHandle);
 
-    for(j=0;j<20;j++)
-    { 
-	printf("SM2 Encryt\n");
-    	gettimeofday( &start, NULL );
-    	for(i=0;i<repeattime;i++)
-	{
-    		ret=TCM_SM2Encrypt(pubkey,pubkey_len,CryptBuf,&CryptBuflen,Buf,encrypt_len);
-	}
-    	gettimeofday( &end, NULL );
+    ret=TCM_SM2Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
 
-    	crypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
-        encrypt_speed = (float)(encrypt_len*repeattime)*1000/crypttime;
-    	printf("encrypt speed %f Gbps \n", encrypt_speed/100);
-
-    	
-	printf("SM2 Decryt\n");
-    	gettimeofday( &start, NULL );
-    	for(i=0;i<repeattime;i++)
-	{
-    		ret=TCM_SM2Decrypt(keyHandle,keyAuthHandle,OutBuf,&OutBuflen,CryptBuf,CryptBuflen);
-	}
-    	gettimeofday( &end, NULL );
-    	decrypttime = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec - start.tv_usec;
-	
-        decrypt_speed = (float)(CryptBuflen*repeattime)*1000/decrypttime;
-
-    	printf("decrypt speed %f Gbps \n",decrypt_speed/100);
-	usleep(1000);
-    }
     ret=TCM_APTerminate(authHandle);
     if(ret<0)
     {
@@ -150,6 +141,7 @@ int main(int argc,char **argv)
 	printf("TCM_EvictKey %x failed!\n",keyHandle);
 	return -EINVAL;	
     }	
+    printf("%16s\n",OutBuf);
 
     return ret;	
 
