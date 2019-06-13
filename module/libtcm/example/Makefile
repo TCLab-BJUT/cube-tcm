@@ -7,7 +7,7 @@ LIBNAME=-L../../../locallib/bin -ltcm
 DEPENDLIB= -L$(CUBELIBPATH)/lib -L$(CUBESYSPATH)/plugin -lsys_func -lchannel -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lbasefunc -lstring -lalloc -lsm2So
 LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg 
 
-main: cainit  casign pikreq pikactive pikverify create_key sm2attr sm2sign key_certify quote_report key_verify sm2_verify loc_test
+main: cainit  casign pikreq pikactive pikverify create_key sm2attr sm2sign key_certify quote_report key_verify sm2_verify 
 libtcm_test:  libtcm_test.c
 	$(CC) $(FLAGS) libtcm_test libtcm_test.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB)
 cainit:  cainit.c
@@ -28,8 +28,6 @@ sm2sign:  sm2sign.c
 	$(CC) $(FLAGS) sm2sign sm2sign.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
 key_certify:  key_certify.c
 	$(CC) $(FLAGS) key_certify key_certify.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
-loc_test:  loc_test.c
-	$(CC) $(FLAGS) loc_test loc_test.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
 sm2_verify:  sm2_verify.c
 	$(CC) $(FLAGS) sm2_verify sm2_verify.c $(INCLUDE) $(LIBNAME) $(DEPENDLIB) $(LOCALLIB) 
 key_verify:  key_verify.c
