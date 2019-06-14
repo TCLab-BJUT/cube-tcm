@@ -42,8 +42,8 @@ char * ek_pubfile = "ek_pub.key";
 char * certblobfile = "pikcert.blob";
 char * symmkeyblobfile="symmkey.blob";
 
-BYTE ekpri[32] = {16,32,245,89,177,94,69,158,235,23,43,169,102,90,59,242,70,130,186,125,69,
-			101,179,249,202,33,64,52,1,83,88,223};
+//BYTE ekpri[32] = {16,32,245,89,177,94,69,158,235,23,43,169,102,90,59,242,70,130,186,125,69,
+//			101,179,249,202,33,64,52,1,83,88,223};
 
 int main(int argc,char **argv)
 {
@@ -139,10 +139,10 @@ int main(int argc,char **argv)
 
     close(fd);
 
-    int datalen=DIGEST_SIZE*16;
+//    int datalen=DIGEST_SIZE*16;
 // decrypt the encData 
-    ret=GM_SM2Decrypt(Buf,&datalen, symmkeyblob,symmkeybloblen,
-	ekpri,32);
+//    ret=GM_SM2Decrypt(Buf,&datalen, symmkeyblob,symmkeybloblen,
+//	ekpri,32);
 
 
 
