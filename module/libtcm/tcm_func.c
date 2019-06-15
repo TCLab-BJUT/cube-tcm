@@ -297,12 +297,12 @@ int proc_tcm_General(void * tcm_in, void * tcm_out)
      return -EINVAL;
   inlen=ret;
  
-  print_bin_data(Buf,ret,16);
+  //print_bin_data(Buf,ret,16);
 
   ret = vtcmutils_transmit(inlen,Buf,&outlen,Buf);
   if(ret<0)
     return ret; 
-  print_bin_data(Buf,ret,16);
+ // print_bin_data(Buf,ret,16);
 
   vtcm_template=memdb_get_template(out_type,vtcm_input->ordinal);
   if(vtcm_template==NULL)
@@ -932,6 +932,8 @@ UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   vtcm_output = Talloc0(sizeof(*vtcm_output));
   if(vtcm_output==NULL)
     return -ENOMEM;
+ 
+
   vtcm_input->tag = htons(TCM_TAG_RQU_AUTH1_COMMAND);
   vtcm_input->ordinal = SUBTYPE_SM2DECRYPT_IN;
   vtcm_input->keyHandle=keyHandle;
@@ -954,6 +956,8 @@ UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
   if(vtcm_input->DecryptData==NULL)
     return -EINVAL;
   Memcpy(vtcm_input->DecryptData,in,vtcm_input->DecryptDataSize); 
+
+  print_bin_data(vtcm_input->DecryptData,vtcm_input->DecryptDataSize,16);
   //
   //compute DecryptAuthVerfication
   ret=vtcm_Compute_AuthCode(vtcm_input,DTYPE_VTCM_IN_AUTH1,SUBTYPE_SM2DECRYPT_IN,authdata,vtcm_input->DecryptAuthVerfication);
@@ -978,6 +982,7 @@ UINT32 TCM_SM2Decrypt(UINT32 keyHandle,UINT32 DecryptAuthHandle,BYTE * out, int 
 
   *out_len=vtcm_output->DecryptedDataSize;
   Memcpy(out,vtcm_output->DecryptedData,vtcm_output->DecryptedDataSize);
+  print_bin_data(out,*out_len,16);
   return 0;
 }
 
@@ -1733,7 +1738,7 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
   if(offset<0)
       return offset;
 
-  print_bin_data(Buf,offset,16);
+  //print_bin_data(Buf,offset,16);
   ret = vtcmutils_transmit(vtcm_input->paramSize,Buf,&outlen,Buf);
   if(ret<0)
       return ret;
@@ -1768,7 +1773,7 @@ UINT32 TCM_MakeIdentity(UINT32 ownerhandle, UINT32 smkhandle,
       return -EINVAL;	
 
   printf("makeidentity:\n");
-  print_bin_data(Buf,outlen,16);
+  //print_bin_data(Buf,outlen,16);
   // write keyfile	
 
   ret=struct_clone(&vtcm_output->pik,pik,vtcm_template);

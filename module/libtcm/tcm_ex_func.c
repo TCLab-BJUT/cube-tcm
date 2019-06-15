@@ -101,12 +101,15 @@ UINT32 TCM_ExSM2Encrypt(TCM_PUBKEY * pubkey,BYTE * out, int * out_len,BYTE * in 
   // proc_vtcmutils_ReadFile(keyLength,keyFile);
   // read data
 
+  print_bin_data(in,in_len,16);	
+
   *out_len=in_len+65+32+4;
   ret = GM_SM2Encrypt(out,out_len,in,in_len,pubkey->pubKey.key,pubkey->pubKey.keyLength);
   if(ret!=0){
       printf("SM2Encrypt is fail\n");
       return -EINVAL;
   }
+  print_bin_data(out,*out_len,16);	
   return 0;
 }
 

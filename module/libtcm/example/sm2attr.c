@@ -31,6 +31,9 @@
 #include "tcmfunc.h"
 #include "vtcm_alg.h"
 
+char * pubkey_file= "ba3c01279aa12233c1ab24335b5c8783f9d795031dc9f22f4bc0ebae8e03e00f";
+char * privkey_file = "7186d2f08c7a6b9e9d9011451c310907ec7bf3f714317a23a002e90a35145ab2";
+
 int main(int argc,char **argv)
 {
 
@@ -76,7 +79,7 @@ int main(int argc,char **argv)
     if(pubkey==NULL)
 	return -EINVAL;
 
-    ret = TCM_ExLoadTcmPubKey(pubkey, "sm2storepub.key");
+    ret = TCM_ExLoadTcmPubKey(pubkey, pubkey_file);
     if(ret!=0)
     {
 	printf("ExLoadTcmPubKey error!\n");
@@ -92,7 +95,7 @@ int main(int argc,char **argv)
     if(tcmkey==NULL)
 	return -EINVAL;
 
-    ret = TCM_ExLoadTcmKey(tcmkey, "sm2store.key");
+    ret = TCM_ExLoadTcmKey(tcmkey, privkey_file);
     if(ret!=0)
     {
 	printf("ExLoadTcmKey error!\n");
@@ -113,7 +116,7 @@ int main(int argc,char **argv)
 	return -EINVAL;	
     }	
 
-    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "kkk", &keyAuthHandle);
+    ret=TCM_APCreate(TCM_ET_KEYHANDLE, keyHandle, "sss", &keyAuthHandle);
     if(ret<0)
     {
 	printf("TCM_APCreate %dfailed!\n",12);

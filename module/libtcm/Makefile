@@ -8,7 +8,7 @@ LIBNAME=tcm
 DEPENDLIB= -L$(CUBELIBPATH)/lib -L$(CUBESYSPATH)/plugin -lsys_func -lchannel -lmessage -lmemdb -lconnector -lstruct -lcrypto_func -ljson -lbasefunc -lstring -lalloc -lsm2So
 LOCALLIB=-L$(CUBEAPPPATH)/locallib/bin -lauth_func -lvtcm_ex_alg
 
-main: lib$(LIBNAME).so libtcm_test sm1test sm1attr sm3test sm3attr sm4test sm4attr
+main: lib$(LIBNAME).so 
 libtcm_test:  libtcm_test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
 	$(CC) $(FLAGS) libtcm_test libtcm_test.c lib_rw.c -l$(LIBNAME) $(INCLUDE) $(DEPENDLIB) $(LOCALLIB) 
 sm1test:  sm1test.c lib_rw.c main_proc_func.h $(STRUCTOBJ) lib$(LIBNAME).so
