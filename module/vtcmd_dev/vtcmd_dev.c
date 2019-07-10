@@ -169,12 +169,12 @@ static int tcmd_connect(char *socket_name,int port)
 {
   int res;
   struct sockaddr_in * tcm_addr;
-//   res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
-     res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
+     res = sock_create(PF_UNIX, SOCK_STREAM, 0, &tcmd_sock);
+//   res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
   if (res != 0) {
-    //error("sock_create_kern() failed: %d\n", res);
-    tcmd_sock = NULL;
-    return res;
+        error("sock_create_kern() failed: %d\n", res);
+        tcmd_sock = NULL;
+        return res;
   }
 
 //  addr.sun_family = AF_UNIX;
@@ -187,11 +187,13 @@ static int tcmd_connect(char *socket_name,int port)
   memset(&(tcm_addr->sin_zero),'\0',8);
 //  strncpy(addr.sun_path, socket_name, sizeof(addr.sun_path));
 //  strncpy(addr.sa_data, &tcm_addr, sizeof(addr.sa_data));
-  res = tcmd_sock->ops->connect(tcmd_sock, 
-    (struct sockaddr*)&addr, sizeof(struct sockaddr), 0);
+//  res = tcmd_sock->ops->connect(tcmd_sock, 
+    res = tcmd_sock->ops->connect(tcmd_sock, 
+//    (struct sockaddr*)&addr, sizeof(struct sockaddr));
+      (struct sockaddr*)&addr, sizeof(struct sockaddr), 0);
 //    (struct sockaddr*)&addr, sizeof(struct sockaddr_un), 0);
   if (res != 0) {
-    //error("sock_connect() failed: %d\n", res);
+    error("sock_connect() failed: %s %d error %d\n", socket_name,port,res);
     tcmd_sock->ops->release(tcmd_sock);
     tcmd_sock = NULL;
     return res;
@@ -812,10 +814,13 @@ int __init init_tcm_module(void)
 //  up(&vtcm_mutex);
   if (ret != 0) {
       clear_bit(TCM_STATE_IS_OPEN, (void*)&module_state);
-      printk("connect failed!\n");
+      printk("connect failed %d!\n",ret);
   }
+  else
+  {
    printk("connect succeed!\n");
-  vtcm_io_task = kthread_run(vtcm_io_process,vtcm_device,"vtcm_io_process");	
+   vtcm_io_task = kthread_run(vtcm_io_process,vtcm_device,"vtcm_io_process");	
+ }
 
   return 0;
 }
