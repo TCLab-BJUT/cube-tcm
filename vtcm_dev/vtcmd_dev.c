@@ -62,7 +62,7 @@ MODULE_SUPPORTED_DEVICE(VTCM_DEVICE_ID);
 
 
 #define NETLINK_TEST     30
-#define MSG_LEN            125
+#define MSG_LEN          1024
 #define USER_PORT        100
 
 /* module parameters */
@@ -307,8 +307,11 @@ static void netlink_disconnect(void)
 	sock_release(nlsk->sk_socket);
         netlink_kernel_release(nlsk); /* release ..*/
         nlsk = NULL;
+    	debug("vtcm netlink exit!\n");
     }
-    error("vtcm netlink exit!\n");
+    else
+    	debug("vtcm netlink NULL!\n");
+	
 }
 
 static int tcmd_send_comm(const uint8_t *in, uint32_t in_size)
@@ -616,7 +619,7 @@ static int vtcm_io_process(void * data)
 					ret=tcmd_send_comm(vtcm_dev->cmd_buf,count);
 
 				}
-				if(ret == 0) {
+				if(ret >= 0) {
 
 					debug("send (%d %d ) ",i,count); 
 					printk(" cmd (%x %x %x %x)", vtcm_dev->cmd_buf[6],vtcm_dev->cmd_buf[7],vtcm_dev->cmd_buf[8],vtcm_dev->cmd_buf[9]);
@@ -778,8 +781,7 @@ void __exit cleanup_tcm_module(void)
     class_destroy(vtcm_class);                 // delete class created by us
     unregister_chrdev_region (devno, VTCM_DEFAULT_NUM);
     printk("char device exited\n");
-    if(nlsk!=NULL)
-    	netlink_disconnect();
+    netlink_disconnect();
     if (tcm_response.data != NULL) kfree(tcm_response.data);
     if(vtcm_io_task)
     {

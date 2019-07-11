@@ -324,7 +324,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 	if(ret>0)
 	{
 		channel_write(ex_channel,WriteBuf,ret);
-		print_cubeaudit("tpm_init_channel retuen %d data from in_channel!\n",ret);
+		print_cubeaudit("tpm_init_channel return %d data from in_channel!\n",ret);
 	}
     }
     return 0;
