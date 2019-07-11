@@ -185,6 +185,7 @@ int send_usrmsg( const char *pbuf,uint16_t len)
     }
 
     // 拷贝数据发送 
+    debug("send data len %d data %x %x %x",len,pbuf[0],pbuf[1],pbuf[2]);
     memcpy(nlmsg_data(nlh), pbuf, len);
     ret = netlink_unicast(nlsk, nl_skb, USER_PORT, MSG_DONTWAIT);
 
