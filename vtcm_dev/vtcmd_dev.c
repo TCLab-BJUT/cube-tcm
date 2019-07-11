@@ -287,20 +287,23 @@ struct netlink_kernel_cfg cfg = {
 
 static int tcmd_connect(void)
 {
+  if(nlsk==NULL)
+  {
      nlsk = (struct sock *)netlink_kernel_create(&init_net,NETLINK_TEST,&cfg);
 //   res = sock_create_kern(&init_net,AF_INET, SOCK_STREAM, 0, &tcmd_sock);
-  if (nlsk == NULL) {
-        error("netlink_kernel_create failed\n");
-        return -EINVAL;
-  }
-
-  printk("connect netlink!\n");
+  	if (nlsk == NULL) {
+        	error("netlink_kernel_create failed \n");
+        	return -EINVAL;
+  	}
+  	printk("connect netlink!\n");
+  }	
   return 0;
 }
 
 static void netlink_disconnect(void)
 {
    if (nlsk){
+	sock_release(nlsk->sk_socket);
         netlink_kernel_release(nlsk); /* release ..*/
         nlsk = NULL;
     }
@@ -564,15 +567,15 @@ static int vtcm_io_process(void * data)
 		clock++;
 		if(nlsk == NULL)
 		{
-			int ret;
-			if(clock%50==0)
-			{
-  				ret = tcmd_connect();
-				if(ret == 0)
-				{
-   					printk("connect succeed!\n");
-				}
-			}
+//			int ret;
+//			if(clock%50==0)
+//			{
+//  				ret = tcmd_connect();
+//				if(ret == 0)
+//				{
+  // 					printk("connect succeed!\n");
+//				}
+//			}
 		}
 
 		//send process
