@@ -196,7 +196,7 @@ static void netlink_rcv_msg(struct sk_buff *skb)
 {
     struct nlmsghdr *nlh = NULL;
     int len=0;
-    char * umsg;
+    unsigned char * umsg;
     struct vtcm_manage_return_head * vtcm_return_head;
     int count;
     int vtcm_no;
@@ -219,6 +219,7 @@ static void netlink_rcv_msg(struct sk_buff *skb)
 		return;
 	}				
 	vtcm_return_head=(struct vtcm_manage_return_head *)umsg;
+	debug(" return_head %x %x %x %x",umsg[0],umsg[1],umsg[4],umsg[5]);
 	switch(vtcm_return_head->tag)
 	{
 		case TCM_TAG_RSP_COMMAND:
@@ -391,7 +392,7 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 			}
 		}	
 	}
-  	debug("read wait time %lld count %zd, vtcm_no %d", vtcm_dev->timeout, count,minor);
+  	//debug("read wait time %lld count %zd, vtcm_no %d", vtcm_dev->timeout, count,minor);
 	
 	if((vtcm_dev->state==VTCM_STATE_SEND)
 		||(vtcm_dev->state==VTCM_STATE_RECV))
@@ -418,6 +419,8 @@ static ssize_t tcm_read(struct file *file, char *buf, size_t count, loff_t *ppos
 		read_size=0;
 //      debug("%s(return value %d)", __FUNCTION__, read_size);
 	vtcm_dev->state=VTCM_STATE_WAIT;
+
+        debug("%s return data %d ", __FUNCTION__, read_size);
 
         return read_size;
 }
@@ -448,7 +451,7 @@ static ssize_t tcm_write(struct file *file, const char *buf, size_t count, loff_
 	ret=copy_from_user(vtcm_dev->cmd_buf,buf,6);
 	if(ret!=0)
 	{
-    		error("tcm_write() failed: %d\n", ret);
+    		error("tcm_write(%d ) failed: %d\n", vtcm_dev->devno,ret);
 		return ret;
 	}			
     	write_size = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
@@ -604,6 +607,7 @@ static int vtcm_io_process(void * data)
 				count = ntohl(*(uint32_t *)(vtcm_dev->cmd_buf+2));
 				response_size=VTCM_CMD_BUF_SIZE/2;
 				//printk("vtcm %d has command len %d!\n",i,count);		
+				vtcm_dev->state=VTCM_STATE_RECV;
 		
 				if(i!=0)
 				{
@@ -624,7 +628,6 @@ static int vtcm_io_process(void * data)
 					debug("send (%d %d ) ",i,count); 
 					printk(" cmd (%x %x %x %x)", vtcm_dev->cmd_buf[6],vtcm_dev->cmd_buf[7],vtcm_dev->cmd_buf[8],vtcm_dev->cmd_buf[9]);
 					// debug("vtcm %d send command succeed! %lld\n",i,vtcm_dev->timeout);		
-					vtcm_dev->state=VTCM_STATE_RECV;
 				}
 				else
 				{
