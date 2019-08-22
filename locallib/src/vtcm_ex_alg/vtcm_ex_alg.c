@@ -49,7 +49,7 @@ int vtcm_ex_sm3(char * hashout,int elem_no,...)
     {
         hash_elem = va_arg(ap, BYTE *);
 	argno++;
-	if(ap==0)
+	if(hash_elem==0)
 	{
 		Free(hash_buf);
 		return -EINVAL;
@@ -106,7 +106,7 @@ int vtcm_ex_hmac_sm3(char * hashout,BYTE * key, int keylen,int elem_no,...)
     {
         hash_elem = va_arg(ap, BYTE *);
 	argno++;
-	if(ap==0)
+	if(hash_elem==0)
 	{
 		Free(hash_buf);
 		return -EINVAL;
