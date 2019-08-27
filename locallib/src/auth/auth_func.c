@@ -31,6 +31,7 @@
 
 static BYTE Buf[DIGEST_SIZE*64];
 
+/*
 void print_bin_data(BYTE * data,int len,int width)
 {
     int i;
@@ -44,7 +45,7 @@ void print_bin_data(BYTE * data,int len,int width)
     }
     printf("\n");
 }
-
+*/
 int vtcm_setscene(void * sub_proc,void * recv_msg)
 {
 	int ret;
@@ -109,27 +110,6 @@ int vtcm_addcmdexpand(void * send_msg,void * recv_msg)
 	message_add_expand_data(send_msg,DTYPE_VTCM_STRUCT,SUBTYPE_VTCM_RETURN_HEAD,return_head);
 	return cmd_head->vtcm_no;
 }
-
-int RAND_bytes(unsigned char *buffer, size_t len) 
-{
-    int ret, fd;
-    const char * randomfile = "/dev/urandom";
-    fd = open(randomfile, O_RDONLY);
-    if (fd < 0) { 
-        perror("open urandom device:");
-        return fd;
-    }    
-    int readn = 0; 
-    while (readn != len) {
-        ret = read(fd, buffer + readn, len - readn);
-        if (ret < 0) { 
-            perror("read urandom device:");
-            return ret; 
-        }    
-        readn += ret; 
-    }    
-    return 0;
-}                                                                                                                                                                                                                
 
 /***
     TCM_KEY_PARMS init

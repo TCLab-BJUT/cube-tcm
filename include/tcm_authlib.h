@@ -1,10 +1,11 @@
 #ifndef TCM_AUTHLIB_H
 #define TCM_AUTHLIB_H
 
-void print_bin_data(BYTE * data,int len,int width);
+//void print_bin_data(BYTE * data,int len,int width);
 int vtcm_setscene(void * sub_proc,void * recv_msg);
 int vtcm_addcmdexpand(void * send_msg,void * recv_msg);
-int RAND_bytes(unsigned char *buffer, size_t len);
+//int RAND_bytes(unsigned char *buffer, size_t len);
+
 /*
 int vtcm_bn2binMalloc(unsigned char* bin, unsigned int* bytes,
     unsigned char* bn, uint32_t padBytes);

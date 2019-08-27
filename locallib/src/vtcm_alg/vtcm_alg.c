@@ -45,7 +45,7 @@ int vtcm_sm3(char * hashout,int elem_no,...)
    va_list ap ;
    va_start(ap,elem_no);
 
-    for (i=0;i<elem_no,i++)
+    for (i=0;i<elem_no;i++)
     {
         hash_elem = va_arg(ap, BYTE *);
 	argno++;

@@ -259,7 +259,7 @@ int tpm_init_channel_start(void * sub_proc,void * para)
 
                 offset=0;
 
-		print_bin_data(ReadBuf,readbuf_len);
+		print_bin_data(ReadBuf,readbuf_len,8);
 		
         	ret = blob_2_struct(ReadBuf, &output_data,extend_template) ;
 		if(ret<0)
